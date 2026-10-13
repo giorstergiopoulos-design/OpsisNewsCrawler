@@ -83,3 +83,8 @@ Sources: `docs/HANDOFF.md` (R1–R12), `docs/USER-REQUIREMENTS-2026-10-13b.md` (
 - ✅ Markets tab: exchange combo (Athens, Paris, Amsterdam, Brussels, Lisbon, Milan, Oslo, Euronext Growth Milan), search box, checklist of ALL shares of the chosen exchange, "Refresh list" button. Ticked shares go to the Watchlist (with Market = MIC).
 - ✅ Verified headless: Athens catalogue 119 shares (delayed-trade file + OpenFIGI names), Paris catalogue downloads and parses.
 - ⏳ Not yet verified: clicks in the new tab (a synthetic click missed the window), quotes of non-Athens markets on the bar, Opsis-hosted view.
+
+## Round 7 — same 14 languages as Opsis (2026-10-14)
+- ✅ App: embedded `Locales\<code>.json` for ar, de, es, fr, hi, it, ja, ko, pt, ru, tr, zh (+ el, en). All short UI texts translated; the four long texts (help, instructions, history, license) fall back to English for the new languages. `Loc.Available()` lists all of them; Opsis' culture codes (`de-DE`) are matched by the part before the dash. Arabic is not mirrored right-to-left (not done).
+- ✅ Installer: the same 14 wizard languages as Opsis (`installer\Chinese.isl`, `installer\Hindi.isl` copied from the Opsis repo), all 19 custom messages translated; the wizard follows the Windows language, English is the fallback. The installer writes the chosen language into `first-run.json` and the app starts in it (verified with test copies: German and Japanese).
+- ⏳ Not verified by eye: the translated settings window and wizard pages (only checked that the strings load); translation quality was not reviewed by native speakers.

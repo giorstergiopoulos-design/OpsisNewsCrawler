@@ -255,6 +255,11 @@ public sealed class AppConfig
         {
             if (!File.Exists(file)) return;
             using var doc = JsonDocument.Parse(File.ReadAllText(file));
+            if (doc.RootElement.TryGetProperty("Language", out var lang) && lang.GetString() is { Length: > 0 } code)
+            {
+                config.Language = code;
+                config.Save(configPath);
+            }
             if (doc.RootElement.TryGetProperty("Position", out var p) &&
                 Enum.TryParse<TickerPosition>(p.GetString(), true, out var position) &&
                 position is TickerPosition.BottomTaskbar or TickerPosition.TaskbarIntegrated)

@@ -30,6 +30,15 @@ public static class Loc
     public static IReadOnlyList<(string Code, string Native)> Available()
     {
         var list = new List<(string, string)> { ("el", "Ελληνικά"), ("en", "English") };
+        // Languages compiled into the program (Locales\*.json): the same fourteen as Opsis.
+        const string prefix = "OpsisNewsCrawler.Locales.";
+        foreach (var resource in typeof(Loc).Assembly.GetManifestResourceNames().Where(n => n.StartsWith(prefix, StringComparison.Ordinal)).OrderBy(n => n, StringComparer.Ordinal))
+        {
+            var code = resource[prefix.Length..^".json".Length];
+            if (list.Any(l => l.Item1 == code)) continue;
+            var dict = LoadEmbedded(code);
+            list.Add((code, dict.TryGetValue("language.native", out var native) ? native : code));
+        }
         try
         {
             var dir = Path.Combine(AppContext.BaseDirectory, "locales");
