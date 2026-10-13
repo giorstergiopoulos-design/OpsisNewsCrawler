@@ -1,0 +1,85 @@
+# TASKS — Opsis News Crawler + Opsis plugin integration
+
+Maintained by Claude Code: updated every time a task changes state. Last update: 2026-10-13 (evening).
+Legend: ✅ done & verified · 🟡 code done, NOT fully verified on a real desktop · 🔄 in progress · ⬜ todo · ⛔ blocked
+
+Sources: `docs/HANDOFF.md` (R1–R12), `docs/USER-REQUIREMENTS-2026-10-13b.md` (N1–N9, verbatim Greek, from Desktop\newscrawler.MD and chat).
+
+## Requirements from HANDOFF (R)
+| ID | Task | State | Notes |
+|---|---|---|---|
+| R1 | Quotes: Euronext Athens (+ other exchanges) | 🟡 | Athens delayed files verified live (11 stocks, change vs previous close cached or "since open"); other Euronext exchanges NOT done |
+| R2 | Follow auto-hide taskbar | 🟡 | `TickerWindow.FollowTaskbarTick`; auto-hide is off on this PC, untested |
+| R3 | AppBar: maximized windows stop at the bar | ✅ | verified: work area 1400→1358 px while running, restored on exit |
+| R4 | Custom position: X/Y/width + move with mouse | 🟡 | boxes render OK; mouse drag untested |
+| R5 | Sources per category, own categories, RSS auto-discovery | 🟡 | UI renders; discovery verified live (in.gr → feed found; bbc.com/news → none) |
+| R6 | Light/dark + transparency | ✅ | dark + light verified (acrylic, readable dark text on light) |
+| R7 | Dark/mono favicons made visible | 🟡 | `FaviconCache.TryGetFor`; untested visually |
+| R8 | Crawler windows look like Opsis | ✅ | flat Opsis-style controls (see N2) |
+| R9 | Read articles disappear | 🟡 | `ReadStore`; untested by clicking |
+| R10 | Bar integrated in the taskbar, same colours | ✅ | verified: sits in the free space (MSAA measured 19 buttons), clear backdrop |
+| R11 | Hide when another app is fullscreen | ✅ | verified: strip visible → hidden during a fullscreen window → visible again |
+| R12 | Plugin: no own tray icon, items in Opsis tray menu | 🟡 | contract + Opsis menu code written; menu not clicked |
+| — | Settings: Help / Instructions / History / License | ✅ | tabs (standalone) · moved to Opsis About page when hosted (N7) |
+| — | Plugin folder `plugins\Opsis - Desktop Customization\` | ✅ | |
+
+## New requirements (N)
+| ID | Task | State |
+|---|---|---|
+| N1 | Taskbar-integrated bar fully transparent: only text + logos | ✅ verified (blur-behind with empty tint = identical to the taskbar) |
+| N2 | Settings look exactly like Opsis (tabs, buttons, dropdowns, ticks, sliders, scroll bars) | ✅ verified by screenshot (General, Bars, Markets); other tabs rendered earlier; light theme of the panel untested |
+| N3 | Two bars (above taskbar + inside taskbar), each news or stocks; upper bar can be split in the middle | ✅ verified by screenshot (split main bar + stocks bar in the taskbar) |
+| N4 | Breaking news: red bar, capitals, intro (icon grows, then "ΕΚΤΑΚΤΗ ΕΠΙΚΑΙΡΟΤΗΤΑ"), pulsing live button, rectangular live preview with play/pause + maximize/restore | ✅ verified by screenshots: red bar + intro text + pulsing button; preview opens as a rectangle and loads a page in WebView2; play/pause and maximize buttons not clicked |
+| N5 | Transparency copied from Opsis (background only, text stays crisp) | ✅ verified dark + light; the slider changes the background only |
+| N6 | Optional edge fade | ✅ verified (both ends fade) |
+| N7 | Properties/help/instructions/history/license in Opsis "About" as a "Plugins" section | ✅ verified in Opsis (section + 4 buttons); text dialogs not opened |
+| N8 | Stocks bar also shows metals, oil, other commodities | ✅ shown in the bar (gold, silver, copper via gold-api.com; Brent, WTI, gas via FRED daily); no change % for metals until a second day is cached |
+| N9 | Single-language UI, locale files for more languages | ✅ Greek and English verified by screenshot (141 keys, same keys in both); hosted language push built, not switched live inside Opsis |
+| N10 | Keep the light blue; user-chosen colour; bar follows theme and Windows colours | ✅ verified: light blue main bar, accent / custom modes implemented (custom colour dialog not clicked) |
+| N11 | User can choose the backdrop preset (accent state 2 / 3 / 4) per bar | ✅ verified: acrylic (main bar) and gradient (taskbar bar) on screen |
+| N12 | Settings window can have the same transparency as Opsis (60–100 %, own slider; inside Opsis it follows Opsis' window opacity) | ✅ verified at 90 % on screen |
+| N13 | No stray lines on buttons / check boxes (crawler) and equal border thickness on the collapsed sidebar buttons (Opsis) | ✅ cause: antialiased background fill leaving edge pixels, and a 42 px tile in a 42 px button; both fixed and checked in zoomed screenshots |
+
+## Opsis integration (O)
+| ID | Task | State | Notes |
+|---|---|---|---|
+| O1 | Plugin loader (`PluginHost`), contract DLL in `libs\` | ✅ | verified |
+| O2 | Sidebar page = shared `SettingsPanel` | ✅ | verified with the new flat panel in Opsis (Opsis colours, language row hidden, no help tabs) |
+| O3 | Plugin items in Opsis tray menu | 🟡 | |
+| O4 | No conflicts with DeskZones / widgets / animated wallpaper | 🟡 | NoSnap window property, AppBar work-area, DeskStrip reposition, fullscreen own-process rule; not exercised |
+| O5 | Installer: detects Opsis, asks integrated (plugin into %AppData%Opsisplugins) or separate install | ✅ verified: wizard shows (Greek, Opsis 1.9.3 found), silent integrated + separate installs and uninstalls tested with a copy of the script; the real Opsis plugin folder was not touched |
+| O7 | Installer error 0x80070003 ("/" in the uninstall shortcut name) | ✅ fixed; shortcuts created and removed correctly in the test |
+| O6 | Opsis `PROJECT_STATE.md` entry | ✅ | |
+| O8 | The Opsis installer does NOT carry the crawler; it offers the task "download and install together" (downloads the crawler setup and installs it integrated; Opsis installs anyway if the download fails) | ✅ verified with test copies and a local web server (success and unreachable). The release URL is an assumption. Both real installers rebuilt 2026-10-14 (Opsis 68.7 MB, crawler 2.7 MB), not run on the real system |
+| O9 | Opsis Settings: "Load plugins" switch (`AppSettings.PluginsEnabled`, applies after restart) | 🟡 built, not clicked |
+| O10 | Opsis command palette lists the plugin pages (Ctrl+K) | 🟡 built; a synthetic Ctrl+K went to another window, so it was not seen working |
+
+## Checks log
+### Round 1 (before usage-limit reset)
+- Build crawler 0 errors; Opsis built into a scratch folder 0 errors.
+- Standalone: strip in the taskbar free space with taskbar colours; Opsis loaded the plugin (sidebar item + page + strip).
+### Round 2
+- Found and fixed: out-of-bounds read in the edge-fade code (crash), light theme dark-text-invisible (acrylic), host colours overridden by the crawler's own theme setting, accent state 2 showing the system accent colour (replaced by blur-behind).
+- Verified by screenshots: flat settings (General, Bars, Markets), light + dark bar, split bar, second bar in the taskbar, About page "Plugins" section in Opsis.
+- Live data test: 17 quotes in 1.6 s (Athens 11, metals 3, energy 3).
+- NOT verified: auto-hide taskbar, AppBar reserve, fullscreen hide, read-list click, mouse move of the custom bar, favicon contrast, Opsis tray items, DeskZones/widget/wallpaper behaviour, language switch inside Opsis.
+
+### Round 3
+- Verified: AppBar work area, fullscreen hide, breaking-news intro + live button, live preview (rectangle) with WebView2 (needed [STAThread]), light-blue tint, gradient/blur/acrylic presets, English UI, new Look and Breaking tabs, Opsis-hosted panel.
+- Installer compiled: Output\OpsisNewsCrawler-Setup.exe (not run).
+- Still not verified: auto-hide taskbar follow (R2), mouse placement drag (R4), read-list click (R9), tray items in Opsis (R12), DeskZones/widgets/wallpaper conflicts (O4), the play/pause and maximize buttons of the preview, custom colour dialog.
+
+### Round 4 (installer)
+- The reported setup error came from the shortcut name "Απεγκατάσταση / Uninstall ..." (a / is a folder separator in Windows). Names are now single-language without it; the wizard is Greek on a Greek Windows (Greek.isl exists in this Inno Setup) and English otherwise.
+- New wizard page: Opsis found (registry uninstall entry / default folders) -> propose integration; otherwise propose a separate install. Integrated = only the plugin folder into %AppData%OpsispluginsOpsis - Desktop Customization (no exe, tray icon, shortcuts); separate = the program (without the plugin copy).
+- OutputOpsisNewsCrawler-Setup-v2.exe is the fixed installer; OutputOpsisNewsCrawler-Setup.exe is the OLD broken one (locked by the failed setup window still open on the owner PC).
+
+### Round 5 (integration into Opsis)
+- Plugin payload bundled into Opsis' build/publish and installer; update script + build-all step; Opsis setting and palette entries added.
+- Crawler installer: `Output\OpsisNewsCrawler-Setup.exe` is now the fixed one (the old broken file was replaced once the failed setup window was closed).
+- Both repos have uncommitted changes.
+
+## Round 6 — N14 Euronext full catalogue (2026-10-14)
+- ✅ Markets tab: exchange combo (Athens, Paris, Amsterdam, Brussels, Lisbon, Milan, Oslo, Euronext Growth Milan), search box, checklist of ALL shares of the chosen exchange, "Refresh list" button. Ticked shares go to the Watchlist (with Market = MIC).
+- ✅ Verified headless: Athens catalogue 119 shares (delayed-trade file + OpenFIGI names), Paris catalogue downloads and parses.
+- ⏳ Not yet verified: clicks in the new tab (a synthetic click missed the window), quotes of non-Athens markets on the bar, Opsis-hosted view.

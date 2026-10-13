@@ -1,0 +1,418 @@
+using System.Globalization;
+using System.Net.Http.Headers;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+
+namespace OpsisNewsCrawler.Core;
+
+/// <summary>Where the price of an instrument comes from.</summary>
+public enum QuoteSource
+{
+    /// <summary>Euronext Athens official 15-minute delayed trade files (key = ISIN).</summary>
+    Athens,
+    /// <summary>gold-api.com spot prices: XAU, XAG, XPT, XPD, HG (key = symbol). Free, no API key.</summary>
+    Metals,
+    /// <summary>FRED public CSV of EIA daily prices: Brent, WTI, Henry Hub gas (key = series id). Daily, not live.</summary>
+    Energy,
+    /// <summary>Shares of the other Euronext markets (Market = MIC, key = ISIN): the Euronext "Download" CSV, end-of-day prices.</summary>
+    Euronext
+}
+
+/// <summary>One line of the watch list.</summary>
+public sealed class QuoteInstrument
+{
+    public QuoteSource Source { get; set; }
+    /// <summary>ISIN (Athens), spot symbol (Metals) or FRED series id (Energy).</summary>
+    public string Code { get; set; } = "";
+
+    /// <summary>Euronext shares: the market's MIC (XATH, XPAR, XAMS, XBRU, XLIS, XMSM, MTAA, XOSL); empty for metals and energy.</summary>
+    public string Market { get; set; } = "";
+    public string Symbol { get; set; } = "";
+    public string NameEl { get; set; } = "";
+    public string NameEn { get; set; } = "";
+    /// <summary>Currency symbol shown after the price.</summary>
+    public string Unit { get; set; } = "€";
+    public bool Enabled { get; set; } = true;
+
+    public QuoteInstrument() { }
+
+    public QuoteInstrument(QuoteSource source, string code, string symbol, string nameEl, string nameEn, string unit, bool enabled = true)
+    {
+        Source = source; Code = code; Symbol = symbol; NameEl = nameEl; NameEn = nameEn; Unit = unit; Enabled = enabled;
+    }
+
+    public string DisplayName(bool greek) => greek ? NameEl : NameEn;
+
+    public static List<QuoteInstrument> Defaults() => new()
+    {
+        // Athens — ISINs checked against the 2026-10-13 trade file and OpenFIGI (see docs/DATA-SOURCES.md).
+        new(QuoteSource.Athens, "GRS003003035", "ETE", "Εθνική Τράπεζα", "National Bank", "€") { Market = "XATH" },
+        new(QuoteSource.Athens, "GRS829003003", "EUROB", "Eurobank", "Eurobank", "€"),
+        new(QuoteSource.Athens, "GRS830003000", "ALPHA", "Alpha Bank", "Alpha Bank", "€"),
+        new(QuoteSource.Athens, "GRS831003009", "TPEIR", "Πειραιώς", "Piraeus Bank", "€"),
+        new(QuoteSource.Athens, "GRS533003000", "OPTIMA", "Optima Bank", "Optima Bank", "€", enabled: false),
+        new(QuoteSource.Athens, "GRS260333000", "HTO", "ΟΤΕ", "OTE", "€"),
+        new(QuoteSource.Athens, "GRS434003000", "PPC", "ΔΕΗ", "PPC", "€"),
+        new(QuoteSource.Athens, "GRS298343005", "ELPE", "Helleniq Energy", "Helleniq Energy", "€"),
+        new(QuoteSource.Athens, "GRS426003000", "MOH", "Motor Oil", "Motor Oil", "€"),
+        new(QuoteSource.Athens, "GRS419003009", "ALWN", "Allwyn (ΟΠΑΠ)", "Allwyn (OPAP)", "€"),
+        new(QuoteSource.Athens, "GRS282183003", "BELA", "Jumbo", "Jumbo", "€"),
+        new(QuoteSource.Athens, "GRS495003006", "AEGN", "Aegean", "Aegean", "€"),
+        new(QuoteSource.Athens, "GRS395363005", "EXAE", "Euronext Athens", "Euronext Athens", "€", enabled: false),
+        // Metals (USD per troy ounce; copper per pound)
+        new(QuoteSource.Metals, "XAU", "XAU", "Χρυσός", "Gold", "$/oz"),
+        new(QuoteSource.Metals, "XAG", "XAG", "Άργυρος", "Silver", "$/oz"),
+        new(QuoteSource.Metals, "XPT", "XPT", "Πλατίνα", "Platinum", "$/oz", enabled: false),
+        new(QuoteSource.Metals, "XPD", "XPD", "Παλλάδιο", "Palladium", "$/oz", enabled: false),
+        new(QuoteSource.Metals, "HG", "HG", "Χαλκός", "Copper", "$/lb"),
+        // Energy (daily EIA data)
+        new(QuoteSource.Energy, "DCOILBRENTEU", "BRENT", "Πετρέλαιο Brent", "Brent crude", "$/bbl"),
+        new(QuoteSource.Energy, "DCOILWTICO", "WTI", "Πετρέλαιο WTI", "WTI crude", "$/bbl"),
+        new(QuoteSource.Energy, "DHHNGSP", "NG", "Φυσικό αέριο (Henry Hub)", "Natural gas (Henry Hub)", "$/MMBtu"),
+    };
+}
+
+/// <summary>Remembers the last price of each instrument per day, to know the previous close (the sources give no history).</summary>
+public sealed class QuoteStore
+{
+    private readonly string path;
+    private readonly Dictionary<string, SortedDictionary<string, decimal>> days = new(StringComparer.OrdinalIgnoreCase);
+
+    public static string DefaultPath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OpsisNewsCrawler", "quotes-cache.json");
+
+    public QuoteStore(string? path = null)
+    {
+        this.path = path ?? DefaultPath;
+        try
+        {
+            if (!File.Exists(this.path)) return;
+            var data = JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, decimal>>>(File.ReadAllText(this.path));
+            if (data is null) return;
+            foreach (var (code, perDay) in data) days[code] = new SortedDictionary<string, decimal>(perDay, StringComparer.Ordinal);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+        {
+        }
+    }
+
+    /// <summary>Last price seen on a given day (yyyyMMdd).</summary>
+    public void Record(string code, string day, decimal price)
+    {
+        if (!days.TryGetValue(code, out var perDay)) days[code] = perDay = new SortedDictionary<string, decimal>(StringComparer.Ordinal);
+        perDay[day] = price;
+        while (perDay.Count > 10) perDay.Remove(perDay.Keys.First());
+    }
+
+    /// <summary>Last price of the latest day before <paramref name="day"/>, or null.</summary>
+    public decimal? PreviousClose(string code, string day)
+    {
+        if (!days.TryGetValue(code, out var perDay)) return null;
+        var before = perDay.Keys.Where(k => string.CompareOrdinal(k, day) < 0).LastOrDefault();
+        return before is null ? null : perDay[before];
+    }
+
+    public void Save()
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(path, JsonSerializer.Serialize(days));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+        }
+    }
+}
+
+public interface IQuoteProvider
+{
+    QuoteSource Source { get; }
+    /// <summary>Never throws for network/format problems: returns what it could get (possibly nothing).</summary>
+    Task<IReadOnlyList<MarketQuote>> FetchAsync(IReadOnlyList<QuoteInstrument> instruments, CancellationToken ct);
+}
+
+/// <summary>Shared HTTP client settings for all quote providers.</summary>
+internal static class QuoteHttp
+{
+    public static HttpClient Create()
+    {
+        var client = new HttpClient { Timeout = TimeSpan.FromSeconds(40) };
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible; OpsisNewsCrawler)");
+        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*"));
+        return client;
+    }
+}
+
+/// <summary>
+/// Euronext Athens official delayed trade files (15 min, free): the last price of each ISIN is the row with the latest trade time.
+/// The files are cumulative for the day and ~7 MB, so a new one is only downloaded when the listing shows a newer file.
+/// </summary>
+public sealed class AthensDelayedFileProvider : IQuoteProvider
+{
+    /// <summary>
+    /// Every Greek share (ISIN "GRS...", venues XATH and ENAX) with at least two trades in the newest delayed file:
+    /// the list of Athens shares the user can pick from. Never throws for network problems (returns what it has).
+    /// </summary>
+    internal static async Task<HashSet<string>> ReadIsinsAsync(HttpClient http, CancellationToken ct)
+    {
+        var result = new HashSet<string>(StringComparer.Ordinal);
+        try
+        {
+            var html = await http.GetStringAsync(ListUrl, ct).ConfigureAwait(false);
+            var newest = FileRx.Matches(html).Select(m => m.Value).OrderBy(v => v, StringComparer.Ordinal).LastOrDefault();
+            if (newest is null) return result;
+            using var response = await http.GetAsync(Base + newest, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+            await using var stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+            using var reader = new StreamReader(stream);
+            await reader.ReadLineAsync(ct).ConfigureAwait(false);
+            var counts = new Dictionary<string, int>(StringComparer.Ordinal);
+            string? line;
+            while ((line = await reader.ReadLineAsync(ct).ConfigureAwait(false)) is not null)
+            {
+                var f = line.Split(';');
+                if (f.Length < 16 || !f[1].StartsWith("GRS", StringComparison.Ordinal) || f[15] is not ("XATH" or "ENAX")) continue;
+                counts[f[1]] = counts.GetValueOrDefault(f[1]) + 1;
+            }
+            foreach (var (isin, n) in counts) if (n >= 2) result.Add(isin);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException)
+        {
+        }
+        return result;
+    }
+
+    private const string Base = "https://athens.euronext.com";
+    private const string ListUrl = Base + "/en/market-data/data-services/delayed-feed";
+    private static readonly Regex FileRx = new(@"/en/market-data/data-services/trade-document/PO_DAILY/Daily_PostTrade_(\d{8})_(\d{2}\.\d{2}\.\d{2})\.csv", RegexOptions.Compiled);
+
+    private readonly HttpClient http = QuoteHttp.Create();
+    private readonly QuoteStore store;
+    private string? lastFile;
+    private IReadOnlyList<MarketQuote> lastResult = Array.Empty<MarketQuote>();
+    private string lastWatchKey = "";
+    private DateTimeOffset lastCheck = DateTimeOffset.MinValue;
+
+    public AthensDelayedFileProvider(QuoteStore store) => this.store = store;
+
+    public QuoteSource Source => QuoteSource.Athens;
+
+    public async Task<IReadOnlyList<MarketQuote>> FetchAsync(IReadOnlyList<QuoteInstrument> instruments, CancellationToken ct)
+    {
+        if (instruments.Count == 0) return Array.Empty<MarketQuote>();
+        // The listing page is ~250 KB and a new file appears every 15 minutes: look at most every 5 minutes.
+        var watch = string.Join(",", instruments.Select(i => i.Code));
+        if (lastResult.Count > 0 && watch == lastWatchKey && DateTimeOffset.UtcNow - lastCheck < TimeSpan.FromMinutes(5)) return lastResult;
+        lastCheck = DateTimeOffset.UtcNow;
+        try
+        {
+            var html = await http.GetStringAsync(ListUrl, ct).ConfigureAwait(false);
+            var newest = FileRx.Matches(html).Select(m => (Url: m.Value, Day: m.Groups[1].Value, Time: m.Groups[2].Value))
+                .OrderBy(f => f.Day + f.Time, StringComparer.Ordinal).LastOrDefault();
+            if (newest.Url is null) return lastResult;
+
+            var watchKey = string.Join(",", instruments.Select(i => i.Code));
+            if (newest.Url == lastFile && watchKey == lastWatchKey) return lastResult;
+
+            var wanted = instruments.ToDictionary(i => i.Code, StringComparer.Ordinal);
+            var last = new Dictionary<string, (string At, decimal Price)>(StringComparer.Ordinal);
+            var first = new Dictionary<string, (string At, decimal Price)>(StringComparer.Ordinal);
+
+            using var response = await http.GetAsync(Base + newest.Url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+            await using var stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+            using var reader = new StreamReader(stream);
+            await reader.ReadLineAsync(ct).ConfigureAwait(false); // header: trading_date_time;isin_code;price;...;canc;amnd;...
+            string? line;
+            while ((line = await reader.ReadLineAsync(ct).ConfigureAwait(false)) is not null)
+            {
+                var f = line.Split(';');
+                if (f.Length < 15 || !wanted.ContainsKey(f[1])) continue;
+                if (f[13].Length > 0) continue; // cancelled trade
+                if (!decimal.TryParse(f[2], NumberStyles.Number, CultureInfo.InvariantCulture, out var price) || price <= 0) continue;
+                var at = f[0];
+                if (!last.TryGetValue(f[1], out var l) || string.CompareOrdinal(at, l.At) > 0) last[f[1]] = (at, price);
+                if (!first.TryGetValue(f[1], out var fi) || string.CompareOrdinal(at, fi.At) < 0) first[f[1]] = (at, price);
+            }
+
+            var results = new List<MarketQuote>();
+            foreach (var inst in instruments)
+            {
+                if (!last.TryGetValue(inst.Code, out var l)) continue;
+                store.Record(inst.Code, newest.Day, l.Price);
+                var prev = store.PreviousClose(inst.Code, newest.Day);
+                var fromOpen = false;
+                if (prev is null && first.TryGetValue(inst.Code, out var fi) && fi.Price > 0)
+                {
+                    prev = fi.Price;
+                    fromOpen = true;
+                }
+                decimal? change = prev is > 0 ? Math.Round((l.Price - prev.Value) / prev.Value * 100, 2) : null;
+                var asOf = DateTimeOffset.TryParse(l.At, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var t) ? t : DateTimeOffset.UtcNow;
+                results.Add(new MarketQuote(inst.Symbol, inst.NameEn, l.Price, change, asOf, Delayed: true, ChangeFromOpen: fromOpen));
+            }
+            store.Save();
+            lastFile = newest.Url;
+            lastWatchKey = watchKey;
+            lastResult = results;
+            return results;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException)
+        {
+            return lastResult;
+        }
+    }
+}
+
+/// <summary>gold-api.com: free spot prices for metals, no API key. Prices are real time (not delayed).</summary>
+public sealed class GoldApiMetalsProvider : IQuoteProvider
+{
+    private readonly HttpClient http = QuoteHttp.Create();
+    private readonly QuoteStore store;
+    private IReadOnlyList<MarketQuote> lastResult = Array.Empty<MarketQuote>();
+
+    public GoldApiMetalsProvider(QuoteStore store) => this.store = store;
+
+    public QuoteSource Source => QuoteSource.Metals;
+
+    public async Task<IReadOnlyList<MarketQuote>> FetchAsync(IReadOnlyList<QuoteInstrument> instruments, CancellationToken ct)
+    {
+        if (instruments.Count == 0) return Array.Empty<MarketQuote>();
+        var tasks = instruments.Select(i => FetchOne(i, ct)).ToList();
+        var done = await Task.WhenAll(tasks).ConfigureAwait(false);
+        var results = done.Where(q => q is not null).Select(q => q!).ToList();
+        if (results.Count == 0) return lastResult;
+        store.Save();
+        lastResult = results;
+        return results;
+    }
+
+    private async Task<MarketQuote?> FetchOne(QuoteInstrument inst, CancellationToken ct)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(await http.GetStringAsync($"https://api.gold-api.com/price/{Uri.EscapeDataString(inst.Code)}", ct).ConfigureAwait(false));
+            if (!doc.RootElement.TryGetProperty("price", out var p) || !p.TryGetDecimal(out var price) || price <= 0) return null;
+            var asOf = doc.RootElement.TryGetProperty("updatedAt", out var u) && DateTimeOffset.TryParse(u.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var t)
+                ? t : DateTimeOffset.UtcNow;
+            var day = asOf.UtcDateTime.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+            store.Record(inst.Code, day, price);
+            var prev = store.PreviousClose(inst.Code, day);
+            decimal? change = prev is > 0 ? Math.Round((price - prev.Value) / prev.Value * 100, 2) : null;
+            return new MarketQuote(inst.Symbol, inst.NameEn, price, change, asOf, Delayed: false);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or FormatException)
+        {
+            return null;
+        }
+    }
+}
+
+/// <summary>FRED public CSV (U.S. EIA data): Brent, WTI and Henry Hub gas, one value per day, a few days behind. No API key.</summary>
+public sealed class FredEnergyProvider : IQuoteProvider
+{
+    private readonly HttpClient http = QuoteHttp.Create();
+    private IReadOnlyList<MarketQuote> lastResult = Array.Empty<MarketQuote>();
+    private DateTimeOffset lastFetch = DateTimeOffset.MinValue;
+
+    public QuoteSource Source => QuoteSource.Energy;
+
+    public async Task<IReadOnlyList<MarketQuote>> FetchAsync(IReadOnlyList<QuoteInstrument> instruments, CancellationToken ct)
+    {
+        if (instruments.Count == 0) return Array.Empty<MarketQuote>();
+        // The series change once a day: no reason to ask more often than hourly.
+        if (DateTimeOffset.UtcNow - lastFetch < TimeSpan.FromHours(1) && lastResult.Count > 0) return lastResult;
+
+        var results = new List<MarketQuote>();
+        var since = DateTime.UtcNow.AddDays(-20).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        foreach (var inst in instruments)
+        {
+            try
+            {
+                var csv = await http.GetStringAsync($"https://fred.stlouisfed.org/graph/fredgraph.csv?id={Uri.EscapeDataString(inst.Code)}&cosd={since}", ct).ConfigureAwait(false);
+                var points = new List<(DateTime Day, decimal Value)>();
+                foreach (var line in csv.Split('\n').Skip(1))
+                {
+                    var f = line.Trim().Split(',');
+                    if (f.Length < 2 || !DateTime.TryParse(f[0], CultureInfo.InvariantCulture, DateTimeStyles.None, out var day)) continue;
+                    if (decimal.TryParse(f[1], NumberStyles.Number, CultureInfo.InvariantCulture, out var v)) points.Add((day, v)); // holidays are "."
+                }
+                if (points.Count == 0) continue;
+                var last = points[^1];
+                decimal? change = points.Count > 1 && points[^2].Value > 0 ? Math.Round((last.Value - points[^2].Value) / points[^2].Value * 100, 2) : null;
+                results.Add(new MarketQuote(inst.Symbol, inst.NameEn, last.Value, change, new DateTimeOffset(last.Day, TimeSpan.Zero), Delayed: true));
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+            {
+            }
+        }
+        if (results.Count > 0)
+        {
+            lastResult = results;
+            lastFetch = DateTimeOffset.UtcNow;
+        }
+        return lastResult;
+    }
+}
+
+/// <summary>Runs all providers for the enabled instruments and turns the prices into strip items.</summary>
+public sealed class QuoteService
+{
+    private readonly List<IQuoteProvider> providers;
+
+    public QuoteService(QuoteStore? store = null)
+    {
+        store ??= new QuoteStore();
+        providers = new() { new AthensDelayedFileProvider(store), new EuronextListProvider(store), new GoldApiMetalsProvider(store), new FredEnergyProvider() };
+    }
+
+    public async Task<IReadOnlyList<NewsItem>> FetchItemsAsync(IEnumerable<QuoteInstrument> watchlist, bool greek, CancellationToken ct)
+    {
+        var enabled = watchlist.Where(i => i.Enabled).ToList();
+        var fetches = providers.Select(async p =>
+        {
+            var wanted = enabled.Where(i => i.Source == p.Source).ToList();
+            var quotes = await p.FetchAsync(wanted, ct).ConfigureAwait(false);
+            return (Provider: p, Wanted: wanted, Quotes: quotes);
+        }).ToList();
+        var done = await Task.WhenAll(fetches).ConfigureAwait(false);
+
+        var items = new List<NewsItem>();
+        foreach (var inst in enabled) // keep the user's order
+        {
+            var group = done.First(d => d.Provider.Source == inst.Source);
+            var q = group.Quotes.FirstOrDefault(x => string.Equals(x.Symbol, inst.Symbol, StringComparison.OrdinalIgnoreCase));
+            if (q is null) continue;
+            items.Add(ToItem(inst, q, greek));
+        }
+        return items;
+    }
+
+    private static readonly CultureInfo Gr = CultureInfo.GetCultureInfo("el-GR");
+
+    public static NewsItem ToItem(QuoteInstrument inst, MarketQuote q, bool greek)
+    {
+        var price = q.Price.ToString(q.Price >= 100 ? "#,##0.00" : q.Price >= 1 ? "0.00" : "0.000", Gr);
+        var text = $"{price} {inst.Unit}";
+        var trend = 0;
+        if (q.ChangePercent is { } c)
+        {
+            trend = c > 0 ? 1 : c < 0 ? -1 : 0;
+            var arrow = trend > 0 ? "▲" : trend < 0 ? "▼" : "■";
+            text += $"  {arrow} {(c > 0 ? "+" : "")}{c.ToString("0.00", Gr)} %";
+            if (q.ChangeFromOpen) text += " " + Loc.T("q.sinceOpen");
+        }
+        if (q.Delayed)
+        {
+            text += "  · " + (inst.Source switch
+            {
+                QuoteSource.Athens => Loc.T("q.delayed15"),
+                QuoteSource.Euronext => Loc.T("q.close", q.AsOf.ToString("dd/MM")),
+                _ => Loc.T("q.daily", q.AsOf.ToString("dd/MM"))
+            });
+        }
+        var title = inst.Symbol.Length > 0 && inst.Source is QuoteSource.Athens or QuoteSource.Euronext ? inst.Symbol : inst.DisplayName(greek);
+        return new NewsItem(text, "", title, q.AsOf, Summary: inst.DisplayName(greek), Kind: NewsItemKind.Quote, Trend: trend);
+    }
+}

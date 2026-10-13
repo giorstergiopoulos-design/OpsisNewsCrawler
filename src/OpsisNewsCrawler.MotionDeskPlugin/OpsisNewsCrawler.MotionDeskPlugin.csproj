@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net10.0-windows</TargetFramework><UseWindowsForms>true</UseWindowsForms><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><AssemblyName>OpsisNewsCrawler.MotionDeskPlugin</AssemblyName><Product>Opsis News Crawler</Product><Version>0.8.0</Version></PropertyGroup>
+  <ItemGroup><ProjectReference Include="..\OpsisNewsCrawler.Core\OpsisNewsCrawler.Core.csproj" /><ProjectReference Include="..\OpsisNewsCrawler.Windows\OpsisNewsCrawler.Windows.csproj" /><ProjectReference Include="..\OpsisNewsCrawler.Plugin.Abstractions\OpsisNewsCrawler.Plugin.Abstractions.csproj" /></ItemGroup>
+</Project>

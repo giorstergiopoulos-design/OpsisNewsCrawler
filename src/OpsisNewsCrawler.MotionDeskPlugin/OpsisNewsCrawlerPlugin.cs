@@ -1,0 +1,132 @@
+using OpsisNewsCrawler.Core;
+using OpsisNewsCrawler.Plugin.Abstractions;
+using OpsisNewsCrawler.Windows;
+
+namespace OpsisNewsCrawler.MotionDeskPlugin;
+
+/// <summary>
+/// Plugin entry point for Opsis - Desktop Customization. The host must create it and call it on its UI thread.
+/// Hosted, the crawler never creates its own tray icon: its commands are offered through <see cref="GetTrayMenuItems"/>
+/// and its settings are a tab of the host.
+/// </summary>
+public sealed class OpsisNewsCrawlerPlugin : IOpsisNewsCrawlerPlugin
+{
+    public const string NavigationKey = "OpsisNewsCrawler";
+
+    private readonly TickerController _controller = new();
+    private bool _paused;
+
+    public OpsisNewsCrawlerPlugin()
+    {
+        _controller.SettingsRequested += OnSettingsRequested;
+    }
+
+    /// <inheritdoc />
+    public event Action<string>? NavigationRequested;
+
+    private void OnSettingsRequested()
+    {
+        // Preferred: the host shows the plugin's own tab. If nobody subscribed, open a settings window instead.
+        if (NavigationRequested is { } navigate) navigate(NavigationKey);
+        else _controller.ShowFallbackSettings();
+    }
+
+    public string Id => "giorstergiopoulos.opsisnewscrawler";
+    public string Name => "Opsis News Crawler";
+    public string Version => AboutTexts.Version;
+
+    public void Start() => _controller.Start();
+    public void Stop() => _controller.Stop();
+    public void Pause() { _paused = true; _controller.Pause(); }
+    public void Resume() { _paused = false; _controller.Resume(); }
+    public void Refresh() => _controller.Refresh();
+    public void SetMode(string mode) => _controller.SetMode(TickerParsing.ParseMode(mode));
+    public void SetPosition(string position) => _controller.SetPosition(TickerParsing.ParsePosition(position));
+
+    public void SetTheme(bool dark, int background, int surface, int border, int text, int textMuted, int accent, double opacity) =>
+        Theme.SetColors(dark, Color.FromArgb(background), Color.FromArgb(surface), Color.FromArgb(border),
+            Color.FromArgb(text), Color.FromArgb(textMuted), Color.FromArgb(accent), Theme.Opacity); // the strip keeps its own transparency setting
+
+    public void SetLanguage(string code)
+    {
+        _controller.LanguageFromHost = true;
+        Loc.SetLanguage(code);
+    }
+
+    public PluginAboutInfo GetAboutInfo() => new(
+        Name,
+        Version,
+        "Μπάρα ειδήσεων και τιμών για την επιφάνεια εργασίας: RSS ανά κατηγορία, τιμές Euronext Athens, μετάλλων και πετρελαίου, δύο μπάρες.",
+        "News and price bar for the desktop: RSS per category, Euronext Athens, metals and oil prices, two bars.",
+        "Opsis Team",
+        "MIT",
+        new[]
+        {
+            new PluginAboutSection("Βοήθεια", "Help", AboutTexts.Help),
+            new PluginAboutSection("Οδηγίες χρήσης", "Instructions", AboutTexts.Instructions),
+            new PluginAboutSection("Ιστορικό εκδόσεων", "Version history", AboutTexts.History),
+            new PluginAboutSection("Άδεια χρήσης", "License", AboutTexts.License),
+        });
+
+    public IReadOnlyList<PluginMenuItem> GetTrayMenuItems() => new[]
+    {
+        new PluginMenuItem("news.separator", "", "", () => { }, IsSeparator: true),
+        new PluginMenuItem("news.settings", "News Crawler — Ρυθμίσεις", "News Crawler — Settings", () => NavigationRequested?.Invoke(NavigationKey)),
+        new PluginMenuItem("news.refresh", "News Crawler — Ανανέωση", "News Crawler — Refresh", Refresh),
+        new PluginMenuItem("news.pause", "News Crawler — Παύση / Συνέχεια", "News Crawler — Pause / Resume", () =>
+        {
+            if (_paused) Resume(); else Pause();
+        }),
+    };
+
+    public IReadOnlyList<PluginNavigationItem> GetNavigationItems() =>
+        new[]
+        {
+            new PluginNavigationItem(
+                NavigationKey,
+                "News Crawler",
+                "News Crawler",
+                () => new SettingsPanel(_controller.Host, showCloseButton: false, showAboutTabs: false) { HostThemeLocked = true },
+                90)
+        };
+}
+
+/// <summary>Bridges the plugin API to the real ticker (the same TickerHost the standalone app uses).</summary>
+internal sealed class TickerController
+{
+    private TickerHost? _host;
+    private SettingsForm? _fallbackSettings;
+
+    /// <summary>The host (Opsis) told us its language: the crawler's own language setting is then ignored.</summary>
+    public bool LanguageFromHost { get; set; }
+
+    public event Action? SettingsRequested;
+
+    public TickerHost Host
+    {
+        get
+        {
+            if (_host is null)
+            {
+                _host = new TickerHost { HostedByOpsis = true, LanguageFollowsHost = LanguageFromHost };
+                _host.ApplyConfig(); // HostedByOpsis changes the default for reserving screen space
+                _host.SettingsRequested += () => SettingsRequested?.Invoke();
+            }
+            return _host;
+        }
+    }
+
+    public void ShowFallbackSettings()
+    {
+        _fallbackSettings ??= new SettingsForm(Host);
+        _fallbackSettings.ShowSettings();
+    }
+
+    public void Start() => Host.Start();
+    public void Stop() => _host?.Stop();
+    public void Pause() => _host?.Pause();
+    public void Resume() => _host?.Resume();
+    public void Refresh() => _host?.Refresh();
+    public void SetMode(TickerMode mode) => Host.SetMode(mode);
+    public void SetPosition(TickerPosition position) => Host.SetPosition(position);
+}
