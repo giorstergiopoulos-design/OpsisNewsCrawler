@@ -202,5 +202,8 @@
   "wind.s": "S",
   "wind.sw": "SO",
   "wind.w": "O",
-  "wind.nw": "NO"
+  "wind.nw": "NO",
+  "lbl.height": "Hauteur (pixels)",
+  "btn.centerDesktop": "Centrer sur le Bureau",
+  "note.miniWeather2": "Elle se place au milieu du Bureau, sous les autres fenêtres (sauf si vous choisissez « au-dessus des autres fenêtres »). Mêmes couleurs, transparence, matériau d'arrière-plan et extrémités estompées que la barre principale (onglet Apparence). Si toutes les villes tiennent, elle reste fixe, sinon elle défile. Les changements s'appliquent avec « Appliquer »."
 }

@@ -710,14 +710,21 @@ internal sealed class FlatCard : Panel
     }
 }
 
-/// <summary>Tab strip drawn like Opsis' pill buttons: the active tab has an accent border; pages are swapped in a panel.</summary>
+/// <summary>
+/// The tab buttons in ONE row. When they do not all fit they scroll sideways: with the mouse wheel, with the arrows at both
+/// ends, or by choosing a tab (it is brought into view).
+/// </summary>
 internal sealed class FlatTabs : Control
 {
     private const int HeaderHeight = 44;
+    private const int ArrowWidth = 28;
     private readonly List<(string Title, Control Page)> pages = new();
     private readonly List<Rectangle> hitRects = new();
     private int selected = -1;
     private int hover = -1;
+    private int hoverArrow; // -1 left, 1 right
+    private int scrollX;
+    private int stripWidth;
 
     public FlatTabs()
     {
@@ -735,6 +742,7 @@ internal sealed class FlatTabs : Control
             if (value < 0 || value >= pages.Count || value == selected) return;
             selected = value;
             for (var i = 0; i < pages.Count; i++) pages[i].Page.Visible = i == selected;
+            EnsureVisible(selected);
             Invalidate();
         }
     }
@@ -750,29 +758,47 @@ internal sealed class FlatTabs : Control
         Invalidate();
     }
 
-    private int HeaderRows()
+    private bool Overflows => stripWidth > Width;
+    private int ViewLeft => Overflows ? ArrowWidth : 0;
+    private int ViewWidth => Overflows ? Math.Max(1, Width - 2 * ArrowWidth) : Width;
+    private int MaxScroll => Math.Max(0, stripWidth - ViewWidth);
+
+    /// <summary>Measures every tab button and puts its rectangle where it is drawn now (scrolled).</summary>
+    private void Measure()
     {
-        // Wrap the pills onto more rows when the control is narrow.
         hitRects.Clear();
         var x = 0;
-        var row = 0;
+        var widths = new List<int>();
         foreach (var (title, _) in pages)
         {
             var w = TextRenderer.MeasureText(title, Font).Width + 30;
-            if (x + w > Width && x > 0)
-            {
-                x = 0;
-                row++;
-            }
-            hitRects.Add(new Rectangle(x, row * HeaderHeight + 4, w, 34));
+            widths.Add(w);
             x += w + 6;
         }
-        return row + 1;
+        stripWidth = Math.Max(0, x - 6);
+        scrollX = Math.Clamp(scrollX, 0, MaxScroll);
+        x = ViewLeft - scrollX;
+        foreach (var w in widths)
+        {
+            hitRects.Add(new Rectangle(x, 4, w, 34));
+            x += w + 6;
+        }
+    }
+
+    private void EnsureVisible(int index)
+    {
+        Measure();
+        if (!Overflows || index < 0 || index >= hitRects.Count) return;
+        var r = hitRects[index];
+        if (r.Left < ViewLeft) scrollX -= ViewLeft - r.Left + 8;
+        else if (r.Right > ViewLeft + ViewWidth) scrollX += r.Right - (ViewLeft + ViewWidth) + 8;
+        scrollX = Math.Clamp(scrollX, 0, MaxScroll);
     }
 
     private void LayoutPages()
     {
-        var top = HeaderRows() * HeaderHeight + 8;
+        Measure();
+        var top = HeaderHeight + 8;
         foreach (var (_, page) in pages) page.SetBounds(0, top, Width, Math.Max(0, Height - top));
     }
 
@@ -780,16 +806,37 @@ internal sealed class FlatTabs : Control
     {
         base.OnResize(e);
         LayoutPages();
+        if (selected >= 0) EnsureVisible(selected);
+    }
+
+    private Rectangle LeftArrow => new(0, 4, ArrowWidth, 34);
+    private Rectangle RightArrow => new(Width - ArrowWidth, 4, ArrowWidth, 34);
+
+    private void ScrollBy(int delta)
+    {
+        var before = scrollX;
+        scrollX = Math.Clamp(scrollX + delta, 0, MaxScroll);
+        if (scrollX != before) Invalidate();
+    }
+
+    protected override void OnMouseWheel(MouseEventArgs e)
+    {
+        base.OnMouseWheel(e);
+        if (!Overflows || e.Y > HeaderHeight) return;
+        ScrollBy(-Math.Sign(e.Delta) * 140);
     }
 
     protected override void OnMouseMove(MouseEventArgs e)
     {
         base.OnMouseMove(e);
-        var h = hitRects.FindIndex(r => r.Contains(e.Location));
-        if (h != hover)
+        var arrow = Overflows ? (LeftArrow.Contains(e.Location) ? -1 : RightArrow.Contains(e.Location) ? 1 : 0) : 0;
+        var inView = e.X >= ViewLeft && e.X < ViewLeft + ViewWidth;
+        var h = inView ? hitRects.FindIndex(r => r.Contains(e.Location)) : -1;
+        if (h != hover || arrow != hoverArrow)
         {
             hover = h;
-            Cursor = h >= 0 ? Cursors.Hand : Cursors.Default;
+            hoverArrow = arrow;
+            Cursor = h >= 0 || arrow != 0 ? Cursors.Hand : Cursors.Default;
             Invalidate();
         }
     }
@@ -798,14 +845,19 @@ internal sealed class FlatTabs : Control
     {
         base.OnMouseLeave(e);
         hover = -1;
+        hoverArrow = 0;
         Invalidate();
     }
 
     protected override void OnMouseUp(MouseEventArgs e)
     {
         base.OnMouseUp(e);
+        if (e.Button != MouseButtons.Left) return;
+        if (Overflows && LeftArrow.Contains(e.Location)) { ScrollBy(-220); return; }
+        if (Overflows && RightArrow.Contains(e.Location)) { ScrollBy(220); return; }
+        if (e.X < ViewLeft || e.X >= ViewLeft + ViewWidth) return;
         var h = hitRects.FindIndex(r => r.Contains(e.Location));
-        if (h >= 0 && e.Button == MouseButtons.Left) SelectedIndex = h;
+        if (h >= 0) SelectedIndex = h;
     }
 
     protected override void OnPaint(PaintEventArgs e)
@@ -813,10 +865,14 @@ internal sealed class FlatTabs : Control
         var g = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.Clear(Theme.Background);
-        HeaderRows();
+        Measure();
+
+        var state = g.Save();
+        g.SetClip(new Rectangle(ViewLeft, 0, ViewWidth, HeaderHeight));
         for (var i = 0; i < pages.Count && i < hitRects.Count; i++)
         {
             var r = hitRects[i];
+            if (r.Right < ViewLeft || r.Left > ViewLeft + ViewWidth) continue;
             var active = i == selected;
             using var path = FlatDraw.Rounded(r, 8);
             using (var brush = new SolidBrush(active ? FlatDraw.SurfaceHover : i == hover ? Theme.Surface : Theme.Background)) g.FillPath(brush, path);
@@ -824,6 +880,24 @@ internal sealed class FlatTabs : Control
             TextRenderer.DrawText(g, pages[i].Title, Font, r, active ? Theme.Text : Theme.TextMuted,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
         }
+        g.Restore(state);
+
+        if (Overflows)
+        {
+            DrawArrow(g, LeftArrow, -1, scrollX > 0, hoverArrow == -1);
+            DrawArrow(g, RightArrow, 1, scrollX < MaxScroll, hoverArrow == 1);
+        }
+    }
+
+    private static void DrawArrow(Graphics g, Rectangle r, int direction, bool enabled, bool hot)
+    {
+        using var path = FlatDraw.Rounded(r, 8);
+        using (var brush = new SolidBrush(hot && enabled ? Theme.Surface : Theme.Background)) g.FillPath(brush, path);
+        using (var border = new Pen(Theme.Border)) g.DrawPath(border, path);
+        var cx = r.Left + r.Width / 2f;
+        var cy = r.Top + r.Height / 2f;
+        using var pen = new Pen(enabled ? Theme.Text : Theme.Border, 2f) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
+        g.DrawLines(pen, new[] { new PointF(cx - direction * 3, cy - 6), new PointF(cx + direction * 3, cy), new PointF(cx - direction * 3, cy + 6) });
     }
 
     protected override void Dispose(bool disposing)

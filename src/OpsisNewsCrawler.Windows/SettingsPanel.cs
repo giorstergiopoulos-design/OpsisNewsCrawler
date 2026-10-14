@@ -44,7 +44,8 @@ public sealed class SettingsPanel : UserControl
     private FlatText citySearch = null!;
     private FlatList cityList = null!;
     private FlatCheck miniWeather = null!;
-    private FlatCombo miniCity = null!;
+    private FlatNumber miniX = null!, miniY = null!, miniW = null!, miniH = null!;
+    private FlatButton miniMove = null!;
     private FlatCheck miniOnTop = null!;
     private List<string> workCities = new();
     private List<GreekCity> shownCities = new();
@@ -141,6 +142,7 @@ public sealed class SettingsPanel : UserControl
         host.CustomBoundsChanged += OnCustomBoundsChanged;
         host.ReadLater.Changed += OnReadLaterChanged;
         host.BarsEnabledChanged += OnBarsEnabledChanged;
+        host.MiniWeatherBoundsChanged += OnMiniBoundsChanged;
         Theme.Changed += OnThemeChanged;
         Loc.Changed += OnLanguageChanged;
         previewTimer.Tick += (_, _) => UpdatePreview();
@@ -156,6 +158,7 @@ public sealed class SettingsPanel : UserControl
             host.CustomBoundsChanged -= OnCustomBoundsChanged;
             host.ReadLater.Changed -= OnReadLaterChanged;
             host.BarsEnabledChanged -= OnBarsEnabledChanged;
+            host.MiniWeatherBoundsChanged -= OnMiniBoundsChanged;
             Theme.Changed -= OnThemeChanged;
             Loc.Changed -= OnLanguageChanged;
         }
@@ -572,6 +575,22 @@ public sealed class SettingsPanel : UserControl
 
     private static string CityName(GreekCity c) => Loc.IsGreek ? c.NameEl : c.NameEn;
 
+    private void LoadMiniBounds()
+    {
+        if (miniW is null) return;
+        var b = host.GetMiniWeatherBounds();
+        miniW.SetValueSilently(host.Config.MiniWeatherWidth);
+        miniH.SetValueSilently(host.Config.MiniWeatherHeight);
+        miniX.SetValueSilently(b.X);
+        miniY.SetValueSilently(b.Y);
+    }
+
+    private void OnMiniBoundsChanged()
+    {
+        if (!IsHandleCreated || IsDisposed) return;
+        BeginInvoke(new Action(LoadMiniBounds));
+    }
+
     private Control BuildWeather()
     {
         var page = NewPage(out var flow);
@@ -597,12 +616,38 @@ public sealed class SettingsPanel : UserControl
         var miniFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
         miniWeather = new FlatCheck { Text = L("chk.miniWeather") };
         miniFlow.Controls.Add(miniWeather);
-        miniCity = new FlatCombo { Width = 340 };
-        miniCity.SetItems(GreekCities.All.Select(CityName), 0);
-        miniFlow.Controls.Add(Row(L("lbl.miniCity"), miniCity, 200));
+        miniW = new FlatNumber();
+        miniW.Configure(200, 4000, 10);
+        miniH = new FlatNumber();
+        miniH.Configure(24, 200, 2);
+        miniX = new FlatNumber();
+        miniX.Configure(-20000, 20000, 10);
+        miniY = new FlatNumber();
+        miniY.Configure(-20000, 20000, 10);
+        miniFlow.Controls.Add(Row(L("lbl.width"), miniW, 240));
+        miniFlow.Controls.Add(Row(L("lbl.height"), miniH, 240));
+        miniFlow.Controls.Add(Row(L("lbl.x"), miniX, 240));
+        miniFlow.Controls.Add(Row(L("lbl.y"), miniY, 240));
+        var miniButtons = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
+        miniMove = new FlatButton { Text = L("btn.moveMouse") };
+        var miniCenter = new FlatButton { Text = L("btn.centerDesktop") };
+        miniButtons.Controls.Add(miniMove);
+        miniButtons.Controls.Add(miniCenter);
+        miniFlow.Controls.Add(miniButtons);
+        miniMove.Click += (_, _) =>
+        {
+            var on = !host.IsMiniWeatherEditMode;
+            host.SetMiniWeatherEditMode(on);
+            miniMove.Text = on ? L("btn.moveMouseDone") : L("btn.moveMouse");
+        };
+        miniCenter.Click += (_, _) =>
+        {
+            host.CenterMiniWeather();
+            LoadMiniBounds();
+        };
         miniOnTop = new FlatCheck { Text = L("chk.miniOnTop") };
         miniFlow.Controls.Add(miniOnTop);
-        miniFlow.Controls.Add(Note(L("note.miniWeather"), 560));
+        miniFlow.Controls.Add(Note(L("note.miniWeather2"), 560));
         mini.Controls.Add(miniFlow);
         flow.Controls.Add(mini);
 
@@ -1095,7 +1140,7 @@ public sealed class SettingsPanel : UserControl
             workCities = c.WeatherCities.ToList();
             ShowCities();
             miniWeather.Checked = c.MiniWeatherEnabled;
-            miniCity.SelectSilently(Math.Max(0, GreekCities.All.ToList().FindIndex(x => x.Id == c.MiniWeatherCity)));
+            LoadMiniBounds();
             miniOnTop.Checked = c.MiniWeatherOnTop;
 
             mainContent.SelectSilently((int)c.MainContent);
@@ -1201,7 +1246,15 @@ public sealed class SettingsPanel : UserControl
         c.CheckForUpdates = autoUpdate.Checked;
         c.WeatherCities = workCities.ToList();
         c.MiniWeatherEnabled = miniWeather.Checked;
-        c.MiniWeatherCity = GreekCities.All[Math.Clamp(miniCity.SelectedIndex, 0, GreekCities.All.Count - 1)].Id;
+        c.MiniWeatherWidth = miniW.Value;
+        c.MiniWeatherHeight = miniH.Value;
+        // Still in the middle of the desktop? Then keep "centred" (it follows the screen) instead of storing numbers.
+        var work = (Screen.PrimaryScreen ?? Screen.AllScreens[0]).WorkingArea;
+        var cw = Math.Min(miniW.Value, work.Width);
+        var centredX = work.Left + (work.Width - cw) / 2;
+        var centredY = work.Top + (work.Height - miniH.Value) / 2;
+        if (miniX.Value == centredX && miniY.Value == centredY) { c.MiniWeatherX = int.MinValue; c.MiniWeatherY = int.MinValue; }
+        else { c.MiniWeatherX = miniX.Value; c.MiniWeatherY = miniY.Value; }
         c.MiniWeatherOnTop = miniOnTop.Checked;
 
         c.MainContent = (BarContent)Math.Max(0, mainContent.SelectedIndex);

@@ -202,5 +202,8 @@
   "wind.s": "G",
   "wind.sw": "GB",
   "wind.w": "B",
-  "wind.nw": "KB"
+  "wind.nw": "KB",
+  "lbl.height": "Yükseklik (piksel)",
+  "btn.centerDesktop": "Masaüstünde ortala",
+  "note.miniWeather2": "Masaüstünün ortasında, diğer pencerelerin altında durur (“diğer pencerelerin üstünde” seçmediyseniz). Ana çubukla aynı renk, saydamlık, arka plan malzemesi ve solan uçlara sahiptir (Görünüm sekmesi). Tüm şehirler sığarsa sabit durur, aksi halde kayar. Değişiklikler “Uygula” ile geçerli olur."
 }

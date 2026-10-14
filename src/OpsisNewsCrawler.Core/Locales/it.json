@@ -202,5 +202,8 @@
   "wind.s": "S",
   "wind.sw": "SO",
   "wind.w": "O",
-  "wind.nw": "NO"
+  "wind.nw": "NO",
+  "lbl.height": "Altezza (pixel)",
+  "btn.centerDesktop": "Centra sul desktop",
+  "note.miniWeather2": "Sta al centro del desktop, sotto le altre finestre (a meno che tu scelga «sopra le altre finestre»). Ha gli stessi colori, trasparenza, materiale di sfondo ed estremità sfumate della barra principale (scheda Aspetto). Se ci stanno tutte le città resta ferma, altrimenti scorre. Le modifiche si applicano con «Applica»."
 }

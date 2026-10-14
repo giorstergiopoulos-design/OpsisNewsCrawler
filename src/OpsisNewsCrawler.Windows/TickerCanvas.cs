@@ -21,7 +21,6 @@ internal sealed class TickerCanvas : Control
     private const int LeftPad = 16;
     private const int IconSize = 16;
     private const int IconGap = 7;
-    private const int WeatherIconSize = 22;
     private const int SourceTitleGap = 5;
     private const int ItemGap = 44;
     private const int HoverPad = 7;
@@ -102,9 +101,37 @@ internal sealed class TickerCanvas : Control
 
     private readonly List<Entry> entries = new();
     private IReadOnlyList<NewsItem> items = Array.Empty<NewsItem>();
-    private readonly Font titleFont = new("Segoe UI", 10f, FontStyle.Regular);
-    private readonly Font sourceFont = new("Segoe UI", 10f, FontStyle.Bold);
-    private readonly Font badgeFont = new("Segoe UI", 7.5f, FontStyle.Bold);
+    private Font titleFont = new("Segoe UI", 10f, FontStyle.Regular);
+    private Font sourceFont = new("Segoe UI", 10f, FontStyle.Bold);
+    private Font badgeFont = new("Segoe UI", 7.5f, FontStyle.Bold);
+    private float fontScale = 1f;
+
+    /// <summary>Text, icons and gaps follow the height of the bar: 1 = the normal 42 px strip.</summary>
+    public void SetFontScale(float scale)
+    {
+        scale = Math.Clamp(scale, 0.7f, 3f);
+        if (Math.Abs(scale - fontScale) < 0.01f) return;
+        fontScale = scale;
+        titleFont.Dispose();
+        sourceFont.Dispose();
+        badgeFont.Dispose();
+        titleFont = new Font("Segoe UI", 10f * scale, FontStyle.Regular);
+        sourceFont = new Font("Segoe UI", 10f * scale, FontStyle.Bold);
+        badgeFont = new Font("Segoe UI", 7.5f * scale, FontStyle.Bold);
+        BuildLayout();
+        Invalidate();
+    }
+
+    private bool centerWhenStatic;
+
+    /// <summary>A bar whose content fits stands still in the middle instead of at the left edge (the small weather bar).</summary>
+    public void SetCenterWhenStatic(bool value)
+    {
+        centerWhenStatic = value;
+        Invalidate();
+    }
+
+    private int WeatherIconSize => (int)Math.Round(22 * fontScale);
     private Bitmap? buffer;
     private int loop;
     private int textHeight = 16;
@@ -297,7 +324,7 @@ internal sealed class TickerCanvas : Control
         loop = x;
     }
 
-    private int Origin() => IsScrollable() ? 0 : LeftPad;
+    private int Origin() => IsScrollable() ? 0 : centerWhenStatic ? Math.Max(LeftPad / 2, (Width - (loop - ItemGap)) / 2) : LeftPad;
     private int ScrollPixels() => IsScrollable() ? (int)Math.Round(offset) : 0;
 
     private Rectangle ItemRect(int index, int copy)

@@ -507,6 +507,7 @@ public sealed class TickerHost : IDisposable
         if (SecondWindow is not null) PushTo(SecondWindow, State2, Config.SecondContent);
         foreach (var (cfg, _) in WantedMonitors())
             if (monitorWindows.TryGetValue(cfg.Device, out var extra)) PushTo(extra.Window, extra.State, cfg.Content);
+        if (miniWeather is not null) PushTo(miniWeather, miniState, BarContent.Weather);
     }
 
     private void PushTo(TickerWindow w, TickerState st, BarContent content)
@@ -673,7 +674,8 @@ public sealed class TickerHost : IDisposable
     private IReadOnlyList<WeatherReading> weatherReadings = Array.Empty<WeatherReading>();
     private bool refreshingWeather;
     private bool hasWeather;
-    private WeatherBarWindow? miniWeather;
+    private TickerWindow? miniWeather;
+    private readonly TickerState miniState = new();
 
     private bool NeedsWeather => Config.MainContent == BarContent.Weather || Config.SecondBarEnabled && Config.SecondContent == BarContent.Weather ||
                                  ExtraContents().Any(c => c == BarContent.Weather) || Config.MiniWeatherEnabled;
@@ -691,7 +693,7 @@ public sealed class TickerHost : IDisposable
         refreshingWeather = true;
         try
         {
-            var ids = Config.WeatherCities.Concat(new[] { Config.MiniWeatherCity }).Distinct().ToList();
+            var ids = Config.WeatherCities.Distinct().ToList();
             var readings = await weather.FetchAsync(ids, cts.Token);
             void Apply()
             {
@@ -732,7 +734,38 @@ public sealed class TickerHost : IDisposable
         }
     }
 
-    /// <summary>Creates, updates or removes the small weather bar of the desktop according to the settings.</summary>
+    /// <summary>Where the small weather bar is: the saved place, or the middle of the primary desktop.</summary>
+    public Rectangle GetMiniWeatherBounds()
+    {
+        var wa = (Screen.PrimaryScreen ?? Screen.AllScreens[0]).WorkingArea;
+        var w = Math.Min(Config.MiniWeatherWidth, wa.Width);
+        var h = Config.MiniWeatherHeight;
+        var onScreen = Config.MiniWeatherX != int.MinValue && Config.MiniWeatherY != int.MinValue &&
+                       Screen.AllScreens.Any(sc => sc.WorkingArea.IntersectsWith(new Rectangle(Config.MiniWeatherX, Config.MiniWeatherY, w, h)));
+        return onScreen
+            ? new Rectangle(Config.MiniWeatherX, Config.MiniWeatherY, w, h)
+            : new Rectangle(wa.Left + (wa.Width - w) / 2, wa.Top + (wa.Height - h) / 2, w, h);
+    }
+
+    /// <summary>Puts the small weather bar back in the middle of the desktop.</summary>
+    public void CenterMiniWeather()
+    {
+        Config.MiniWeatherX = int.MinValue;
+        Config.MiniWeatherY = int.MinValue;
+        SaveConfig();
+        UpdateMiniWeather();
+        MiniWeatherBoundsChanged?.Invoke();
+    }
+
+    /// <summary>Raised after the small weather bar was moved or resized with the mouse.</summary>
+    public event Action? MiniWeatherBoundsChanged;
+
+    /// <summary>Lets the user move the small weather bar with the mouse (and change its width by the ends).</summary>
+    public void SetMiniWeatherEditMode(bool on) => miniWeather?.SetEditMode(on);
+
+    public bool IsMiniWeatherEditMode => miniWeather?.IsEditMode == true;
+
+    /// <summary>Creates, updates or removes the small weather bar of the desktop according to the settings. It is an ordinary bar (same colour, transparency, material, fading ends), only smaller, centred and on the desktop.</summary>
     private void UpdateMiniWeather()
     {
         if (disposed) return;
@@ -740,36 +773,39 @@ public sealed class TickerHost : IDisposable
         {
             if (miniWeather is not null)
             {
+                miniWeather.StopTicker();
                 miniWeather.Dispose();
                 miniWeather = null;
             }
             return;
         }
-        if (miniWeather is null)
+        var created = miniWeather is null;
+        if (created)
         {
-            miniWeather = new WeatherBarWindow();
-            miniWeather.Moved += p =>
+            miniWeather = new TickerWindow(miniState, hostWindowDetector);
+            WireWindow(miniWeather);
+            miniWeather.PlacementEdited += b =>
             {
-                Config.MiniWeatherX = p.X;
-                Config.MiniWeatherY = p.Y;
+                Config.MiniWeatherX = b.X;
+                Config.MiniWeatherY = b.Y;
+                Config.MiniWeatherWidth = b.Width;
                 SaveConfig();
+                MiniWeatherBoundsChanged?.Invoke();
             };
-            miniWeather.NextCityRequested += () =>
-            {
-                var list = Config.WeatherCities;
-                if (list.Count == 0) return;
-                var at = list.FindIndex(id => string.Equals(id, Config.MiniWeatherCity, StringComparison.OrdinalIgnoreCase));
-                Config.MiniWeatherCity = list[(at + 1) % list.Count];
-                SaveConfig();
-                _ = RefreshWeatherAsync();
-                UpdateMiniWeather();
-            };
-            miniWeather.SettingsRequested += () => SettingsRequested?.Invoke();
-            miniWeather.Place(Config.MiniWeatherX, Config.MiniWeatherY);
-            miniWeather.Show();
         }
-        miniWeather.SetOnTop(Config.MiniWeatherOnTop);
-        miniWeather.SetReading(GreekCities.Find(Config.MiniWeatherCity), weatherReadings.FirstOrDefault(r => r.CityId == Config.MiniWeatherCity));
+        var w = miniWeather!;
+        ConfigureWindow(w, TickerPosition.Custom, main: false);
+        w.FollowTaskbar = false;
+        w.ReserveSpace = false;
+        w.SetCenterWhenStatic(true);
+        w.SetBackdropStyle(Config.BarBackdrop);
+        w.SetBarColor(Config.BarColorMode, Config.BarCustomColor);
+        w.SetBarHeight(Config.MiniWeatherHeight);
+        w.SetDesktopLayer(!Config.MiniWeatherOnTop);
+        w.SetCustomBounds(GetMiniWeatherBounds());
+        w.SetPosition(TickerPosition.Custom);
+        PushTo(w, miniState, BarContent.Weather);
+        if (created) w.StartTicker();
     }
 
     /// <summary>After a failed run try again in a minute instead of waiting for the normal interval.</summary>

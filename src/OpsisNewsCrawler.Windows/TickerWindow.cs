@@ -9,7 +9,41 @@ public sealed class TickerWindow : Form
 {
     private const int WS_EX_TOOLWINDOW = 0x00000080;
     private const int WS_EX_NOACTIVATE = 0x08000000;
-    private const int TickerHeight = 42;
+    private int TickerHeight { get; set; } = 42;
+
+    /// <summary>The height of the strip in pixels (42 normally); text and icons grow and shrink with it.</summary>
+    public void SetBarHeight(int height)
+    {
+        height = Math.Clamp(height, 24, 200);
+        if (height == TickerHeight) return;
+        TickerHeight = height;
+        var scale = height / 42f;
+        canvas.SetFontScale(scale);
+        canvasB.SetFontScale(scale);
+        Height = height;
+        if (position == TickerPosition.Custom)
+        {
+            MinimumSize = editMode ? new Size(200, height) : Size.Empty;
+            MaximumSize = editMode ? new Size(0, height) : Size.Empty;
+        }
+        Reposition();
+    }
+
+    public void SetCenterWhenStatic(bool value)
+    {
+        canvas.SetCenterWhenStatic(value);
+        canvasB.SetCenterWhenStatic(value);
+    }
+
+    private bool desktopLayer;
+
+    /// <summary>True: the bar lies on the desktop, below all other windows. False (normal): always on top.</summary>
+    public void SetDesktopLayer(bool value)
+    {
+        desktopLayer = value;
+        TopMost = !value;
+        if (value && IsHandleCreated) Native.SendToBottom(Handle);
+    }
     private const int HoverPreviewDelayMs = 400;
     private const double SpeedWheelStep = 10;
 
@@ -199,7 +233,11 @@ public sealed class TickerWindow : Form
         LayoutCanvases();
 
         scrollTimer.Tick += (_, _) => ScrollTicker();
-        focusTimer.Tick += (_, _) => CheckForeground();
+        focusTimer.Tick += (_, _) =>
+        {
+            CheckForeground();
+            if (desktopLayer && Visible) Native.SendToBottom(Handle);
+        };
         hoverTimer.Tick += (_, _) => ShowPendingPreview();
         taskbarTimer.Tick += (_, _) => FollowTaskbarTick();
         SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
@@ -443,7 +481,7 @@ public sealed class TickerWindow : Form
     private void OnHoverChanged(NewsItem? item, Rectangle screenRect)
     {
         hoverTimer.Stop();
-        if (item is null || !ShowPreview || string.IsNullOrEmpty(item.Url))
+        if (item is null || !ShowPreview || string.IsNullOrEmpty(item.Url) || item.Kind != NewsItemKind.News)
         {
             HidePreview();
             return;

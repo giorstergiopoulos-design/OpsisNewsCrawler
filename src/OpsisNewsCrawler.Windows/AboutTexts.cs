@@ -5,7 +5,7 @@ namespace OpsisNewsCrawler.Windows;
 /// <summary>The Help / Instructions / Version history / License texts, in the language of the UI (see locale files).</summary>
 public static class AboutTexts
 {
-    public const string Version = "0.10.0";
+    public const string Version = "0.10.1";
 
     public static string Help => Loc.T("help.text");
     public static string Instructions => Loc.T("instructions.text");

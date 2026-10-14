@@ -131,3 +131,8 @@ Not done / residual: the installers are not code-signed (SmartScreen warning, an
 - ✅ Tab "Weather": search, tick cities (order of ticking = order on the bar), select all / none; preview shows the weather bar.
 - ✅ Small desktop weather bar (`WeatherBarWindow`): one city, drag to move (position saved), click = next selected city, right-click = settings, optional "above other windows". Seen on screen (Santorini, 17,3 °C). 🟡 It is the crawler's own window; if Opsis has its own time/weather/city widget on the desktop, putting the crawler's weather inside it needs a change on the Opsis side (not done).
 - 🟡 Not checked: weather in a hosted Opsis page, other monitors' weather bar, Arabic layout of the small bar.
+
+## Round 13 — version 0.10.1 (2026-10-14)
+- ✅ Settings tabs: ONE row that scrolls (mouse wheel over the tab row, arrows at both ends, a chosen tab is brought into view) instead of wrapping onto a second row; seen in Russian where the tabs do not fit.
+- ✅ The small weather bar is now an ordinary bar window (`TickerHost.UpdateMiniWeather`): centred on the desktop by default, height 24–200 px (text and icons scale with it, `TickerWindow.SetBarHeight`), width 200–4000 px, position boxes, "Move with the mouse", "Centre on the desktop", and the SAME look as the main bar (colour, transparency, background material, edge fade). Content = the ticked weather cities; it stands still and centred when they fit, otherwise scrolls. By default it lies on the desktop below all other windows (`Native.SendToBottom`, verified in the z-order: directly above Progman); option "keep above other windows". Seen on screen at 900×64, light blue, centred, with edge fade.
+- 🟡 Not checked: hosted in Opsis; the desktop layer while Opsis's animated wallpaper runs.

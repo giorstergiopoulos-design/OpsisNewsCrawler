@@ -155,6 +155,13 @@ internal static class Native
     internal static void MarkNoSnap(IntPtr hwnd) => SetProp(hwnd, NoSnapProperty, new IntPtr(1));
     internal static void ClearNoSnap(IntPtr hwnd) => RemoveProp(hwnd, NoSnapProperty);
 
+    /// <summary>Sends a window to the bottom of the normal windows: it stays on the desktop and every other window covers it.</summary>
+    internal static void SendToBottom(IntPtr hwnd)
+    {
+        const uint SWP_NOSIZE = 1, SWP_NOMOVE = 2, SWP_NOACTIVATE = 0x10;
+        SetWindowPos(hwnd, new IntPtr(1), 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
+    }
+
     internal static void KeepTopMost(IntPtr hwnd)
     {
         const uint SWP_NOSIZE = 1, SWP_NOMOVE = 2, SWP_NOACTIVATE = 0x10;
