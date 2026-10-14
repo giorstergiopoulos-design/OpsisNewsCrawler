@@ -15,7 +15,11 @@ public enum QuoteSource
     /// <summary>FRED public CSV of EIA daily prices: Brent, WTI, Henry Hub gas (key = series id). Daily, not live.</summary>
     Energy,
     /// <summary>Shares of the other Euronext markets (Market = MIC, key = ISIN): the Euronext "Download" CSV, end-of-day prices.</summary>
-    Euronext
+    Euronext,
+    /// <summary>gold-api.com crypto spot prices: BTC, ETH (key = symbol). Free, no API key, real time.</summary>
+    Crypto,
+    /// <summary>Frankfurter (ECB reference rates): currency pairs, key = "EURUSD" (base+quote). Once a working day.</summary>
+    Currency
 }
 
 /// <summary>One line of the watch list.</summary>
@@ -65,6 +69,15 @@ public sealed class QuoteInstrument
         new(QuoteSource.Metals, "XPT", "XPT", "Πλατίνα", "Platinum", "$/oz", enabled: false),
         new(QuoteSource.Metals, "XPD", "XPD", "Παλλάδιο", "Palladium", "$/oz", enabled: false),
         new(QuoteSource.Metals, "HG", "HG", "Χαλκός", "Copper", "$/lb"),
+        // Crypto (real time, gold-api.com)
+        new(QuoteSource.Crypto, "BTC", "BTC", "Bitcoin", "Bitcoin", "$", enabled: false),
+        new(QuoteSource.Crypto, "ETH", "ETH", "Ethereum", "Ethereum", "$", enabled: false),
+        // Currencies (ECB reference rates, once a working day)
+        new(QuoteSource.Currency, "EURUSD", "EUR/USD", "Ευρώ / Δολάριο ΗΠΑ", "Euro / US dollar", "", enabled: false),
+        new(QuoteSource.Currency, "EURGBP", "EUR/GBP", "Ευρώ / Στερλίνα", "Euro / British pound", "", enabled: false),
+        new(QuoteSource.Currency, "EURCHF", "EUR/CHF", "Ευρώ / Φράγκο Ελβετίας", "Euro / Swiss franc", "", enabled: false),
+        new(QuoteSource.Currency, "USDJPY", "USD/JPY", "Δολάριο / Γιεν", "US dollar / Japanese yen", "", enabled: false),
+        new(QuoteSource.Currency, "GBPUSD", "GBP/USD", "Στερλίνα / Δολάριο", "British pound / US dollar", "", enabled: false),
         // Energy (daily EIA data)
         new(QuoteSource.Energy, "DCOILBRENTEU", "BRENT", "Πετρέλαιο Brent", "Brent crude", "$/bbl"),
         new(QuoteSource.Energy, "DCOILWTICO", "WTI", "Πετρέλαιο WTI", "WTI crude", "$/bbl"),
@@ -135,6 +148,14 @@ public interface IQuoteProvider
 /// <summary>Shared HTTP client settings for all quote providers.</summary>
 internal static class QuoteHttp
 {
+    /// <summary>A token that is cancelled by the caller or after <paramref name="seconds"/>: one slow server must not hold everything up.</summary>
+    public static CancellationTokenSource Limit(CancellationToken ct, int seconds)
+    {
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(TimeSpan.FromSeconds(seconds));
+        return cts;
+    }
+
     public static HttpClient Create()
     {
         var client = new HttpClient { Timeout = TimeSpan.FromSeconds(40), MaxResponseContentBufferSize = 32 * 1024 * 1024 };
@@ -194,7 +215,11 @@ public sealed class AthensDelayedFileProvider : IQuoteProvider
     private string lastWatchKey = "";
     private DateTimeOffset lastCheck = DateTimeOffset.MinValue;
 
-    public AthensDelayedFileProvider(QuoteStore store) => this.store = store;
+    public AthensDelayedFileProvider(QuoteStore store)
+    {
+        this.store = store;
+        http.Timeout = TimeSpan.FromSeconds(120); // the day file is ~7 MB; slow links need time
+    }
 
     public QuoteSource Source => QuoteSource.Athens;
 
@@ -260,6 +285,7 @@ public sealed class AthensDelayedFileProvider : IQuoteProvider
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException)
         {
+            Log.Write($"Athens prices: {ex.GetType().Name}: {ex.Message}");
             return lastResult;
         }
     }
@@ -272,9 +298,15 @@ public sealed class GoldApiMetalsProvider : IQuoteProvider
     private readonly QuoteStore store;
     private IReadOnlyList<MarketQuote> lastResult = Array.Empty<MarketQuote>();
 
-    public GoldApiMetalsProvider(QuoteStore store) => this.store = store;
+    private readonly QuoteSource source;
 
-    public QuoteSource Source => QuoteSource.Metals;
+    public GoldApiMetalsProvider(QuoteStore store, QuoteSource source = QuoteSource.Metals)
+    {
+        this.store = store;
+        this.source = source;
+    }
+
+    public QuoteSource Source => source;
 
     public async Task<IReadOnlyList<MarketQuote>> FetchAsync(IReadOnlyList<QuoteInstrument> instruments, CancellationToken ct)
     {
@@ -292,7 +324,8 @@ public sealed class GoldApiMetalsProvider : IQuoteProvider
     {
         try
         {
-            using var doc = JsonDocument.Parse(await http.GetStringAsync($"https://api.gold-api.com/price/{Uri.EscapeDataString(inst.Code)}", ct).ConfigureAwait(false));
+            using var limit = QuoteHttp.Limit(ct, 15);
+            using var doc = JsonDocument.Parse(await http.GetStringAsync($"https://api.gold-api.com/price/{Uri.EscapeDataString(inst.Code)}", limit.Token).ConfigureAwait(false));
             if (!doc.RootElement.TryGetProperty("price", out var p) || !p.TryGetDecimal(out var price) || price <= 0) return null;
             var asOf = doc.RootElement.TryGetProperty("updatedAt", out var u) && DateTimeOffset.TryParse(u.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var t)
                 ? t : DateTimeOffset.UtcNow;
@@ -304,6 +337,7 @@ public sealed class GoldApiMetalsProvider : IQuoteProvider
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or FormatException)
         {
+            if (!ct.IsCancellationRequested) Log.Write($"gold-api {inst.Code}: {ex.GetType().Name}: {ex.Message}");
             return null;
         }
     }
@@ -324,13 +358,24 @@ public sealed class FredEnergyProvider : IQuoteProvider
         // The series change once a day: no reason to ask more often than hourly.
         if (DateTimeOffset.UtcNow - lastFetch < TimeSpan.FromHours(1) && lastResult.Count > 0) return lastResult;
 
-        var results = new List<MarketQuote>();
         var since = DateTime.UtcNow.AddDays(-20).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-        foreach (var inst in instruments)
+        var all = await Task.WhenAll(instruments.Select(inst => FetchOne(inst, since, ct))).ConfigureAwait(false);
+        var results = all.Where(q => q is not null).Select(q => q!).ToList();
+        if (results.Count > 0)
+        {
+            lastResult = results;
+            lastFetch = DateTimeOffset.UtcNow;
+        }
+        return lastResult;
+    }
+
+    private async Task<MarketQuote?> FetchOne(QuoteInstrument inst, string since, CancellationToken ct)
+    {
         {
             try
             {
-                var csv = await http.GetStringAsync($"https://fred.stlouisfed.org/graph/fredgraph.csv?id={Uri.EscapeDataString(inst.Code)}&cosd={since}", ct).ConfigureAwait(false);
+                using var limit = QuoteHttp.Limit(ct, 15);
+                var csv = await http.GetStringAsync($"https://fred.stlouisfed.org/graph/fredgraph.csv?id={Uri.EscapeDataString(inst.Code)}&cosd={since}", limit.Token).ConfigureAwait(false);
                 var points = new List<(DateTime Day, decimal Value)>();
                 foreach (var line in csv.Split('\n').Skip(1))
                 {
@@ -338,21 +383,75 @@ public sealed class FredEnergyProvider : IQuoteProvider
                     if (f.Length < 2 || !DateTime.TryParse(f[0], CultureInfo.InvariantCulture, DateTimeStyles.None, out var day)) continue;
                     if (decimal.TryParse(f[1], NumberStyles.Number, CultureInfo.InvariantCulture, out var v)) points.Add((day, v)); // holidays are "."
                 }
-                if (points.Count == 0) continue;
+                if (points.Count == 0) return null;
                 var last = points[^1];
                 decimal? change = points.Count > 1 && points[^2].Value > 0 ? Math.Round((last.Value - points[^2].Value) / points[^2].Value * 100, 2) : null;
-                results.Add(new MarketQuote(inst.Symbol, inst.NameEn, last.Value, change, new DateTimeOffset(last.Day, TimeSpan.Zero), Delayed: true));
+                return new MarketQuote(inst.Symbol, inst.NameEn, last.Value, change, new DateTimeOffset(last.Day, TimeSpan.Zero), Delayed: true);
             }
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
             {
+                if (!ct.IsCancellationRequested) Log.Write($"FRED {inst.Code}: {ex.GetType().Name}: {ex.Message}");
+                return null;
             }
         }
-        if (results.Count > 0)
+    }
+}
+
+/// <summary>
+/// Frankfurter (api.frankfurter.dev, open source, free, no key): the ECB euro reference rates, published once per working day
+/// (about 16:00 Central European Time). Any pair is computed from the euro rates; the change is against the previous day.
+/// </summary>
+public sealed class FrankfurterFxProvider : IQuoteProvider
+{
+    private readonly HttpClient http = QuoteHttp.Create();
+    private IReadOnlyList<MarketQuote> lastResult = Array.Empty<MarketQuote>();
+    private string lastKey = "";
+    private DateTimeOffset lastFetch = DateTimeOffset.MinValue;
+
+    public QuoteSource Source => QuoteSource.Currency;
+
+    public async Task<IReadOnlyList<MarketQuote>> FetchAsync(IReadOnlyList<QuoteInstrument> instruments, CancellationToken ct)
+    {
+        var pairs = instruments.Where(i => i.Code.Length == 6).ToList();
+        if (pairs.Count == 0) return Array.Empty<MarketQuote>();
+        var key = string.Join(",", pairs.Select(p => p.Code));
+        if (key == lastKey && lastResult.Count > 0 && DateTimeOffset.UtcNow - lastFetch < TimeSpan.FromMinutes(30)) return lastResult;
+
+        var codes = pairs.SelectMany(p => new[] { p.Code[..3], p.Code[3..] }).Where(c => c != "EUR").Distinct().ToList();
+        try
         {
+            using var limit = QuoteHttp.Limit(ct, 15);
+            var from = DateTime.UtcNow.AddDays(-8).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            var json = await http.GetStringAsync($"https://api.frankfurter.dev/v1/{from}..?base=EUR&symbols={string.Join(",", codes)}", limit.Token).ConfigureAwait(false);
+            using var doc = JsonDocument.Parse(json);
+            var days = doc.RootElement.GetProperty("rates").EnumerateObject()
+                .Select(d => (Day: DateTime.Parse(d.Name, CultureInfo.InvariantCulture), Rates: d.Value.EnumerateObject().ToDictionary(r => r.Name, r => r.Value.GetDecimal())))
+                .OrderBy(d => d.Day).ToList();
+            if (days.Count == 0) return lastResult;
+
+            static decimal? Rate(Dictionary<string, decimal> r, string code) => code == "EUR" ? 1m : r.TryGetValue(code, out var v) ? v : null;
+            var results = new List<MarketQuote>();
+            foreach (var p in pairs)
+            {
+                var (b, q) = (p.Code[..3], p.Code[3..]);
+                decimal? Pair((DateTime Day, Dictionary<string, decimal> Rates) d) =>
+                    Rate(d.Rates, b) is > 0 and var rb && Rate(d.Rates, q) is { } rq ? rq / rb : null;
+                var now = Pair(days[^1]);
+                if (now is null) continue;
+                var before = days.Count > 1 ? Pair(days[^2]) : null;
+                decimal? change = before is > 0 ? Math.Round((now.Value - before.Value) / before.Value * 100, 2) : null;
+                results.Add(new MarketQuote(p.Symbol, p.NameEn, now.Value, change, new DateTimeOffset(days[^1].Day, TimeSpan.Zero), Delayed: true));
+            }
             lastResult = results;
+            lastKey = key;
             lastFetch = DateTimeOffset.UtcNow;
+            return results;
         }
-        return lastResult;
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or FormatException or KeyNotFoundException or InvalidOperationException)
+        {
+            if (!ct.IsCancellationRequested) Log.Write($"Currency rates: {ex.GetType().Name}: {ex.Message}");
+            return lastResult;
+        }
     }
 }
 
@@ -364,36 +463,80 @@ public sealed class QuoteService
     public QuoteService(QuoteStore? store = null)
     {
         store ??= new QuoteStore();
-        providers = new() { new AthensDelayedFileProvider(store), new EuronextListProvider(store), new GoldApiMetalsProvider(store), new FredEnergyProvider() };
+        providers = new()
+        {
+            new AthensDelayedFileProvider(store), new EuronextListProvider(store), new GoldApiMetalsProvider(store),
+            new GoldApiMetalsProvider(store, QuoteSource.Crypto), new FrankfurterFxProvider(), new FredEnergyProvider()
+        };
     }
 
-    public async Task<IReadOnlyList<NewsItem>> FetchItemsAsync(IEnumerable<QuoteInstrument> watchlist, bool greek, CancellationToken ct)
+    /// <summary>Sources that gave no price in the last run although prices were wanted (for the message on the bar and the log).</summary>
+    public IReadOnlyList<QuoteSource> LastFailed { get; private set; } = Array.Empty<QuoteSource>();
+
+    /// <summary>
+    /// Fetches all wanted prices. Every source runs on its own: a slow or broken one never holds the others back, and
+    /// <paramref name="progress"/> is called with the prices known so far each time a source has answered.
+    /// </summary>
+    public async Task<IReadOnlyList<NewsItem>> FetchItemsAsync(IEnumerable<QuoteInstrument> watchlist, bool greek, CancellationToken ct,
+        Action<IReadOnlyList<NewsItem>>? progress = null)
     {
         var enabled = watchlist.Where(i => i.Enabled).ToList();
-        var fetches = providers.Select(async p =>
+        var answers = new Dictionary<QuoteSource, IReadOnlyList<MarketQuote>>();
+        var failed = new List<QuoteSource>();
+
+        async Task<(QuoteSource Source, IReadOnlyList<MarketQuote> Quotes, bool Failed)> Run(IQuoteProvider p)
         {
             var wanted = enabled.Where(i => i.Source == p.Source).ToList();
-            var quotes = await p.FetchAsync(wanted, ct).ConfigureAwait(false);
-            return (Provider: p, Wanted: wanted, Quotes: quotes);
-        }).ToList();
-        var done = await Task.WhenAll(fetches).ConfigureAwait(false);
-
-        var items = new List<NewsItem>();
-        foreach (var inst in enabled) // keep the user's order
-        {
-            var group = done.First(d => d.Provider.Source == inst.Source);
-            var q = group.Quotes.FirstOrDefault(x => string.Equals(x.Symbol, inst.Symbol, StringComparison.OrdinalIgnoreCase));
-            if (q is null) continue;
-            items.Add(ToItem(inst, q, greek));
+            if (wanted.Count == 0) return (p.Source, Array.Empty<MarketQuote>(), false);
+            try
+            {
+                var quotes = await p.FetchAsync(wanted, ct).ConfigureAwait(false);
+                if (quotes.Count == 0) Log.Write($"{p.Source}: no prices received ({wanted.Count} wanted)");
+                return (p.Source, quotes, quotes.Count == 0);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                // Whatever went wrong inside one source (parsing, network, certificates...) stays inside that source.
+                Log.Write($"{p.Source}: {ex.GetType().Name}: {ex.Message}");
+                return (p.Source, Array.Empty<MarketQuote>(), true);
+            }
         }
-        return items;
+
+        List<NewsItem> Build()
+        {
+            var items = new List<NewsItem>();
+            foreach (var inst in enabled) // keep the user's order
+            {
+                if (!answers.TryGetValue(inst.Source, out var quotes)) continue;
+                var q = quotes.FirstOrDefault(x => string.Equals(x.Symbol, inst.Symbol, StringComparison.OrdinalIgnoreCase));
+                if (q is not null) items.Add(ToItem(inst, q, greek));
+            }
+            return items;
+        }
+
+        var pending = providers.Select(Run).ToList();
+        while (pending.Count > 0)
+        {
+            var finished = await Task.WhenAny(pending).ConfigureAwait(false);
+            pending.Remove(finished);
+            var (source, quotes, didFail) = await finished.ConfigureAwait(false);
+            answers[source] = quotes;
+            if (didFail) failed.Add(source);
+            if (quotes.Count > 0) progress?.Invoke(Build());
+        }
+        LastFailed = failed;
+        return Build();
     }
 
     private static readonly CultureInfo Gr = CultureInfo.GetCultureInfo("el-GR");
 
     public static NewsItem ToItem(QuoteInstrument inst, MarketQuote q, bool greek)
     {
-        var price = q.Price.ToString(q.Price >= 100 ? "#,##0.00" : q.Price >= 1 ? "0.00" : "0.000", Gr);
+        var price = q.Price.ToString(inst.Source == QuoteSource.Currency && q.Price < 100 ? "0.0000" : q.Price >= 100 ? "#,##0.00" : q.Price >= 1 ? "0.00" : "0.000", Gr);
         var text = $"{price} {inst.Unit}";
         var trend = 0;
         if (q.ChangePercent is { } c)
@@ -412,7 +555,7 @@ public sealed class QuoteService
                 _ => Loc.T("q.daily", q.AsOf.ToString("dd/MM"))
             });
         }
-        var title = inst.Symbol.Length > 0 && inst.Source is QuoteSource.Athens or QuoteSource.Euronext ? inst.Symbol : inst.DisplayName(greek);
+        var title = inst.Symbol.Length > 0 && inst.Source is QuoteSource.Athens or QuoteSource.Euronext or QuoteSource.Currency ? inst.Symbol : inst.DisplayName(greek);
         return new NewsItem(text, "", title, q.AsOf, Summary: inst.DisplayName(greek), Kind: NewsItemKind.Quote, Trend: trend);
     }
 }

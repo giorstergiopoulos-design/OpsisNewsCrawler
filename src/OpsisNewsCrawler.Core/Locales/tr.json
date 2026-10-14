@@ -177,5 +177,9 @@
   "msg.downloading": "Dosya indiriliyor ve doğrulanıyor…",
   "msg.verifyFailed": "Dosya doğrulanamadı (SHA-256) ve başlatılmadı.",
   "msg.updateStarted": "Kurulum programı başladı. Adımlarını izleyin.",
-  "note.updates": "Denetim GitHub'a gider ve kişisel veri göndermez. Tıklamanız olmadan hiçbir şey kurulmaz; dosya başlamadan önce SHA-256 ile doğrulanır. Opsis içinde indirme sayfasından güncelleyin."
+  "note.updates": "Denetim GitHub'a gider ve kişisel veri göndermez. Tıklamanız olmadan hiçbir şey kurulmaz; dosya başlamadan önce SHA-256 ile doğrulanır. Opsis içinde indirme sayfasından güncelleyin.",
+  "chk.barsEnabled": "Çubukları göster",
+  "btn.openLog": "Günlük dosyasını aç",
+  "card.crypto": "Kripto paralar",
+  "card.currency": "Döviz (ECB kurları)"
 }

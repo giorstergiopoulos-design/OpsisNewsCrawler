@@ -177,5 +177,9 @@
   "msg.downloading": "Descargando y verificando el archivo…",
   "msg.verifyFailed": "No se pudo verificar el archivo (SHA-256) y no se ejecutó.",
   "msg.updateStarted": "El instalador se ha iniciado. Siga sus pasos.",
-  "note.updates": "La comprobación consulta GitHub y no envía datos personales. No se instala nada sin su clic; el archivo se verifica con su SHA-256 antes de ejecutarse. Dentro de Opsis, actualice desde la página de descarga."
+  "note.updates": "La comprobación consulta GitHub y no envía datos personales. No se instala nada sin su clic; el archivo se verifica con su SHA-256 antes de ejecutarse. Dentro de Opsis, actualice desde la página de descarga.",
+  "chk.barsEnabled": "Mostrar las barras",
+  "btn.openLog": "Abrir el archivo de registro",
+  "card.crypto": "Criptomonedas",
+  "card.currency": "Divisas (tipos del BCE)"
 }

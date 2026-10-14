@@ -37,6 +37,10 @@ internal static class Program
         };
 
         var menu = new ContextMenuStrip();
+        var menuBars = new ToolStripMenuItem(Loc.T("chk.barsEnabled")) { Checked = host.Config.BarsEnabled };
+        menuBars.Click += (_, _) => host.SetBarsEnabled(!host.Config.BarsEnabled);
+        host.BarsEnabledChanged += () => menuBars.Checked = host.Config.BarsEnabled;
+        menu.Items.Add(menuBars);
         var menuSettings = menu.Items.Add(Loc.T("tray.settings"), null, (_, _) => settings.ShowSettings());
         var menuRefresh = menu.Items.Add(Loc.T("tray.refresh"), null, (_, _) => host.Refresh());
         menu.Items.Add(new ToolStripSeparator());
@@ -49,6 +53,7 @@ internal static class Program
         tray.ContextMenuStrip = menu;
         Loc.Changed += () =>
         {
+            menuBars.Text = Loc.T("chk.barsEnabled");
             menuSettings.Text = Loc.T("tray.settings");
             menuRefresh.Text = Loc.T("tray.refresh");
             menuExit.Text = Loc.T("tray.exit");

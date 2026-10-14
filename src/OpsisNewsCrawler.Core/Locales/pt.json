@@ -177,5 +177,9 @@
   "msg.downloading": "A transferir e verificar o ficheiro…",
   "msg.verifyFailed": "Não foi possível verificar o ficheiro (SHA-256) e não foi iniciado.",
   "msg.updateStarted": "O instalador foi iniciado. Siga os seus passos.",
-  "note.updates": "A verificação consulta o GitHub e não envia dados pessoais. Nada é instalado sem o seu clique; o ficheiro é verificado com o SHA-256 antes de arrancar. No Opsis, atualize a partir da página de transferência."
+  "note.updates": "A verificação consulta o GitHub e não envia dados pessoais. Nada é instalado sem o seu clique; o ficheiro é verificado com o SHA-256 antes de arrancar. No Opsis, atualize a partir da página de transferência.",
+  "chk.barsEnabled": "Mostrar as barras",
+  "btn.openLog": "Abrir o ficheiro de registo",
+  "card.crypto": "Criptomoedas",
+  "card.currency": "Moedas (taxas do BCE)"
 }

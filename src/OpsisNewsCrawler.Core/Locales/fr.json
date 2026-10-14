@@ -177,5 +177,9 @@
   "msg.downloading": "Téléchargement et vérification du fichier…",
   "msg.verifyFailed": "Le fichier n'a pas pu être vérifié (SHA-256) et n'a pas été lancé.",
   "msg.updateStarted": "Le programme d'installation a démarré. Suivez ses étapes.",
-  "note.updates": "La vérification interroge GitHub et n'envoie aucune donnée personnelle. Rien n'est installé sans votre clic ; le fichier est vérifié par son SHA-256 avant le lancement. Dans Opsis, mettez à jour depuis la page de téléchargement."
+  "note.updates": "La vérification interroge GitHub et n'envoie aucune donnée personnelle. Rien n'est installé sans votre clic ; le fichier est vérifié par son SHA-256 avant le lancement. Dans Opsis, mettez à jour depuis la page de téléchargement.",
+  "chk.barsEnabled": "Afficher les barres",
+  "btn.openLog": "Ouvrir le fichier journal",
+  "card.crypto": "Cryptomonnaies",
+  "card.currency": "Devises (taux de la BCE)"
 }

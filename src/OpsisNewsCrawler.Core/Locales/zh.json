@@ -177,5 +177,9 @@
   "msg.downloading": "正在下载并验证文件…",
   "msg.verifyFailed": "文件无法验证（SHA-256），未启动。",
   "msg.updateStarted": "安装程序已启动。请按其步骤操作。",
-  "note.updates": "检查会访问 GitHub，不发送任何个人数据。未经您点击不会安装任何内容；文件在启动前会用 SHA-256 验证。在 Opsis 内请通过下载页面更新。"
+  "note.updates": "检查会访问 GitHub，不发送任何个人数据。未经您点击不会安装任何内容；文件在启动前会用 SHA-256 验证。在 Opsis 内请通过下载页面更新。",
+  "chk.barsEnabled": "显示栏",
+  "btn.openLog": "打开日志文件",
+  "card.crypto": "加密货币",
+  "card.currency": "货币（欧洲央行汇率）"
 }

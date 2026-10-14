@@ -41,6 +41,7 @@ public sealed class SettingsPanel : UserControl
     private FlatCombo secondContent = null!;
     private readonly List<(Screen Screen, FlatCheck Check, FlatCombo Content)> monitorRows = new();
     private FlatCheck autoUpdate = null!;
+    private FlatCheck barsEnabled = null!;
     private Label updateStatus = null!;
     private FlatButton installUpdate = null!;
     private FlatButton openUpdatePage = null!;
@@ -132,6 +133,7 @@ public sealed class SettingsPanel : UserControl
 
         host.CustomBoundsChanged += OnCustomBoundsChanged;
         host.ReadLater.Changed += OnReadLaterChanged;
+        host.BarsEnabledChanged += OnBarsEnabledChanged;
         Theme.Changed += OnThemeChanged;
         Loc.Changed += OnLanguageChanged;
         previewTimer.Tick += (_, _) => UpdatePreview();
@@ -146,6 +148,7 @@ public sealed class SettingsPanel : UserControl
             previewTimer.Dispose();
             host.CustomBoundsChanged -= OnCustomBoundsChanged;
             host.ReadLater.Changed -= OnReadLaterChanged;
+            host.BarsEnabledChanged -= OnBarsEnabledChanged;
             Theme.Changed -= OnThemeChanged;
             Loc.Changed -= OnLanguageChanged;
         }
@@ -285,6 +288,8 @@ public sealed class SettingsPanel : UserControl
             host.Config.Language = langs[language.SelectedIndex].Code;
             if (!host.LanguageFollowsHost) Loc.SetLanguage(host.Config.Language);
         };
+        barsEnabled = new FlatCheck { Text = L("chk.barsEnabled") };
+        flow.Controls.Add(barsEnabled);
         var languageRow = Row(L("lbl.language"), language);
         languageRow.Visible = !host.LanguageFollowsHost;
         flow.Controls.Add(languageRow);
@@ -307,12 +312,16 @@ public sealed class SettingsPanel : UserControl
 
         var reset = new FlatButton { Text = L("btn.resetRead") };
         reset.Margin = new Padding(0, 10, 0, 3);
+        var openLog = new FlatButton { Text = L("btn.openLog") };
+        openLog.Margin = new Padding(0, 3, 0, 3);
+        openLog.Click += (_, _) => OpenLog();
         reset.Click += (_, _) =>
         {
             host.ResetReadList();
             SetStatus(L("msg.readCleared"));
         };
         flow.Controls.Add(reset);
+        flow.Controls.Add(openLog);
 
         // Updates: only on request or once a day when the user allows it; nothing is installed without a click.
         var updates = new FlatCard(L("card.updates"));
@@ -523,6 +532,32 @@ public sealed class SettingsPanel : UserControl
         return page;
     }
 
+    private static void OpenLog()
+    {
+        try
+        {
+            var path = Log.Path;
+            if (File.Exists(path)) System.Diagnostics.Process.Start("notepad.exe", "\"" + path + "\"");
+            else if (Directory.Exists(Path.GetDirectoryName(path))) System.Diagnostics.Process.Start("explorer.exe", "\"" + Path.GetDirectoryName(path) + "\"");
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or IOException)
+        {
+        }
+    }
+
+    private void OnBarsEnabledChanged()
+    {
+        if (IsDisposed || barsEnabled is null) return;
+        void Set()
+        {
+            var was = loading;
+            loading = true;
+            barsEnabled.Checked = host.Config.BarsEnabled;
+            loading = was;
+        }
+        if (InvokeRequired) BeginInvoke(new Action(Set)); else Set();
+    }
+
     // ---- updates -----------------------------------------------------------------------------
 
     private void ShowUpdateState()
@@ -683,7 +718,7 @@ public sealed class SettingsPanel : UserControl
         stockSearch.TextValueChanged += (_, _) => ShowStocks();
         stockList.ItemChecked += (index, isChecked) => ToggleStock(index, isChecked);
 
-        foreach (var (source, titleKey) in new[] { (QuoteSource.Metals, "card.metals"), (QuoteSource.Energy, "card.energy") })
+        foreach (var (source, titleKey) in new[] { (QuoteSource.Metals, "card.metals"), (QuoteSource.Crypto, "card.crypto"), (QuoteSource.Currency, "card.currency"), (QuoteSource.Energy, "card.energy") })
         {
             var small = new FlatCard(L(titleKey));
             var list = new FlatList { Width = 640, Height = 30 * 5 + 4 };
@@ -983,6 +1018,7 @@ public sealed class SettingsPanel : UserControl
             preview.Checked = c.ShowPreview;
             pauseOther.Checked = c.PauseOnOtherWindow;
             hideRead.Checked = c.HideRead;
+            barsEnabled.Checked = c.BarsEnabled;
             autoUpdate.Checked = c.CheckForUpdates;
 
             mainContent.SelectSilently((int)c.MainContent);
@@ -1131,6 +1167,7 @@ public sealed class SettingsPanel : UserControl
         c.Watchlist = workWatch.Select(w => new QuoteInstrument(w.Source, w.Code, w.Symbol, w.NameEl, w.NameEn, w.Unit, w.Enabled)).ToList();
 
         host.ApplyConfig();
+        host.SetBarsEnabled(barsEnabled.Checked);
         host.SetCategory(chosen);
         if (feedsChanged && string.Equals(chosen, previousActive, StringComparison.OrdinalIgnoreCase)) host.ReloadNews();
         host.SaveConfig();

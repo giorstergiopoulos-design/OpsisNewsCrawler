@@ -207,7 +207,7 @@ public sealed class TickerHost : IDisposable
         {
             SecondWindow = new TickerWindow(State2, hostWindowDetector);
             WireWindow(SecondWindow);
-            if (started) SecondWindow.StartTicker();
+            if (BarsOn) SecondWindow.StartTicker();
         }
         else if (!wantSecond && SecondWindow is not null)
         {
@@ -229,7 +229,7 @@ public sealed class TickerHost : IDisposable
         refreshTimer.Interval = Config.RefreshIntervalSeconds * 1000;
         quoteTimer.Interval = Config.QuoteRefreshSeconds * 1000;
         PushAll();
-        if (started) _ = RefreshQuotesAsync();
+        if (BarsOn) _ = RefreshQuotesAsync();
     }
 
     /// <summary>Screens that currently get an extra bar: enabled in the settings, still connected and not the primary one.</summary>
@@ -265,7 +265,7 @@ public sealed class TickerHost : IDisposable
                 w.SetBackdropStyle(Config.BarBackdrop);
                 w.SetBarColor(Config.BarColorMode, Config.BarCustomColor);
                 w.SetPosition(TickerPosition.BottomTaskbar);
-                if (started) w.StartTicker();
+                if (BarsOn) w.StartTicker();
             }
             else
             {
@@ -340,11 +340,19 @@ public sealed class TickerHost : IDisposable
 
     public void SaveConfig() => Config.Save(configPath);
 
+    private bool BarsOn => started && Config.BarsEnabled;
+
     public void Start()
     {
         if (disposed) return;
         started = true;
         PushAll();
+        if (Config.BarsEnabled) StartBars();
+        _ = AutoCheckForUpdatesAsync();
+    }
+
+    private void StartBars()
+    {
         Window.StartTicker();
         SecondWindow?.StartTicker();
         foreach (var extra in ExtraWindows) extra.StartTicker();
@@ -353,7 +361,33 @@ public sealed class TickerHost : IDisposable
         breakingTimer.Start();
         _ = RefreshAsync(force: true);
         _ = RefreshQuotesAsync();
-        _ = AutoCheckForUpdatesAsync();
+    }
+
+    private void StopBars()
+    {
+        breakingTimer.Stop();
+        CloseLivePreview();
+        refreshTimer.Stop();
+        quoteTimer.Stop();
+        Window.StopTicker();
+        SecondWindow?.StopTicker();
+        foreach (var extra in ExtraWindows) extra.StopTicker();
+    }
+
+    /// <summary>Raised after the master switch changed (tray menu and settings keep their check marks in step).</summary>
+    public event Action? BarsEnabledChanged;
+
+    /// <summary>Turns every bar on or off. Off: the bars disappear and nothing is downloaded.</summary>
+    public void SetBarsEnabled(bool on)
+    {
+        if (Config.BarsEnabled == on) return;
+        Config.BarsEnabled = on;
+        SaveConfig();
+        if (started)
+        {
+            if (on) StartBars(); else StopBars();
+        }
+        BarsEnabledChanged?.Invoke();
     }
 
     public void Stop()
@@ -440,7 +474,7 @@ public sealed class TickerHost : IDisposable
     }
 
     private IReadOnlyList<NewsItem> StocksForDisplay() =>
-        stockItems.Count > 0 ? stockItems : new[] { Placeholder(hasQuotes ? Loc.T("ph.quotesUnavailable") : Loc.T("ph.loadingQuotes")) };
+        stockItems.Count > 0 ? stockItems : new[] { Placeholder(hasQuotes ? Loc.T("ph.quotesUnavailable") + (quotes.LastFailed.Count > 0 ? " (" + string.Join(", ", quotes.LastFailed) + ")" : "") : Loc.T("ph.loadingQuotes")) };
 
     private static NewsItem Placeholder(string text) => new(text, "", Loc.T("app.name"), DateTimeOffset.Now);
 
@@ -613,24 +647,54 @@ public sealed class TickerHost : IDisposable
         livePreview = null;
     }
 
+    private bool quotesFailed;
+    private bool quoteRetryPending;
+
+    /// <summary>After a failed run try again in a minute instead of waiting for the normal interval.</summary>
+    private async void ScheduleQuoteRetry()
+    {
+        if (quoteRetryPending || disposed) return;
+        quoteRetryPending = true;
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(60), cts.Token);
+            if (!disposed && BarsOn) _ = RefreshQuotesAsync();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            quoteRetryPending = false;
+        }
+    }
+
     private async Task RefreshQuotesAsync(bool force = false)
     {
         if (disposed || !NeedsStocks || refreshingQuotes) return;
         refreshingQuotes = true;
         try
         {
-            var items = await quotes.FetchItemsAsync(Config.Watchlist, Loc.IsGreek, cts.Token);
-
-            void Apply()
+            void Show(IReadOnlyList<NewsItem> list)
             {
-                if (disposed) return;
-                hasQuotes = true;
-                stockItems = items;
-                PushAll();
+                void Apply()
+                {
+                    if (disposed) return;
+                    hasQuotes = true;
+                    stockItems = list;
+                    PushAll();
+                }
+
+                if (!Window.IsHandleCreated) return;
+                if (Window.InvokeRequired) Window.BeginInvoke(new Action(Apply));
+                else Apply();
             }
 
-            if (Window.IsHandleCreated && Window.InvokeRequired) Window.Invoke(new Action(Apply));
-            else Apply();
+            // Each source shows up as soon as it has answered; a slow one cannot keep the others waiting.
+            var items = await quotes.FetchItemsAsync(Config.Watchlist, Loc.IsGreek, cts.Token, Show);
+            quotesFailed = quotes.LastFailed.Count > 0 || items.Count == 0 && Config.Watchlist.Any(w => w.Enabled);
+            Show(items);
+            if (quotesFailed) ScheduleQuoteRetry();
         }
         catch (OperationCanceledException)
         {
@@ -638,6 +702,10 @@ public sealed class TickerHost : IDisposable
         catch (Exception ex)
         {
             Debug.WriteLine($"Opsis News Crawler: quotes failed: {ex}");
+            Log.Write($"quotes failed: {ex.GetType().Name}: {ex.Message}");
+            hasQuotes = true; // the bar says "unavailable" instead of "loading" for ever
+            quotesFailed = true;
+            ScheduleQuoteRetry();
         }
         finally
         {

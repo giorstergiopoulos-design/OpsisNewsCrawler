@@ -50,6 +50,9 @@ public sealed class AppConfig
     public bool ShowIcons { get; set; } = true;
     public bool HideRead { get; set; } = true;
 
+    /// <summary>Master switch: false hides every bar and stops all downloads until it is turned on again.</summary>
+    public bool BarsEnabled { get; set; } = true;
+
     /// <summary>Ask GitHub once a day whether a newer release exists. Off until the user turns it on; nothing is installed without asking.</summary>
     public bool CheckForUpdates { get; set; }
     public DateTimeOffset LastUpdateCheck { get; set; } = DateTimeOffset.MinValue;

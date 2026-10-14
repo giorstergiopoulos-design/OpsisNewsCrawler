@@ -177,5 +177,9 @@
   "msg.downloading": "Datei wird heruntergeladen und geprüft…",
   "msg.verifyFailed": "Die Datei konnte nicht verifiziert werden (SHA-256) und wurde nicht gestartet.",
   "msg.updateStarted": "Das Setup wurde gestartet. Folgen Sie seinen Schritten.",
-  "note.updates": "Die Prüfung geht an GitHub und sendet keine persönlichen Daten. Ohne Ihren Klick wird nichts installiert; die Datei wird vor dem Start per SHA-256 geprüft. In Opsis aktualisieren Sie über die Download-Seite."
+  "note.updates": "Die Prüfung geht an GitHub und sendet keine persönlichen Daten. Ohne Ihren Klick wird nichts installiert; die Datei wird vor dem Start per SHA-256 geprüft. In Opsis aktualisieren Sie über die Download-Seite.",
+  "chk.barsEnabled": "Leisten anzeigen",
+  "btn.openLog": "Protokolldatei öffnen",
+  "card.crypto": "Kryptowährungen",
+  "card.currency": "Währungen (EZB-Kurse)"
 }

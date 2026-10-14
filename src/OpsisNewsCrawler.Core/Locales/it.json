@@ -177,5 +177,9 @@
   "msg.downloading": "Download e verifica del file…",
   "msg.verifyFailed": "Il file non è stato verificato (SHA-256) e non è stato avviato.",
   "msg.updateStarted": "Il programma di installazione è partito. Segui i suoi passaggi.",
-  "note.updates": "Il controllo interroga GitHub e non invia dati personali. Nulla viene installato senza il tuo clic; il file è verificato con il suo SHA-256 prima dell'avvio. In Opsis aggiorna dalla pagina di download."
+  "note.updates": "Il controllo interroga GitHub e non invia dati personali. Nulla viene installato senza il tuo clic; il file è verificato con il suo SHA-256 prima dell'avvio. In Opsis aggiorna dalla pagina di download.",
+  "chk.barsEnabled": "Mostra le barre",
+  "btn.openLog": "Apri il file di registro",
+  "card.crypto": "Criptovalute",
+  "card.currency": "Valute (tassi BCE)"
 }
