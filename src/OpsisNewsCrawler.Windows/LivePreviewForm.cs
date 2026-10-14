@@ -128,6 +128,15 @@ internal sealed class LivePreviewForm : Form
             settings.IsStatusBarEnabled = false;
             settings.IsZoomControlEnabled = false;
             web.CoreWebView2.NewWindowRequested += (_, e) => e.Handled = true; // links stay in the preview
+            // A web page of the user's choice runs here: no camera/microphone/location, no downloads, only http(s).
+            web.CoreWebView2.PermissionRequested += (_, e) => e.State = CoreWebView2PermissionState.Deny;
+            web.CoreWebView2.DownloadStarting += (_, e) => e.Cancel = true;
+            web.CoreWebView2.NavigationStarting += (_, e) =>
+            {
+                if (!Uri.TryCreate(e.Uri, UriKind.Absolute, out var target) || target.Scheme is not ("http" or "https" or "about")) e.Cancel = true;
+            };
+            settings.AreHostObjectsAllowed = false;
+            settings.IsWebMessageEnabled = false;
             web.CoreWebView2.Navigate(url);
         }
         catch (Exception ex)
@@ -194,7 +203,12 @@ internal sealed class LivePreviewForm : Form
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing) web.Dispose();
+        if (disposing)
+        {
+            web.Dispose();
+            foreach (var b in new[] { playPause, maximize, close }) b.Font.Dispose();
+            Font.Dispose();
+        }
         base.Dispose(disposing);
     }
 }

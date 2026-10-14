@@ -18,7 +18,7 @@ internal static class FaviconCache
 
     private static HttpClient CreateClient()
     {
-        var client = new HttpClient { Timeout = TimeSpan.FromSeconds(8) };
+        var client = new HttpClient { Timeout = TimeSpan.FromSeconds(8), MaxResponseContentBufferSize = 2 * 1024 * 1024 };
         client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible; OpsisNewsCrawler/0.6)");
         return client;
     }
@@ -94,7 +94,7 @@ internal static class FaviconCache
     /// <summary>Starts a background download if the host is unknown. <paramref name="onLoaded"/> runs on a thread-pool thread.</summary>
     public static void Request(string host, Action onLoaded)
     {
-        if (string.IsNullOrWhiteSpace(host) || Cache.ContainsKey(host) || !Pending.TryAdd(host, 0)) return;
+        if (!OpsisNewsCrawler.Core.NetGuard.IsPublicHost(host) || Cache.ContainsKey(host) || !Pending.TryAdd(host, 0)) return;
 
         _ = Task.Run(async () =>
         {
@@ -147,9 +147,9 @@ internal static class FaviconCache
     private static readonly System.Text.RegularExpressions.Regex LinkTag =
         new(@"<link[^>]*>", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
     private static readonly System.Text.RegularExpressions.Regex RelAttr =
-        new(@"rels*=s*[""']([^""']*)[""']", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
+        new(@"rel\s*=\s*[""']([^""']*)[""']", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
     private static readonly System.Text.RegularExpressions.Regex HrefAttr =
-        new(@"hrefs*=s*[""']([^""']*)[""']", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
+        new(@"href\s*=\s*[""']([^""']*)[""']", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
 
     private static async Task<List<string>> FindDeclaredIconsAsync(string host)
     {
@@ -193,6 +193,7 @@ internal static class FaviconCache
         {
             using var ms = new MemoryStream(data);
             using var image = Image.FromStream(ms);
+            if ((long)image.Width * image.Height > SafeImage.MaxPixels) return null;
             return new Bitmap(image, IconSize, IconSize);
         }
         catch (Exception ex) when (ex is ArgumentException or ExternalException or OutOfMemoryException)

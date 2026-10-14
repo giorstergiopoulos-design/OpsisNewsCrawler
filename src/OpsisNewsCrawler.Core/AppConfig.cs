@@ -236,6 +236,8 @@ public sealed class AppConfig
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or NotSupportedException)
         {
+            // An unreadable file is kept as config.json.bad instead of being overwritten by the defaults.
+            if (ex is JsonException or NotSupportedException) SafeFile.KeepAsBad(path);
             config = new AppConfig();
         }
 
@@ -281,7 +283,7 @@ public sealed class AppConfig
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            File.WriteAllText(path, JsonSerializer.Serialize(this, JsonOptions));
+            SafeFile.WriteAllText(path, JsonSerializer.Serialize(this, JsonOptions));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

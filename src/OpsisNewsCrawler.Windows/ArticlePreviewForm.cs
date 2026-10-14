@@ -54,7 +54,7 @@ internal sealed class ArticlePreviewForm : Form
 
     private static HttpClient CreateClient()
     {
-        var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+        var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10), MaxResponseContentBufferSize = MaxImageBytes };
         client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible; OpsisNewsCrawler/0.6)");
         return client;
     }
@@ -128,6 +128,7 @@ internal sealed class ArticlePreviewForm : Form
         Bitmap? bmp = null;
         try
         {
+            if (!NetGuard.IsPublicHttpUrl(forItem.ImageUrl)) throw new InvalidDataException("not a public address");
             using var response = await Http.GetAsync(forItem.ImageUrl!, HttpCompletionOption.ResponseHeadersRead, token);
             response.EnsureSuccessStatusCode();
             if (response.Content.Headers.ContentLength is > MaxImageBytes) throw new InvalidDataException("image too large");
@@ -137,7 +138,7 @@ internal sealed class ArticlePreviewForm : Form
 
             using var ms = new MemoryStream(data);
             using var decoded = Image.FromStream(ms);
-            bmp = new Bitmap(decoded);
+            bmp = SafeImage.Load(decoded, 800, 600);
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidDataException
                                        or ArgumentException or OutOfMemoryException or IOException)

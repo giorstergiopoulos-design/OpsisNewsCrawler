@@ -88,3 +88,18 @@ Sources: `docs/HANDOFF.md` (R1–R12), `docs/USER-REQUIREMENTS-2026-10-13b.md` (
 - ✅ App: embedded `Locales\<code>.json` for ar, de, es, fr, hi, it, ja, ko, pt, ru, tr, zh (+ el, en). All short UI texts translated; the four long texts (help, instructions, history, license) fall back to English for the new languages. `Loc.Available()` lists all of them; Opsis' culture codes (`de-DE`) are matched by the part before the dash. Arabic is not mirrored right-to-left (not done).
 - ✅ Installer: the same 14 wizard languages as Opsis (`installer\Chinese.isl`, `installer\Hindi.isl` copied from the Opsis repo), all 19 custom messages translated; the wizard follows the Windows language, English is the fallback. The installer writes the chosen language into `first-run.json` and the app starts in it (verified with test copies: German and Japanese).
 - ⏳ Not verified by eye: the translated settings window and wizard pages (only checked that the strings load); translation quality was not reviewed by native speakers.
+
+## Round 8 — memory, bug and security review (2026-10-14)
+Measured: the running app, 5 minutes after start — working set steady at ~103 MB (private ~38 MB), GDI objects 51→62 and then flat, handles falling; no growth. Code review of all GDI objects, timers, event subscriptions (all paired), HttpClients, WebView2.
+Fixed:
+- ✅ Article preview picture: a 4 MB JPEG could decode to hundreds of MB (and 24 of them were cached): now refused above 24 MP and cached downscaled to 800×600 (`SafeImage`).
+- ✅ Site icons: same pixel limit; the `rel=`/`href=` regexes had lost their `\s` (icons declared as `rel = "icon"` were never found).
+- ✅ HTTP clients got `MaxResponseContentBufferSize` (a server without Content-Length could stream unlimited data into memory).
+- ✅ Content from feeds (item image, site icon) can no longer make the app contact localhost / private / link-local addresses (`NetGuard`).
+- ✅ Live preview (WebView2): permissions (camera, microphone, location) denied, downloads cancelled, navigation only http/https, host objects and web messages off; fonts disposed; a bad live URL can no longer throw when the window opens.
+- ✅ Settings, quote cache, catalogue cache and read list are written atomically (temp file + move); an unreadable `config.json` is kept as `config.json.bad` instead of being silently overwritten with defaults.
+- ✅ Language code from config / host is restricted to letters (it is used in a file name).
+- ✅ Market list download: unexpected network/JSON errors no longer escape an `async void` handler.
+- ✅ Opsis installer: the downloaded crawler setup is only started when its SHA-256 equals the one in `OpsisNewsCrawler-Setup.exe.sha256` published next to it in the release (tested: good file installs, wrong checksum is refused and Opsis still installs).
+Checked and fine: RSS XML parsing (DTD ignored, no resolver, entity limit, 5 MB cap), link opening (http/https only), installers (per-user for the crawler), Opsis plugin search paths (user folders; the elevated helper branch exits before plugins load), no secrets in the repo.
+Not done / residual: the installers are not code-signed (SmartScreen warning, and the checksum only protects against a damaged or swapped file, not a hijacked release); the plugin DLL loader trusts every `*Plugin.dll` in the user's plugin folders (same trust as running a program as that user); feed URLs the user adds may point to the local network on purpose; WPF is loaded for taskbar measurement (+~40 MB working set).

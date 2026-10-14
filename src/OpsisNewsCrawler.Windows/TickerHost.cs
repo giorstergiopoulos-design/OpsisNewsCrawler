@@ -482,8 +482,8 @@ public sealed class TickerHost : IDisposable
         }
         var feed = Config.LiveFeeds.FirstOrDefault(f => f.Enabled && Breaking.ToPlayableUrl(f.Url) is not null);
         if (feed is null) return;
-        livePreview = new LivePreviewForm(string.IsNullOrWhiteSpace(feed.Name) ? new Uri(feed.Url.Contains("://") ? feed.Url : "https://" + feed.Url).Host : feed.Name,
-            Breaking.ToPlayableUrl(feed.Url)!, Window.Bounds);
+        var playable = Breaking.ToPlayableUrl(feed.Url)!;
+        livePreview = new LivePreviewForm(string.IsNullOrWhiteSpace(feed.Name) ? new Uri(playable).Host : feed.Name, playable, Window.Bounds);
         livePreview.FormClosed += (_, _) => livePreview = null;
         livePreview.Show();
     }

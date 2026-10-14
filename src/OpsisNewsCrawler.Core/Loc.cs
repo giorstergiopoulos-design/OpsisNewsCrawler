@@ -64,6 +64,7 @@ public static class Loc
     private static void SetLanguage(string? code, bool raiseChanged)
     {
         code = string.IsNullOrWhiteSpace(code) ? "el" : code.Trim().ToLowerInvariant();
+        if (code.Length > 16 || code.Any(c => !(c is >= 'a' and <= 'z' or '-' or '_'))) code = "en"; // the code ends up in a file name
         // Opsis uses full culture codes in some places ("el-GR"): the part before the dash is enough.
         if (code.Contains('-')) code = code[..code.IndexOf('-')];
 

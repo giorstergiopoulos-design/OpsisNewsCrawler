@@ -528,6 +528,10 @@ public sealed class SettingsPanel : UserControl
         {
             return;
         }
+        catch (Exception ex) when (ex is HttpRequestException or IOException or System.Text.Json.JsonException or FormatException or InvalidOperationException)
+        {
+            list = Array.Empty<QuoteInstrument>(); // shown as "could not be downloaded"
+        }
         if (IsDisposed) return;
         refreshCatalog.Enabled = true;
         catalogs[mic] = list;

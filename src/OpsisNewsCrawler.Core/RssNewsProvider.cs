@@ -19,7 +19,7 @@ public sealed class RssNewsProvider : IDisposable
 
     public RssNewsProvider()
     {
-        http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+        http = new HttpClient { Timeout = TimeSpan.FromSeconds(15), MaxResponseContentBufferSize = MaxFeedBytes };
         http.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible; OpsisNewsCrawler/0.6)");
         http.DefaultRequestHeaders.Accept.ParseAdd("application/rss+xml, application/atom+xml, application/xml, text/xml, */*");
     }

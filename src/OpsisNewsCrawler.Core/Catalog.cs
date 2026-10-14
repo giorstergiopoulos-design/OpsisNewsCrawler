@@ -62,7 +62,7 @@ public static class EuronextCatalog
         {
             var path = CachePath(mic);
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            File.WriteAllText(path, JsonSerializer.Serialize(list));
+            SafeFile.WriteAllText(path, JsonSerializer.Serialize(list));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

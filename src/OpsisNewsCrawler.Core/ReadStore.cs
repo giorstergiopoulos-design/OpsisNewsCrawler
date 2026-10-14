@@ -61,7 +61,7 @@ public sealed class ReadStore
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            File.WriteAllText(path, JsonSerializer.Serialize(read));
+            SafeFile.WriteAllText(path, JsonSerializer.Serialize(read));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

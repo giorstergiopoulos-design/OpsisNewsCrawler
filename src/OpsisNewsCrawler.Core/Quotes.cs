@@ -117,7 +117,7 @@ public sealed class QuoteStore
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            File.WriteAllText(path, JsonSerializer.Serialize(days));
+            SafeFile.WriteAllText(path, JsonSerializer.Serialize(days));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -137,7 +137,7 @@ internal static class QuoteHttp
 {
     public static HttpClient Create()
     {
-        var client = new HttpClient { Timeout = TimeSpan.FromSeconds(40) };
+        var client = new HttpClient { Timeout = TimeSpan.FromSeconds(40), MaxResponseContentBufferSize = 32 * 1024 * 1024 };
         client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible; OpsisNewsCrawler)");
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*"));
         return client;
