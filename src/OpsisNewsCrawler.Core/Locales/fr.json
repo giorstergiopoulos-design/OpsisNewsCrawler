@@ -150,5 +150,7 @@
   "backdrop.acrylic": "Acrylique (flou avec texture et couleur)",
   "backdrop.blur": "Flou (état 3)",
   "backdrop.gradient": "Dégradé transparent (état 2, le bleu clair)",
-  "note.backdrop": "Acrylique = état 4, Flou = état 3, Dégradé transparent = état 2. Ils ne changent que l'arrière-plan ; le texte reste net."
+  "note.backdrop": "Acrylique = état 4, Flou = état 3, Dégradé transparent = état 2. Ils ne changent que l'arrière-plan ; le texte reste net.",
+  "preview.title": "Aperçu",
+  "preview.sampleNews": "Source  Titre d'une actualité"
 }

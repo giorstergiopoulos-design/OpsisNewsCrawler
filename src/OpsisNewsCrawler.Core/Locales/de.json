@@ -150,5 +150,7 @@
   "backdrop.acrylic": "Acryl (Unschärfe mit Textur und Farbe)",
   "backdrop.blur": "Unschärfe (Zustand 3)",
   "backdrop.gradient": "Transparenter Verlauf (Zustand 2, das Hellblau)",
-  "note.backdrop": "Acryl = Zustand 4, Unschärfe = Zustand 3, Transparenter Verlauf = Zustand 2. Sie ändern nur den Hintergrund; Text bleibt scharf."
+  "note.backdrop": "Acryl = Zustand 4, Unschärfe = Zustand 3, Transparenter Verlauf = Zustand 2. Sie ändern nur den Hintergrund; Text bleibt scharf.",
+  "preview.title": "Vorschau",
+  "preview.sampleNews": "Quelle  Schlagzeile einer Nachricht"
 }

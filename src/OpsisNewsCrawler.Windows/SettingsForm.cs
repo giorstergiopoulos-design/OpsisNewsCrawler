@@ -54,6 +54,27 @@ public sealed class SettingsForm : Form
 
     public void SelectTab(int index) => panel.SelectTab(index);
 
+    /// <summary>Test helper (--snapshot): saves every tab as a PNG without needing the window to be visible on screen.</summary>
+    public void SaveSnapshots(string folder)
+    {
+        Directory.CreateDirectory(folder);
+        StartPosition = FormStartPosition.Manual;
+        Location = new Point(-4000, 0);
+        panel.LoadFromConfig();
+        Show();
+        for (var i = 0; i < panel.TabCount; i++)
+        {
+            panel.SelectTab(i);
+            Application.DoEvents();
+            Thread.Sleep(450);
+            Application.DoEvents();
+            using var bmp = new Bitmap(Width, Height);
+            DrawToBitmap(bmp, new Rectangle(0, 0, bmp.Width, bmp.Height));
+            bmp.Save(Path.Combine(folder, $"tab{i}.png"));
+        }
+        Hide();
+    }
+
     public void ShowSettings()
     {
         panel.LoadFromConfig();

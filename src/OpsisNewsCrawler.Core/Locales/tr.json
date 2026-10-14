@@ -150,5 +150,7 @@
   "backdrop.acrylic": "Akrilik (doku ve renkli bulanıklık)",
   "backdrop.blur": "Bulanıklık (durum 3)",
   "backdrop.gradient": "Saydam geçiş (durum 2, açık mavi)",
-  "note.backdrop": "Akrilik = durum 4, Bulanıklık = durum 3, Saydam geçiş = durum 2. Yalnızca arka planı değiştirirler; metin net kalır."
+  "note.backdrop": "Akrilik = durum 4, Bulanıklık = durum 3, Saydam geçiş = durum 2. Yalnızca arka planı değiştirirler; metin net kalır.",
+  "preview.title": "Önizleme",
+  "preview.sampleNews": "Kaynak  Bir haberin başlığı"
 }

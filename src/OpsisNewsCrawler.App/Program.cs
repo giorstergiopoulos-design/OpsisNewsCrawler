@@ -9,6 +9,16 @@ internal static class Program
     [STAThread]
     private static void Main(string[] args)
     {
+        if (Array.IndexOf(args, "--snapshot") is >= 0 and var at && at + 1 < args.Length)
+        {
+            ApplicationConfiguration.Initialize();
+            var cfgAt = Array.IndexOf(args, "--config");
+            using var snapHost = new TickerHost(cfgAt >= 0 && cfgAt + 1 < args.Length ? args[cfgAt + 1] : null);
+            using var snapForm = new SettingsForm(snapHost);
+            snapForm.SaveSnapshots(args[at + 1]);
+            return;
+        }
+
         // Only one ticker at a time.
         using var singleInstance = new Mutex(true, "OpsisNewsCrawler.SingleInstance", out var createdNew);
         if (!createdNew) return;

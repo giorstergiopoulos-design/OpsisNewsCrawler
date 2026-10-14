@@ -150,5 +150,7 @@
   "backdrop.acrylic": "아크릴 (질감과 색이 있는 흐림)",
   "backdrop.blur": "흐림 (상태 3)",
   "backdrop.gradient": "투명 그라데이션 (상태 2, 하늘색)",
-  "note.backdrop": "아크릴 = 상태 4, 흐림 = 상태 3, 투명 그라데이션 = 상태 2. 배경만 바뀌며 글자는 선명하게 유지됩니다."
+  "note.backdrop": "아크릴 = 상태 4, 흐림 = 상태 3, 투명 그라데이션 = 상태 2. 배경만 바뀌며 글자는 선명하게 유지됩니다.",
+  "preview.title": "미리 보기",
+  "preview.sampleNews": "출처  뉴스 헤드라인"
 }

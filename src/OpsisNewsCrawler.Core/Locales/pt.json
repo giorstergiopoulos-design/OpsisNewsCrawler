@@ -150,5 +150,7 @@
   "backdrop.acrylic": "Acrílico (desfocagem com textura e cor)",
   "backdrop.blur": "Desfocagem (estado 3)",
   "backdrop.gradient": "Gradiente transparente (estado 2, o azul-claro)",
-  "note.backdrop": "Acrílico = estado 4, Desfocagem = estado 3, Gradiente transparente = estado 2. Alteram apenas o fundo; o texto fica nítido."
+  "note.backdrop": "Acrílico = estado 4, Desfocagem = estado 3, Gradiente transparente = estado 2. Alteram apenas o fundo; o texto fica nítido.",
+  "preview.title": "Pré-visualização",
+  "preview.sampleNews": "Fonte  Título de uma notícia"
 }

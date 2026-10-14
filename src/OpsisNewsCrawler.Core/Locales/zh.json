@@ -150,5 +150,7 @@
   "backdrop.acrylic": "亚克力（带纹理和颜色的模糊）",
   "backdrop.blur": "模糊（状态 3）",
   "backdrop.gradient": "透明渐变（状态 2，浅蓝色）",
-  "note.backdrop": "亚克力 = 状态 4，模糊 = 状态 3，透明渐变 = 状态 2。它们只改变背景；文字保持清晰。"
+  "note.backdrop": "亚克力 = 状态 4，模糊 = 状态 3，透明渐变 = 状态 2。它们只改变背景；文字保持清晰。",
+  "preview.title": "预览",
+  "preview.sampleNews": "来源  一条新闻的标题"
 }

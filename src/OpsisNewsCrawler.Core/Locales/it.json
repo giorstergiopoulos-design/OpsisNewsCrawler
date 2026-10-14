@@ -150,5 +150,7 @@
   "backdrop.acrylic": "Acrilico (sfocatura con texture e colore)",
   "backdrop.blur": "Sfocatura (stato 3)",
   "backdrop.gradient": "Gradiente trasparente (stato 2, l'azzurro)",
-  "note.backdrop": "Acrilico = stato 4, Sfocatura = stato 3, Gradiente trasparente = stato 2. Cambiano solo lo sfondo; il testo resta nitido."
+  "note.backdrop": "Acrilico = stato 4, Sfocatura = stato 3, Gradiente trasparente = stato 2. Cambiano solo lo sfondo; il testo resta nitido.",
+  "preview.title": "Anteprima",
+  "preview.sampleNews": "Fonte  Titolo di una notizia"
 }

@@ -19,6 +19,8 @@ public sealed class SettingsPanel : UserControl
     private FlatTabs tabs = null!;
     private Label status = null!;
     private bool built;
+    private BarPreview barPreview = null!;
+    private readonly System.Windows.Forms.Timer previewTimer = new() { Interval = 250 };
 
     // General
     private FlatCombo language = null!;
@@ -122,6 +124,8 @@ public sealed class SettingsPanel : UserControl
         host.CustomBoundsChanged += OnCustomBoundsChanged;
         Theme.Changed += OnThemeChanged;
         Loc.Changed += OnLanguageChanged;
+        previewTimer.Tick += (_, _) => UpdatePreview();
+        previewTimer.Start();
         Build();
     }
 
@@ -129,6 +133,7 @@ public sealed class SettingsPanel : UserControl
     {
         if (disposing)
         {
+            previewTimer.Dispose();
             host.CustomBoundsChanged -= OnCustomBoundsChanged;
             Theme.Changed -= OnThemeChanged;
             Loc.Changed -= OnLanguageChanged;
@@ -151,6 +156,28 @@ public sealed class SettingsPanel : UserControl
     }
 
     private static string L(string key) => Loc.T(key);
+
+    // ---- preview of the bars ----------------------------------------------------------------
+
+    /// <summary>Tabs whose choices change how a bar looks: Bars, Position, Look, Breaking.</summary>
+    private static readonly int[] PreviewTabs = { 1, 2, 5, 6 };
+
+    private void UpdatePreview()
+    {
+        if (!Visible || !built || barPreview is null || barPreview.IsDisposed || tabs is null) return;
+        var show = PreviewTabs.Contains(tabs.SelectedIndex);
+        if (barPreview.Visible != show) barPreview.Visible = show;
+        if (!show) return;
+        var dark = themeMode.SelectedIndex switch { 1 => false, 2 => true, _ => Theme.IsDark };
+        barPreview.SetState(new BarPreviewState(
+            (TickerPosition)Math.Max(0, position.SelectedIndex), (BarContent)Math.Max(0, mainContent.SelectedIndex), stocksLeft.Checked,
+            secondEnabled.Checked, secondContent.SelectedIndex == 0 ? BarContent.News : BarContent.Stocks,
+            dark, opacity.Value, edgeFade.Checked,
+            barColor.SelectedIndex switch { 1 => "lightblue", 2 => "accent", 3 => "custom", _ => "theme" }, barSwatch.Rgb,
+            taskbarColor.SelectedIndex switch { 1 => "lightblue", 2 => "accent", 3 => "custom", _ => "taskbar" }, taskbarSwatch.Rgb,
+            barBackdrop.SelectedIndex switch { 1 => "blur", 2 => "gradient", _ => "acrylic" },
+            taskbarBackdrop.SelectedIndex switch { 0 => "acrylic", 2 => "gradient", _ => "blur" }));
+    }
 
     // ---- building ------------------------------------------------------------------------
 
@@ -200,7 +227,9 @@ public sealed class SettingsPanel : UserControl
         }
         bar.Controls.Add(status);
 
+        barPreview = new BarPreview { Dock = DockStyle.Bottom, Visible = false };
         Controls.Add(tabs);
+        Controls.Add(barPreview);
         Controls.Add(bar);
         built = true;
 
@@ -603,7 +632,7 @@ public sealed class SettingsPanel : UserControl
         flow.Controls.Add(Row(L("lbl.transparency"), op, 240));
         opacity.ValueChanged += (_, _) => opacityLabel.Text = $"{opacity.Value} %";
 
-        barColor = new FlatCombo { Width = 340 };
+        barColor = new FlatCombo { Width = 470 };
         barColor.SetItems(new[] { L("color.theme"), L("color.lightblue"), L("color.accent"), L("color.custom") }, 0);
         barSwatch = new FlatSwatch();
         var barColorRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
@@ -611,7 +640,7 @@ public sealed class SettingsPanel : UserControl
         barColorRow.Controls.Add(barSwatch);
         flow.Controls.Add(Row(L("lbl.barColor"), barColorRow, 240));
 
-        taskbarColor = new FlatCombo { Width = 340 };
+        taskbarColor = new FlatCombo { Width = 470 };
         taskbarColor.SetItems(new[] { L("color.taskbar"), L("color.lightblue"), L("color.accent"), L("color.custom") }, 0);
         taskbarSwatch = new FlatSwatch();
         var taskbarColorRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
@@ -619,10 +648,10 @@ public sealed class SettingsPanel : UserControl
         taskbarColorRow.Controls.Add(taskbarSwatch);
         flow.Controls.Add(Row(L("lbl.taskbarBarColor"), taskbarColorRow, 240));
         var materials = new[] { L("backdrop.acrylic"), L("backdrop.blur"), L("backdrop.gradient") };
-        barBackdrop = new FlatCombo { Width = 340 };
+        barBackdrop = new FlatCombo { Width = 470 };
         barBackdrop.SetItems(materials, 0);
         flow.Controls.Add(Row(L("lbl.barBackdrop"), barBackdrop, 240));
-        taskbarBackdrop = new FlatCombo { Width = 340 };
+        taskbarBackdrop = new FlatCombo { Width = 470 };
         taskbarBackdrop.SetItems(materials, 1);
         flow.Controls.Add(Row(L("lbl.taskbarBackdrop"), taskbarBackdrop, 240));
         flow.Controls.Add(Note(L("note.backdrop"), 640));
@@ -743,6 +772,8 @@ public sealed class SettingsPanel : UserControl
     // ---- loading / saving ----------------------------------------------------------------
 
     /// <summary>Shows the tab with the given index (0 = General).</summary>
+    public int TabCount => tabs.Count;
+
     public void SelectTab(int index)
     {
         if (index >= 0 && index < tabs.Count) tabs.SelectedIndex = index;

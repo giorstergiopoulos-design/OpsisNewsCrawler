@@ -103,3 +103,10 @@ Fixed:
 - ✅ Opsis installer: the downloaded crawler setup is only started when its SHA-256 equals the one in `OpsisNewsCrawler-Setup.exe.sha256` published next to it in the release (tested: good file installs, wrong checksum is refused and Opsis still installs).
 Checked and fine: RSS XML parsing (DTD ignored, no resolver, entity limit, 5 MB cap), link opening (http/https only), installers (per-user for the crawler), Opsis plugin search paths (user folders; the elevated helper branch exits before plugins load), no secrets in the repo.
 Not done / residual: the installers are not code-signed (SmartScreen warning, and the checksum only protects against a damaged or swapped file, not a hijacked release); the plugin DLL loader trusts every `*Plugin.dll` in the user's plugin folders (same trust as running a program as that user); feed URLs the user adds may point to the local network on purpose; WPF is loaded for taskbar measurement (+~40 MB working set).
+
+## Round 9 — settings window: preview, layout, performance (2026-10-14, version 0.8.1)
+- ✅ Preview of the bars (`BarPreview`) at the bottom of the Bars, Position, Look and Breaking tabs: a mock desktop with wallpaper, taskbar (start, apps, tray) and the bars drawn as the current (not yet applied) choices would show them — position (above the taskbar / top / centre / custom / inside the taskbar), content (news / prices / both split, prices left or right), second bar, colour (theme, light blue, accent, own colour, like the taskbar), transparency, background material, fading ends, light/dark theme. Refreshes 4× per second while visible only.
+- ✅ Look tab: the colour/material drop-downs were cut ("…Opsis και…"); widened.
+- ✅ Idle CPU of the running bar: 0.47 % of one core. Settings window builds in about 1 s.
+- ✅ Test aid: `OpsisNewsCrawler.exe --snapshot <folder> [--config <file>]` saves every settings tab as PNG (no need for the window to be on screen).
+- ⏳ Not checked: the preview in the Opsis-hosted page, a very small settings window, right-to-left layout of Arabic.
