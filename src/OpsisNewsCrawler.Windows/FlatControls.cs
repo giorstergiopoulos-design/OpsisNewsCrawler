@@ -1,3 +1,4 @@
+using OpsisNewsCrawler.Core;
 using System.Drawing.Drawing2D;
 
 namespace OpsisNewsCrawler.Windows;
@@ -687,7 +688,7 @@ internal sealed class FlatCard : Panel
         AutoSizeMode = AutoSizeMode.GrowAndShrink;
         Padding = new Padding(18, 34, 18, 14);
         Margin = new Padding(0, 8, 0, 8);
-        heading.Text = title.ToUpperInvariant();
+        heading.Text = Loc.Upper(title);
         heading.Location = new Point(18, 12);
         base.Controls.Add(heading);
         base.Controls.Add(body);

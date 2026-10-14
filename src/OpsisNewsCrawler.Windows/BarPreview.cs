@@ -46,7 +46,7 @@ internal sealed class BarPreview : Control
         var title = Loc.T("preview.title");
         using (var titleFont = new Font("Segoe UI Semibold", 8.5f))
         using (var muted = new SolidBrush(Theme.Accent))
-            g.DrawString(title.ToUpperInvariant(), titleFont, muted, 4, 2);
+            g.DrawString(Loc.Upper(title), titleFont, muted, 4, 2);
 
         var desk = new Rectangle(0, 20, Width - 1, Height - 21);
         using (var path = Round(desk, 10))

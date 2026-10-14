@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text;
 using System.Text.Json;
 
 namespace OpsisNewsCrawler.Core;
@@ -89,6 +90,17 @@ public static class Loc
     {
         try { return string.Format(T(key), args); }
         catch (FormatException) { return T(key); }
+    }
+
+    /// <summary>Capital letters for headings: Greek capitals are written without accents ("ΜΕΤΟΧΕΣ", not "ΜΕΤΟΧΈΣ").</summary>
+    public static string Upper(string text)
+    {
+        var upper = text.ToUpperInvariant();
+        if (!upper.Any(c => c is >= 'Ά' and <= 'Ͽ')) return upper;
+        var sb = new StringBuilder(upper.Length);
+        foreach (var c in upper)
+            sb.Append(c switch { 'Ά' => 'Α', 'Έ' => 'Ε', 'Ή' => 'Η', 'Ί' => 'Ι', 'Ό' => 'Ο', 'Ύ' => 'Υ', 'Ώ' => 'Ω', 'Ϊ' => 'Ι', 'Ϋ' => 'Υ', _ => c });
+        return sb.ToString();
     }
 
     /// <summary>Picks the Greek or English variant of a two-language value (e.g. a category name stored in the config).</summary>

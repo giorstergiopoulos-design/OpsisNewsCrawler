@@ -264,20 +264,7 @@ internal sealed class TickerCanvas : Control
         (int)Math.Ceiling(MeasureGraphics.MeasureString(text, font, PointF.Empty, TextFormat).Width);
 
     /// <summary>Greek capitals are written without accents ("ΕΚΤΑΚΤΗ", not "ΈΚΤΑΚΤΗ").</summary>
-    internal static string UpperNoAccents(string text)
-    {
-        var upper = text.ToUpper(CultureInfo.GetCultureInfo("el-GR"));
-        var sb = new StringBuilder(upper.Length);
-        foreach (var c in upper)
-        {
-            sb.Append(c switch
-            {
-                'Ά' => 'Α', 'Έ' => 'Ε', 'Ή' => 'Η', 'Ί' => 'Ι', 'Ό' => 'Ο', 'Ύ' => 'Υ', 'Ώ' => 'Ω', 'Ϊ' => 'Ι', 'Ϋ' => 'Υ',
-                _ => c
-            });
-        }
-        return sb.ToString();
-    }
+    internal static string UpperNoAccents(string text) => Loc.Upper(text);
 
     private void BuildLayout()
     {
