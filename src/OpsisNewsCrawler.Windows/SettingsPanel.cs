@@ -39,6 +39,14 @@ public sealed class SettingsPanel : UserControl
     private FlatCheck stocksLeft = null!;
     private FlatCheck secondEnabled = null!;
     private FlatCombo secondContent = null!;
+    private readonly List<(Screen Screen, FlatCheck Check, FlatCombo Content)> monitorRows = new();
+    private FlatCheck autoUpdate = null!;
+    private Label updateStatus = null!;
+    private FlatButton installUpdate = null!;
+    private FlatButton openUpdatePage = null!;
+    private FlatList laterList = null!;
+    private Label laterStatus = null!;
+    private List<SavedArticle> laterShown = new();
     private Label secondNote = null!;
 
     // Position
@@ -118,10 +126,12 @@ public sealed class SettingsPanel : UserControl
         this.showCloseButton = showCloseButton;
         this.showAboutTabs = showAboutTabs;
         Dock = DockStyle.Fill;
+        RightToLeft = Loc.IsRtl ? RightToLeft.Yes : RightToLeft.No;
         Font = new Font("Segoe UI", 9.5f);
         DoubleBuffered = true;
 
         host.CustomBoundsChanged += OnCustomBoundsChanged;
+        host.ReadLater.Changed += OnReadLaterChanged;
         Theme.Changed += OnThemeChanged;
         Loc.Changed += OnLanguageChanged;
         previewTimer.Tick += (_, _) => UpdatePreview();
@@ -135,6 +145,7 @@ public sealed class SettingsPanel : UserControl
         {
             previewTimer.Dispose();
             host.CustomBoundsChanged -= OnCustomBoundsChanged;
+            host.ReadLater.Changed -= OnReadLaterChanged;
             Theme.Changed -= OnThemeChanged;
             Loc.Changed -= OnLanguageChanged;
         }
@@ -183,6 +194,7 @@ public sealed class SettingsPanel : UserControl
 
     private void Rebuild()
     {
+        RightToLeft = Loc.IsRtl ? RightToLeft.Yes : RightToLeft.No;
         var selectedTab = built ? tabs.SelectedIndex : 0;
         SuspendLayout();
         foreach (var c in Controls.Cast<Control>().ToList()) c.Dispose();
@@ -205,6 +217,7 @@ public sealed class SettingsPanel : UserControl
         tabs.AddPage(L("tab.markets"), BuildMarkets());
         tabs.AddPage(L("tab.look"), BuildLook());
         tabs.AddPage(L("tab.breaking"), BuildBreaking());
+        tabs.AddPage(L("tab.readLater"), BuildReadLater());
         if (showAboutTabs)
         {
             tabs.AddPage(L("tab.help"), BuildText(AboutTexts.Help));
@@ -300,6 +313,29 @@ public sealed class SettingsPanel : UserControl
             SetStatus(L("msg.readCleared"));
         };
         flow.Controls.Add(reset);
+
+        // Updates: only on request or once a day when the user allows it; nothing is installed without a click.
+        var updates = new FlatCard(L("card.updates"));
+        var updFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        autoUpdate = new FlatCheck { Text = L("chk.autoUpdate") };
+        updFlow.Controls.Add(autoUpdate);
+        var checkNow = new FlatButton { Text = L("btn.checkNow") };
+        installUpdate = new FlatButton { Text = L("btn.installUpdate"), Visible = false };
+        openUpdatePage = new FlatButton { Text = L("btn.openPage"), Visible = false };
+        var updButtons = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Margin = new Padding(0, 4, 0, 0) };
+        updButtons.Controls.Add(checkNow);
+        updButtons.Controls.Add(installUpdate);
+        updButtons.Controls.Add(openUpdatePage);
+        updFlow.Controls.Add(updButtons);
+        updateStatus = new Label { AutoSize = true, Tag = "muted", MaximumSize = new Size(560, 0), Margin = new Padding(0, 6, 0, 0), Text = " " };
+        updFlow.Controls.Add(updateStatus);
+        updFlow.Controls.Add(Note(L("note.updates"), 560));
+        updates.Controls.Add(updFlow);
+        flow.Controls.Add(updates);
+        checkNow.Click += async (_, _) => await CheckUpdatesNowAsync(checkNow);
+        installUpdate.Click += async (_, _) => await InstallUpdateAsync();
+        openUpdatePage.Click += (_, _) => { if (host.AvailableUpdate is { } u) OpenInBrowser(u.PageUrl); };
+        ShowUpdateState();
         return page;
     }
 
@@ -344,6 +380,25 @@ public sealed class SettingsPanel : UserControl
         secondFlow.Controls.Add(secondNote);
         second.Controls.Add(secondFlow);
         flow.Controls.Add(second);
+
+        // One bar on every other monitor, each with its own content.
+        var monitors = new FlatCard(L("card.monitors"));
+        var monitorFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        monitorRows.Clear();
+        var others = Screen.AllScreens.Where(s => !s.Primary).ToList();
+        for (var i = 0; i < others.Count; i++)
+        {
+            var s = others[i];
+            var check = new FlatCheck { Text = Loc.T("fmt.monitor", Array.IndexOf(Screen.AllScreens, s) + 1, s.Bounds.Width, s.Bounds.Height) };
+            var content = new FlatCombo { Width = 340 };
+            content.SetItems(new[] { L("content.news"), L("content.stocks"), L("content.both") }, 0);
+            monitorFlow.Controls.Add(check);
+            monitorFlow.Controls.Add(Row(L("lbl.content"), content, 200));
+            monitorRows.Add((s, check, content));
+        }
+        monitorFlow.Controls.Add(Note(others.Count > 0 ? L("note.monitors") : L("note.noOtherMonitor"), 560));
+        monitors.Controls.Add(monitorFlow);
+        flow.Controls.Add(monitors);
 
         mainContent.SelectedIndexChanged += (_, _) => UpdateBarsUi();
         secondEnabled.CheckedChanged += (_, _) => UpdateBarsUi();
@@ -468,6 +523,124 @@ public sealed class SettingsPanel : UserControl
         return page;
     }
 
+    // ---- updates -----------------------------------------------------------------------------
+
+    private void ShowUpdateState()
+    {
+        if (updateStatus is null || updateStatus.IsDisposed) return;
+        var u = host.AvailableUpdate;
+        installUpdate.Visible = u is not null && !host.HostedByOpsis && u.SetupUrl is not null && u.ChecksumUrl is not null;
+        openUpdatePage.Visible = u is not null;
+        if (u is not null) updateStatus.Text = Loc.T("msg.updateAvailable", u.Version, AboutTexts.Version);
+    }
+
+    private async Task CheckUpdatesNowAsync(FlatButton button)
+    {
+        button.Enabled = false;
+        updateStatus.Text = L("msg.checking");
+        try
+        {
+            var found = await host.CheckForUpdatesAsync();
+            if (IsDisposed) return;
+            if (found is null) updateStatus.Text = Loc.T("msg.upToDate", AboutTexts.Version);
+            ShowUpdateState();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException)
+        {
+            if (!IsDisposed) updateStatus.Text = L("msg.updateFailed");
+        }
+        finally
+        {
+            if (!button.IsDisposed) button.Enabled = true;
+        }
+    }
+
+    private async Task InstallUpdateAsync()
+    {
+        if (host.AvailableUpdate is not { } u) return;
+        installUpdate.Enabled = false;
+        updateStatus.Text = L("msg.downloading");
+        var result = await UpdateInstaller.DownloadAndStartAsync(u);
+        if (IsDisposed) return;
+        installUpdate.Enabled = true;
+        updateStatus.Text = result switch
+        {
+            UpdateInstaller.Result.Started => L("msg.updateStarted"),
+            UpdateInstaller.Result.ChecksumMismatch or UpdateInstaller.Result.ChecksumMissing => L("msg.verifyFailed"),
+            _ => L("msg.updateFailed")
+        };
+    }
+
+    // ---- read later ------------------------------------------------------------------------
+
+    private Control BuildReadLater()
+    {
+        var page = NewPage(out var flow);
+        flow.Controls.Add(Note(L("note.readLater"), 700));
+        var card = new FlatCard(L("tab.readLater"));
+        var inner = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        laterList = new FlatList { Width = 800, Height = 320 };
+        laterList.SetShowChecks(true);
+        inner.Controls.Add(laterList);
+        var open = new FlatButton { Text = L("btn.open") };
+        var remove = new FlatButton { Text = L("btn.removeFeed") };
+        var all = new FlatButton { Text = L("btn.selectAll") };
+        var buttons = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Margin = new Padding(0, 6, 0, 0) };
+        buttons.Controls.Add(open);
+        buttons.Controls.Add(remove);
+        buttons.Controls.Add(all);
+        inner.Controls.Add(buttons);
+        laterStatus = new Label { AutoSize = true, Tag = "muted", MaximumSize = new Size(780, 0), Margin = new Padding(0, 6, 0, 0) };
+        inner.Controls.Add(laterStatus);
+        card.Controls.Add(inner);
+        flow.Controls.Add(card);
+
+        open.Click += (_, _) =>
+        {
+            foreach (var a in CheckedLater().Take(20)) OpenInBrowser(a.Url);
+        };
+        remove.Click += (_, _) => host.ReadLater.Remove(CheckedLater().Select(a => a.Url));
+        all.Click += (_, _) =>
+        {
+            for (var i = 0; i < laterShown.Count; i++) laterList.SetChecked(i, true);
+        };
+        RefreshReadLater();
+        return page;
+    }
+
+    private List<SavedArticle> CheckedLater() =>
+        laterShown.Where((_, i) => laterList.GetChecked(i)).ToList();
+
+    private void OnReadLaterChanged()
+    {
+        if (IsDisposed) return;
+        if (InvokeRequired) BeginInvoke(new Action(RefreshReadLater));
+        else RefreshReadLater();
+    }
+
+    private void RefreshReadLater()
+    {
+        if (laterList is null || laterList.IsDisposed) return;
+        laterShown = host.ReadLater.Items.ToList();
+        laterList.ClearRows();
+        foreach (var a in laterShown)
+            laterList.AddRow($"{a.Source}  —  {a.Title}", false);
+        laterStatus.Text = laterShown.Count == 0 ? L("msg.readLaterEmpty") : Loc.T("fmt.readLaterCount", laterShown.Count);
+    }
+
+    /// <summary>Opens a saved article in the browser (http/https only).</summary>
+    private static void OpenInBrowser(string url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https")) return;
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+        }
+    }
+
     private Control BuildMarkets()
     {
         var page = NewPage(out var flow);
@@ -484,7 +657,15 @@ public sealed class SettingsPanel : UserControl
         marketRow.Controls.Add(refreshCatalog);
         inner.Controls.Add(Row(L("lbl.market"), marketRow, 150));
         stockSearch = new FlatText { Width = 360 };
-        inner.Controls.Add(Row(L("lbl.search"), stockSearch, 150));
+        var selectAll = new FlatButton { Text = L("btn.selectAll") };
+        var selectNone = new FlatButton { Text = L("btn.selectNone") };
+        var searchRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
+        searchRow.Controls.Add(stockSearch);
+        searchRow.Controls.Add(selectAll);
+        searchRow.Controls.Add(selectNone);
+        selectAll.Click += (_, _) => SetAllVisibleStocks(true);
+        selectNone.Click += (_, _) => SetAllVisibleStocks(false);
+        inner.Controls.Add(Row(L("lbl.search"), searchRow, 150));
         stockList = new FlatList { Width = 680, Height = 340 };
         stockList.SetShowChecks(true);
         inner.Controls.Add(stockList);
@@ -595,6 +776,13 @@ public sealed class SettingsPanel : UserControl
         var chosen = workWatch.Count(w => w.Market == SelectedMic && w.Enabled);
         var stamp = EuronextCatalog.CacheTime(SelectedMic);
         stockStatus.Text = Loc.T("fmt.sharesCount", chosen, total) + (stamp is { } t ? "  ·  " + Loc.T("fmt.listDate", t.ToString("dd/MM/yyyy")) : "");
+    }
+
+    /// <summary>Ticks or unticks every share that is listed right now (the search filter applies).</summary>
+    private void SetAllVisibleStocks(bool isChecked)
+    {
+        for (var i = 0; i < visibleStocks.Count; i++) ToggleStock(i, isChecked);
+        ShowStocks();
     }
 
     private void ToggleStock(int index, bool isChecked)
@@ -795,11 +983,18 @@ public sealed class SettingsPanel : UserControl
             preview.Checked = c.ShowPreview;
             pauseOther.Checked = c.PauseOnOtherWindow;
             hideRead.Checked = c.HideRead;
+            autoUpdate.Checked = c.CheckForUpdates;
 
             mainContent.SelectSilently((int)c.MainContent);
             stocksLeft.Checked = c.SplitStocksOnLeft;
             secondEnabled.Checked = c.SecondBarEnabled;
             secondContent.SelectSilently(c.SecondContent == BarContent.News ? 0 : 1);
+            foreach (var (screen, check, content) in monitorRows)
+            {
+                var saved = c.MonitorBars.FirstOrDefault(m => string.Equals(m.Device, screen.DeviceName, StringComparison.OrdinalIgnoreCase));
+                check.Checked = saved?.Enabled ?? false;
+                content.SelectSilently(saved is null ? 0 : (int)saved.Content);
+            }
 
             position.SelectSilently(Math.Clamp((int)c.Position, 0, 4));
             followTaskbar.Checked = c.FollowTaskbar;
@@ -890,11 +1085,16 @@ public sealed class SettingsPanel : UserControl
         c.ShowPreview = preview.Checked;
         c.PauseOnOtherWindow = pauseOther.Checked;
         c.HideRead = hideRead.Checked;
+        c.CheckForUpdates = autoUpdate.Checked;
 
         c.MainContent = (BarContent)Math.Max(0, mainContent.SelectedIndex);
         c.SplitStocksOnLeft = stocksLeft.Checked;
         c.SecondBarEnabled = secondEnabled.Checked && position.SelectedIndex != (int)TickerPosition.TaskbarIntegrated;
         c.SecondContent = secondContent.SelectedIndex == 0 ? BarContent.News : BarContent.Stocks;
+        // Extra bars of the monitors shown here; entries of monitors that are not connected right now are kept.
+        var shown = monitorRows.Select(r => r.Screen.DeviceName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        c.MonitorBars = c.MonitorBars.Where(m => !shown.Contains(m.Device)).Concat(monitorRows.Select(r =>
+            new MonitorBar { Device = r.Screen.DeviceName, Enabled = r.Check.Checked, Content = (BarContent)Math.Max(0, r.Content.SelectedIndex) })).ToList();
 
         c.Position = (TickerPosition)Math.Max(0, position.SelectedIndex);
         c.FollowTaskbar = followTaskbar.Checked;

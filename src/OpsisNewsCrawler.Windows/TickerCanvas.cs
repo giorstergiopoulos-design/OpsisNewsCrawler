@@ -55,6 +55,14 @@ internal sealed class TickerCanvas : Control
     private static readonly Bitmap MeasureBitmap = new(1, 1);
     private static readonly Graphics MeasureGraphics = CreateMeasureGraphics();
     private static readonly StringFormat TextFormat = CreateFormat();
+    private static readonly StringFormat TextFormatRtl = CreateRtlFormat();
+
+    private static StringFormat CreateRtlFormat()
+    {
+        var f = CreateFormat();
+        f.FormatFlags |= StringFormatFlags.DirectionRightToLeft;
+        return f;
+    }
 
     private static Graphics CreateMeasureGraphics()
     {
@@ -294,6 +302,8 @@ internal sealed class TickerCanvas : Control
     {
         var e = entries[index];
         var left = Origin() + e.X + copy * loop - ScrollPixels() - HoverPad;
+        // Right-to-left: the same layout mirrored, so the items run from the right edge and the strip moves to the right.
+        if (Loc.IsRtl) left = Width - (Origin() + e.X + copy * loop - ScrollPixels()) - (e.Width - ItemGap) - HoverPad;
         return new Rectangle(left, 4, e.Width - ItemGap + 2 * HoverPad, Math.Max(1, Height - 8));
     }
 
@@ -396,6 +406,7 @@ internal sealed class TickerCanvas : Control
             g.InterpolationMode = InterpolationMode.HighQualityBicubic;
             DrawContent(g);
             if (liveVisible && alertT < 0) DrawLiveButton(g);
+            if (toastText is not null && Environment.TickCount64 < toastUntil) DrawToast(g);
         }
 
         if (edgeFade && !editHint && IsScrollable() && solidFill is null) ApplyEdgeFade(buffer);
@@ -410,6 +421,30 @@ internal sealed class TickerCanvas : Control
         // Copy, don't blend: the alpha channel of the frame goes to the window as it is.
         e.Graphics.CompositingMode = CompositingMode.SourceCopy;
         e.Graphics.DrawImageUnscaled(buffer, 0, 0);
+    }
+
+    private string? toastText;
+    private long toastUntil;
+
+    /// <summary>A short message in the middle of the bar (about 2 seconds), e.g. "saved to read later".</summary>
+    public void ShowToast(string text)
+    {
+        toastText = text;
+        toastUntil = Environment.TickCount64 + 2000;
+        Invalidate();
+    }
+
+    private void DrawToast(Graphics g)
+    {
+        using var font = new Font("Segoe UI Semibold", 10f);
+        var size = g.MeasureString(toastText!, font);
+        var rect = new RectangleF((Width - size.Width) / 2f - 14, (Height - size.Height) / 2f - 3, size.Width + 28, size.Height + 6);
+        using var path = RoundedRect(Rectangle.Round(rect), 8);
+        using var back = new SolidBrush(Color.FromArgb(235, 24, 24, 28));
+        g.FillPath(back, path);
+        using var text = new SolidBrush(Color.White);
+        using var center = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+        g.DrawString(toastText!, font, text, rect, center);
     }
 
     private Color FillColor()
@@ -537,6 +572,11 @@ internal sealed class TickerCanvas : Control
         }
 
         var isQuote = entry.Item.Kind == NewsItemKind.Quote;
+        if (Loc.IsRtl)
+        {
+            DrawEntryRtl(g, entry, left, textY, hovered, isQuote);
+            return;
+        }
         float x = left;
         if (showIcons && !isQuote)
         {
@@ -551,6 +591,29 @@ internal sealed class TickerCanvas : Control
         var color = isQuote ? TrendColor(entry.Item.Trend) : hovered ? hoverTitleColor : titleColor;
         using var titleBrush = new SolidBrush(color);
         g.DrawString(entry.Title, titleFont, titleBrush, x, textY, TextFormat);
+    }
+
+    /// <summary>Mirrored entry: the icon is at the right end, then the source, then the title towards the left.</summary>
+    private void DrawEntryRtl(Graphics g, Entry entry, int logicalLeft, float textY, bool hovered, bool isQuote)
+    {
+        var contentWidth = entry.Width - ItemGap;
+        var x = (float)(Width - logicalLeft); // right edge of the entry
+        var hasIcon = showIcons && !isQuote;
+        if (hasIcon)
+        {
+            DrawIcon(g, entry, new Rectangle((int)x - IconSize, (Height - IconSize) / 2, IconSize, IconSize));
+            x -= IconSize + IconGap;
+        }
+
+        var sourceWidth = entry.SourceWidth;
+        using (var sourceBrush = new SolidBrush(sourceColor))
+            g.DrawString(entry.Source + ":", sourceFont, sourceBrush, new RectangleF(x - sourceWidth - 4, textY, sourceWidth + 8, textHeight + 2), TextFormatRtl);
+        x -= sourceWidth + SourceTitleGap;
+
+        var titleWidth = Math.Max(10, contentWidth - (hasIcon ? IconSize + IconGap : 0) - sourceWidth - SourceTitleGap);
+        var color = isQuote ? TrendColor(entry.Item.Trend) : hovered ? hoverTitleColor : titleColor;
+        using var titleBrush = new SolidBrush(color);
+        g.DrawString(entry.Title, titleFont, titleBrush, new RectangleF(x - titleWidth - 4, textY, titleWidth + 8, textHeight + 2), TextFormatRtl);
     }
 
     private void DrawIcon(Graphics g, Entry entry, Rectangle rect)

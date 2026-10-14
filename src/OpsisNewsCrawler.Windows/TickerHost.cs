@@ -19,6 +19,9 @@ public sealed class TickerHost : IDisposable
     private readonly System.Windows.Forms.Timer quoteTimer = new();
     private readonly CancellationTokenSource cts = new();
     private readonly ReadStore readStore = new();
+
+    /// <summary>Articles kept with Ctrl+click.</summary>
+    public ReadLaterStore ReadLater { get; } = new();
     private List<NewsItem> allItems = new();
     private IReadOnlyList<NewsItem> stockItems = Array.Empty<NewsItem>();
     private bool refreshing;
@@ -49,6 +52,48 @@ public sealed class TickerHost : IDisposable
 
     /// <summary>The second bar, inside the taskbar; null while it is switched off.</summary>
     public TickerWindow? SecondWindow { get; private set; }
+
+    // One extra bar per other monitor (settings "Monitors"), each with its own scroll state.
+    private readonly Dictionary<string, (TickerWindow Window, TickerState State)> monitorWindows = new();
+
+    private IEnumerable<TickerWindow> ExtraWindows => monitorWindows.Values.Select(v => v.Window);
+
+    /// <summary>A newer release found by the last check (automatic or "Check now"), or null.</summary>
+    public UpdateInfo? AvailableUpdate { get; private set; }
+
+    /// <summary>Raised on the UI thread when an update check found a newer release.</summary>
+    public event Action<UpdateInfo>? UpdateFound;
+
+    /// <summary>Asks GitHub about a newer release. Returns null for "up to date", throws only network exceptions.</summary>
+    public async Task<UpdateInfo?> CheckForUpdatesAsync()
+    {
+        var current = Version.TryParse(AboutTexts.Version, out var v) ? v : new Version(0, 0);
+        var found = await UpdateChecker.CheckAsync(current, cts.Token);
+        Config.LastUpdateCheck = DateTimeOffset.Now;
+        SaveConfig();
+        AvailableUpdate = found;
+        if (found is not null && !disposed)
+        {
+            void Raise() => UpdateFound?.Invoke(found);
+            if (Window.IsHandleCreated && Window.InvokeRequired) Window.BeginInvoke(new Action(Raise)); else Raise();
+        }
+        return found;
+    }
+
+    private async Task AutoCheckForUpdatesAsync()
+    {
+        if (!Config.CheckForUpdates || DateTimeOffset.Now - Config.LastUpdateCheck < TimeSpan.FromHours(24)) return;
+        try
+        {
+            var found = await CheckForUpdatesAsync();
+            if (found is not null && Window.IsHandleCreated)
+                Window.BeginInvoke(new Action(() => Window.ShowToast(Loc.T("msg.updateAvailable", found.Version, AboutTexts.Version))));
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException)
+        {
+            // offline or GitHub unreachable: try again at the next start
+        }
+    }
 
     public string ConfigPath => configPath;
 
@@ -86,6 +131,7 @@ public sealed class TickerHost : IDisposable
             if (!Window.IsPausedByForeground) _ = RefreshQuotesAsync();
         };
         Loc.Changed += OnLanguageChanged;
+        Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplaysChanged;
         Window.LiveRequested += ToggleLivePreview;
         breakingTimer.Tick += (_, _) =>
         {
@@ -118,11 +164,17 @@ public sealed class TickerHost : IDisposable
             if (Config.HideRead && allItems.Count > 0) PushAll();
         };
         w.SettingsRequested += () => SettingsRequested?.Invoke();
+        w.ItemSaveRequested += item =>
+        {
+            var added = ReadLater.Add(item);
+            w.ShowToast(Loc.T(added ? "msg.savedLater" : "msg.alreadySaved"));
+        };
         w.ScrollSpeedChanged += speed =>
         {
             Config.ScrollSpeed = (int)Math.Round(speed);
             Window.ScrollSpeed = Config.ScrollSpeed;
             if (SecondWindow is not null) SecondWindow.ScrollSpeed = Config.ScrollSpeed;
+            foreach (var extra in ExtraWindows) extra.ScrollSpeed = Config.ScrollSpeed;
             SaveConfig();
         };
     }
@@ -172,10 +224,68 @@ public sealed class TickerHost : IDisposable
             SecondWindow.SetPosition(TickerPosition.TaskbarIntegrated);
         }
 
+        SyncMonitorWindows();
+
         refreshTimer.Interval = Config.RefreshIntervalSeconds * 1000;
         quoteTimer.Interval = Config.QuoteRefreshSeconds * 1000;
         PushAll();
         if (started) _ = RefreshQuotesAsync();
+    }
+
+    /// <summary>Screens that currently get an extra bar: enabled in the settings, still connected and not the primary one.</summary>
+    private IEnumerable<(MonitorBar Cfg, Screen Screen)> WantedMonitors() =>
+        Config.MonitorBars.Where(m => m.Enabled)
+            .Select(m => (Cfg: m, Screen: Screen.AllScreens.FirstOrDefault(s => string.Equals(s.DeviceName, m.Device, StringComparison.OrdinalIgnoreCase))))
+            .Where(x => x.Screen is { Primary: false })
+            .Select(x => (x.Cfg, x.Screen!));
+
+    private void SyncMonitorWindows()
+    {
+        var wanted = WantedMonitors().ToDictionary(x => x.Cfg.Device, StringComparer.OrdinalIgnoreCase);
+        foreach (var gone in monitorWindows.Keys.Where(k => !wanted.ContainsKey(k)).ToList())
+        {
+            var (w, _) = monitorWindows[gone];
+            w.StopTicker();
+            w.Dispose();
+            monitorWindows.Remove(gone);
+        }
+        foreach (var (device, x) in wanted)
+        {
+            if (!monitorWindows.TryGetValue(device, out var entry))
+            {
+                var state = new TickerState();
+                state.SetMode(Config.Mode);
+                var w = new TickerWindow(state, hostWindowDetector) { TargetScreen = x.Screen };
+                WireWindow(w);
+                entry = (w, state);
+                monitorWindows[device] = entry;
+                ConfigureWindow(w, TickerPosition.BottomTaskbar, main: false);
+                w.FollowTaskbar = true;
+                w.ReserveSpace = false;
+                w.SetBackdropStyle(Config.BarBackdrop);
+                w.SetBarColor(Config.BarColorMode, Config.BarCustomColor);
+                w.SetPosition(TickerPosition.BottomTaskbar);
+                if (started) w.StartTicker();
+            }
+            else
+            {
+                entry.Window.TargetScreen = x.Screen; // the screen may have moved or changed size
+                ConfigureWindow(entry.Window, TickerPosition.BottomTaskbar, main: false);
+                entry.Window.FollowTaskbar = true;
+                entry.Window.ReserveSpace = false;
+                entry.Window.SetBackdropStyle(Config.BarBackdrop);
+                entry.Window.SetBarColor(Config.BarColorMode, Config.BarCustomColor);
+                entry.Window.SetPosition(TickerPosition.BottomTaskbar);
+            }
+        }
+    }
+
+    private void OnDisplaysChanged(object? sender, EventArgs e)
+    {
+        // A monitor was connected, disconnected or rearranged: add, remove and move the extra bars.
+        if (disposed || !Window.IsHandleCreated) return;
+        try { Window.BeginInvoke(new Action(() => { if (!disposed) { SyncMonitorWindows(); PushAll(); } })); }
+        catch (InvalidOperationException) { }
     }
 
     private void ConfigureWindow(TickerWindow w, TickerPosition position, bool main)
@@ -237,11 +347,13 @@ public sealed class TickerHost : IDisposable
         PushAll();
         Window.StartTicker();
         SecondWindow?.StartTicker();
+        foreach (var extra in ExtraWindows) extra.StartTicker();
         refreshTimer.Start();
         quoteTimer.Start();
         breakingTimer.Start();
         _ = RefreshAsync(force: true);
         _ = RefreshQuotesAsync();
+        _ = AutoCheckForUpdatesAsync();
     }
 
     public void Stop()
@@ -253,18 +365,21 @@ public sealed class TickerHost : IDisposable
         quoteTimer.Stop();
         Window.StopTicker();
         SecondWindow?.StopTicker();
+        foreach (var extra in ExtraWindows) extra.StopTicker();
     }
 
     public void Pause()
     {
         Window.PauseTicker();
         SecondWindow?.PauseTicker();
+        foreach (var extra in ExtraWindows) extra.PauseTicker();
     }
 
     public void Resume()
     {
         Window.ResumeTicker();
         SecondWindow?.ResumeTicker();
+        foreach (var extra in ExtraWindows) extra.ResumeTicker();
     }
 
     public void Refresh()
@@ -311,8 +426,10 @@ public sealed class TickerHost : IDisposable
 
     // ---- what the bars show ---------------------------------------------------------------
 
-    private bool NeedsNews => Config.MainContent != BarContent.Stocks || (Config.SecondBarEnabled && Config.SecondContent != BarContent.Stocks);
-    private bool NeedsStocks => Config.MainContent != BarContent.News || (Config.SecondBarEnabled && Config.SecondContent != BarContent.News);
+    private bool NeedsNews => Config.MainContent != BarContent.Stocks || (Config.SecondBarEnabled && Config.SecondContent != BarContent.Stocks) || ExtraContents().Any(c => c != BarContent.Stocks);
+    private bool NeedsStocks => Config.MainContent != BarContent.News || (Config.SecondBarEnabled && Config.SecondContent != BarContent.News) || ExtraContents().Any(c => c != BarContent.News);
+
+    private IEnumerable<BarContent> ExtraContents() => WantedMonitors().Select(x => x.Cfg.Content);
 
     private IReadOnlyList<NewsItem> NewsForDisplay()
     {
@@ -342,6 +459,8 @@ public sealed class TickerHost : IDisposable
             PushTo(Window, State, Config.MainContent);
         }
         if (SecondWindow is not null) PushTo(SecondWindow, State2, Config.SecondContent);
+        foreach (var (cfg, _) in WantedMonitors())
+            if (monitorWindows.TryGetValue(cfg.Device, out var extra)) PushTo(extra.Window, extra.State, cfg.Content);
     }
 
     private void PushTo(TickerWindow w, TickerState st, BarContent content)
@@ -531,6 +650,7 @@ public sealed class TickerHost : IDisposable
         if (disposed) return;
         disposed = true;
         Loc.Changed -= OnLanguageChanged;
+        Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplaysChanged;
         cts.Cancel();
         refreshTimer.Dispose();
         quoteTimer.Dispose();
@@ -538,6 +658,8 @@ public sealed class TickerHost : IDisposable
         CloseLivePreview();
         news.Dispose();
         SecondWindow?.Dispose();
+        foreach (var extra in ExtraWindows) extra.Dispose();
+        monitorWindows.Clear();
         Window.Dispose();
         cts.Dispose();
     }

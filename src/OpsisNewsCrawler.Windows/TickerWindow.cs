@@ -60,6 +60,19 @@ public sealed class TickerWindow : Form
     /// <summary>The user clicked an article (it was opened in the browser).</summary>
     public event Action<NewsItem>? ItemOpened;
 
+    /// <summary>The user Ctrl+clicked an article: save it to the read-later list.</summary>
+    public event Action<NewsItem>? ItemSaveRequested;
+
+    /// <summary>Shows a short message on the bar.</summary>
+    public void ShowToast(string text)
+    {
+        canvas.ShowToast(text);
+        if (canvasB.Visible) canvasB.ShowToast(text);
+        var t = new System.Windows.Forms.Timer { Interval = 2100 };
+        t.Tick += (_, _) => { t.Dispose(); if (!IsDisposed) { canvas.Invalidate(); canvasB.Invalidate(); } };
+        t.Start();
+    }
+
     /// <summary>The user right-clicked the strip and wants the settings.</summary>
     public event Action? SettingsRequested;
 
@@ -168,6 +181,11 @@ public sealed class TickerWindow : Form
             c.HoverChanged += OnHoverChanged;
             c.ItemClicked += item =>
             {
+                if ((ModifierKeys & Keys.Control) != 0 && item.Kind == NewsItemKind.News)
+                {
+                    ItemSaveRequested?.Invoke(item); // Ctrl+click: keep it for later instead of opening it
+                    return;
+                }
                 OpenUrl(item.Url);
                 ItemOpened?.Invoke(item);
             };
@@ -592,8 +610,12 @@ public sealed class TickerWindow : Form
         }
     }
 
+    /// <summary>A bar for another monitor: sits at the bottom of that screen's work area, nothing else of the primary taskbar logic applies.</summary>
+    public Screen? TargetScreen { get; set; }
+
     private Rectangle BottomStrip(Screen screen, int h)
     {
+        if (TargetScreen is not null) return TaskbarPlacement.GetBottomWorkArea(screen, h);
         var b = screen.Bounds;
         if (!FollowTaskbar) return TaskbarPlacement.GetScreenBottom(screen, h);
         if (Native.IsTaskbarAutoHide())
@@ -607,7 +629,7 @@ public sealed class TickerWindow : Form
 
     public void Reposition()
     {
-        var screen = Screen.PrimaryScreen ?? Screen.AllScreens[0];
+        var screen = TargetScreen ?? Screen.PrimaryScreen ?? Screen.AllScreens[0];
         var wa = screen.WorkingArea;
         var h = TickerHeight;
         var wantAppBar = running && ReserveSpace && position is TickerPosition.Top or TickerPosition.BottomTaskbar;
@@ -671,7 +693,7 @@ public sealed class TickerWindow : Form
 
     private void FollowTaskbarTick()
     {
-        if (!running || editMode) return;
+        if (!running || editMode || TargetScreen is not null) return;
         taskbarTick++;
         if (taskbarTick % 30 == 1) autoHide = Native.IsTaskbarAutoHide();
 

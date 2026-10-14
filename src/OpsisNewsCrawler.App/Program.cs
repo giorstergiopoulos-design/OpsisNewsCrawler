@@ -25,7 +25,8 @@ internal static class Program
 
         ApplicationConfiguration.Initialize();
 
-        using var host = new TickerHost();
+        var configAt = Array.IndexOf(args, "--config");
+        using var host = new TickerHost(configAt >= 0 && configAt + 1 < args.Length ? args[configAt + 1] : null);
         var settings = new SettingsForm(host);
 
         using var tray = new NotifyIcon

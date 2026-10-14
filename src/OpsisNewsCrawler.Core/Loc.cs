@@ -20,6 +20,9 @@ public static class Loc
 
     public static bool IsGreek => Language == "el";
 
+    /// <summary>Right-to-left languages (Arabic, Hebrew, Persian, Urdu): layouts are mirrored and tickers run the other way.</summary>
+    public static bool IsRtl => Language is "ar" or "he" or "fa" or "ur";
+
     public static event Action? Changed;
 
     static Loc()

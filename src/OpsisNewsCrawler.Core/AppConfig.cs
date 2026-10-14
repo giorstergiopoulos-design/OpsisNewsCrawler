@@ -50,6 +50,10 @@ public sealed class AppConfig
     public bool ShowIcons { get; set; } = true;
     public bool HideRead { get; set; } = true;
 
+    /// <summary>Ask GitHub once a day whether a newer release exists. Off until the user turns it on; nothing is installed without asking.</summary>
+    public bool CheckForUpdates { get; set; }
+    public DateTimeOffset LastUpdateCheck { get; set; } = DateTimeOffset.MinValue;
+
     /// <summary>Fade the text out at both ends of the bar.</summary>
     public bool EdgeFade { get; set; }
 
@@ -62,6 +66,9 @@ public sealed class AppConfig
 
     // Custom position (screen coordinates; CustomWidth 0 = not set yet).
     public int CustomMonitor { get; set; }
+
+    /// <summary>Extra bars on the other monitors (one per screen, each with its own content). The main bar stays on the primary screen.</summary>
+    public List<MonitorBar> MonitorBars { get; set; } = new();
     public int CustomX { get; set; }
     public int CustomY { get; set; }
     public int CustomWidth { get; set; }
@@ -348,4 +355,13 @@ public sealed class AppConfig
         if (Position == TickerPosition.TaskbarIntegrated) SecondBarEnabled = false;
         Feeds = new(); // migrated; not written back
     }
+}
+
+/// <summary>One extra bar on a monitor other than the primary one.</summary>
+public sealed class MonitorBar
+{
+    /// <summary>Windows device name of the screen, e.g. \.\DISPLAY2.</summary>
+    public string Device { get; set; } = "";
+    public bool Enabled { get; set; }
+    public BarContent Content { get; set; } = BarContent.News;
 }
