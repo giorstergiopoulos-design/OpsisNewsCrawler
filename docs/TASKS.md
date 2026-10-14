@@ -124,3 +124,10 @@ Not done / residual: the installers are not code-signed (SmartScreen warning, an
 - ✅ Switch "Show the bars" (General tab and tray menu): off = every bar hidden and nothing downloaded.
 - ✅ New instruments: cryptocurrencies BTC and ETH (gold-api.com, real time), currency pairs EUR/USD, EUR/GBP, EUR/CHF, USD/JPY, GBP/USD (Frankfurter = ECB reference rates, once per working day). All off until ticked in Markets.
 - ℹ️ Oil and gas: FRED/EIA is the only keyless, terms-compliant source and it is published with about a week's delay (latest 06/10 on 14/10); the bar shows that date. Stooq, Yahoo, Investing etc. are not allowed (robots.txt/terms). Fresher data needs a user-supplied free API key (e.g. OilPriceAPI) — not implemented.
+
+## Round 12 — version 0.10.0: weather (2026-10-14)
+- ✅ 71 Greek cities (regional-unit capitals, plus Piraeus, Eleusis, Kropia, Hydra and well-known islands) in `Core/Weather.cs`; Open-Meteo, one request for all.
+- ✅ "Weather" is a content of any bar (main, second, other monitors); each item = drawn icon (clear, partly cloudy, cloudy, fog, drizzle, rain, snow, thunder; moon at night), city, temperature with one decimal, wind speed + compass point, humidity. Compass letters and words translated in all 14 languages; city names Greek or English (other languages show English).
+- ✅ Tab "Weather": search, tick cities (order of ticking = order on the bar), select all / none; preview shows the weather bar.
+- ✅ Small desktop weather bar (`WeatherBarWindow`): one city, drag to move (position saved), click = next selected city, right-click = settings, optional "above other windows". Seen on screen (Santorini, 17,3 °C). 🟡 It is the crawler's own window; if Opsis has its own time/weather/city widget on the desktop, putting the crawler's weather inside it needs a change on the Opsis side (not done).
+- 🟡 Not checked: weather in a hosted Opsis page, other monitors' weather bar, Arabic layout of the small bar.

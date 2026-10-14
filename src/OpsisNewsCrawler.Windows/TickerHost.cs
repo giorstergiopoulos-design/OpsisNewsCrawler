@@ -131,6 +131,7 @@ public sealed class TickerHost : IDisposable
             if (!Window.IsPausedByForeground) _ = RefreshQuotesAsync();
         };
         Loc.Changed += OnLanguageChanged;
+        weatherTimer.Tick += (_, _) => _ = RefreshWeatherAsync();
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplaysChanged;
         Window.LiveRequested += ToggleLivePreview;
         breakingTimer.Tick += (_, _) =>
@@ -184,6 +185,7 @@ public sealed class TickerHost : IDisposable
         // Texts built from the language (placeholders, quote labels) are rebuilt.
         _ = RefreshQuotesAsync(force: true);
         PushAll();
+        UpdateMiniWeather();
     }
 
     /// <summary>Set by the Opsis plugin: the UI language then follows Opsis, not the crawler's own setting.</summary>
@@ -229,7 +231,12 @@ public sealed class TickerHost : IDisposable
         refreshTimer.Interval = Config.RefreshIntervalSeconds * 1000;
         quoteTimer.Interval = Config.QuoteRefreshSeconds * 1000;
         PushAll();
-        if (BarsOn) _ = RefreshQuotesAsync();
+        if (BarsOn)
+        {
+            _ = RefreshQuotesAsync();
+            _ = RefreshWeatherAsync();
+            UpdateMiniWeather();
+        }
     }
 
     /// <summary>Screens that currently get an extra bar: enabled in the settings, still connected and not the primary one.</summary>
@@ -358,9 +365,12 @@ public sealed class TickerHost : IDisposable
         foreach (var extra in ExtraWindows) extra.StartTicker();
         refreshTimer.Start();
         quoteTimer.Start();
+        weatherTimer.Start();
         breakingTimer.Start();
         _ = RefreshAsync(force: true);
         _ = RefreshQuotesAsync();
+        _ = RefreshWeatherAsync();
+        UpdateMiniWeather();
     }
 
     private void StopBars()
@@ -369,9 +379,11 @@ public sealed class TickerHost : IDisposable
         CloseLivePreview();
         refreshTimer.Stop();
         quoteTimer.Stop();
+        weatherTimer.Stop();
         Window.StopTicker();
         SecondWindow?.StopTicker();
         foreach (var extra in ExtraWindows) extra.StopTicker();
+        UpdateMiniWeather(); // BarsOn is false now: the small bar goes away too
     }
 
     /// <summary>Raised after the master switch changed (tray menu and settings keep their check marks in step).</summary>
@@ -460,8 +472,8 @@ public sealed class TickerHost : IDisposable
 
     // ---- what the bars show ---------------------------------------------------------------
 
-    private bool NeedsNews => Config.MainContent != BarContent.Stocks || (Config.SecondBarEnabled && Config.SecondContent != BarContent.Stocks) || ExtraContents().Any(c => c != BarContent.Stocks);
-    private bool NeedsStocks => Config.MainContent != BarContent.News || (Config.SecondBarEnabled && Config.SecondContent != BarContent.News) || ExtraContents().Any(c => c != BarContent.News);
+    private bool NeedsNews => Config.MainContent is BarContent.News or BarContent.Both || (Config.SecondBarEnabled && Config.SecondContent is BarContent.News or BarContent.Both) || ExtraContents().Any(c => c is BarContent.News or BarContent.Both);
+    private bool NeedsStocks => Config.MainContent is BarContent.Stocks or BarContent.Both || (Config.SecondBarEnabled && Config.SecondContent is BarContent.Stocks or BarContent.Both) || ExtraContents().Any(c => c is BarContent.Stocks or BarContent.Both);
 
     private IEnumerable<BarContent> ExtraContents() => WantedMonitors().Select(x => x.Cfg.Content);
 
@@ -508,6 +520,10 @@ public sealed class TickerHost : IDisposable
             case BarContent.Stocks:
                 w.SetSplit(false);
                 w.SetItems(StocksForDisplay(), st.ScrollOffset);
+                break;
+            case BarContent.Weather:
+                w.SetSplit(false);
+                w.SetItems(WeatherForDisplay(), st.ScrollOffset);
                 break;
             default:
                 w.SetSplit(true);
@@ -585,7 +601,7 @@ public sealed class TickerHost : IDisposable
     /// <summary>Finds new urgent headlines; the first time one is seen the intro plays and the bar turns red.</summary>
     private void DetectBreaking(List<NewsItem> items)
     {
-        if (!Config.BreakingEnabled || Config.MainContent == BarContent.Stocks && !breakingActive) return;
+        if (!Config.BreakingEnabled || Config.MainContent is BarContent.Stocks or BarContent.Weather && !breakingActive) return;
         var maxAge = TimeSpan.FromMinutes(Config.BreakingMaxAgeMinutes);
         var urgent = items.Where(i => Breaking.IsBreaking(i, Config.BreakingKeywords, maxAge) && !readStore.IsRead(i.Url))
             .Select(i => i with { Breaking = true }).ToList();
@@ -649,6 +665,112 @@ public sealed class TickerHost : IDisposable
 
     private bool quotesFailed;
     private bool quoteRetryPending;
+
+    // ---- weather ---------------------------------------------------------------------------------
+
+    private readonly WeatherService weather = new();
+    private readonly System.Windows.Forms.Timer weatherTimer = new() { Interval = 15 * 60 * 1000 };
+    private IReadOnlyList<WeatherReading> weatherReadings = Array.Empty<WeatherReading>();
+    private bool refreshingWeather;
+    private bool hasWeather;
+    private WeatherBarWindow? miniWeather;
+
+    private bool NeedsWeather => Config.MainContent == BarContent.Weather || Config.SecondBarEnabled && Config.SecondContent == BarContent.Weather ||
+                                 ExtraContents().Any(c => c == BarContent.Weather) || Config.MiniWeatherEnabled;
+
+    private IReadOnlyList<NewsItem> WeatherForDisplay()
+    {
+        if (Config.WeatherCities.Count == 0) return new[] { Placeholder(Loc.T("ph.noCities")) };
+        var items = WeatherService.ToItems(Config.WeatherCities, weatherReadings, Loc.IsGreek);
+        return items.Count > 0 ? items : new[] { Placeholder(hasWeather ? Loc.T("ph.weatherUnavailable") : Loc.T("ph.loadingWeather")) };
+    }
+
+    private async Task RefreshWeatherAsync()
+    {
+        if (disposed || !NeedsWeather || refreshingWeather) return;
+        refreshingWeather = true;
+        try
+        {
+            var ids = Config.WeatherCities.Concat(new[] { Config.MiniWeatherCity }).Distinct().ToList();
+            var readings = await weather.FetchAsync(ids, cts.Token);
+            void Apply()
+            {
+                if (disposed) return;
+                hasWeather = true;
+                weatherReadings = readings;
+                PushAll();
+                UpdateMiniWeather();
+            }
+            if (!Window.IsHandleCreated) return;
+            if (Window.InvokeRequired) Window.BeginInvoke(new Action(Apply)); else Apply();
+            if (readings.Count == 0) _ = RetryWeatherLater();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            Log.Write($"weather failed: {ex.GetType().Name}: {ex.Message}");
+            hasWeather = true;
+            _ = RetryWeatherLater();
+        }
+        finally
+        {
+            refreshingWeather = false;
+        }
+    }
+
+    private async Task RetryWeatherLater()
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(60), cts.Token);
+            if (!disposed && BarsOn) _ = RefreshWeatherAsync();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    /// <summary>Creates, updates or removes the small weather bar of the desktop according to the settings.</summary>
+    private void UpdateMiniWeather()
+    {
+        if (disposed) return;
+        if (!(BarsOn && Config.MiniWeatherEnabled))
+        {
+            if (miniWeather is not null)
+            {
+                miniWeather.Dispose();
+                miniWeather = null;
+            }
+            return;
+        }
+        if (miniWeather is null)
+        {
+            miniWeather = new WeatherBarWindow();
+            miniWeather.Moved += p =>
+            {
+                Config.MiniWeatherX = p.X;
+                Config.MiniWeatherY = p.Y;
+                SaveConfig();
+            };
+            miniWeather.NextCityRequested += () =>
+            {
+                var list = Config.WeatherCities;
+                if (list.Count == 0) return;
+                var at = list.FindIndex(id => string.Equals(id, Config.MiniWeatherCity, StringComparison.OrdinalIgnoreCase));
+                Config.MiniWeatherCity = list[(at + 1) % list.Count];
+                SaveConfig();
+                _ = RefreshWeatherAsync();
+                UpdateMiniWeather();
+            };
+            miniWeather.SettingsRequested += () => SettingsRequested?.Invoke();
+            miniWeather.Place(Config.MiniWeatherX, Config.MiniWeatherY);
+            miniWeather.Show();
+        }
+        miniWeather.SetOnTop(Config.MiniWeatherOnTop);
+        miniWeather.SetReading(GreekCities.Find(Config.MiniWeatherCity), weatherReadings.FirstOrDefault(r => r.CityId == Config.MiniWeatherCity));
+    }
 
     /// <summary>After a failed run try again in a minute instead of waiting for the normal interval.</summary>
     private async void ScheduleQuoteRetry()
@@ -722,6 +844,8 @@ public sealed class TickerHost : IDisposable
         cts.Cancel();
         refreshTimer.Dispose();
         quoteTimer.Dispose();
+        weatherTimer.Dispose();
+        miniWeather?.Dispose();
         breakingTimer.Dispose();
         CloseLivePreview();
         news.Dispose();

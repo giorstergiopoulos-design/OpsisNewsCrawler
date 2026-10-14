@@ -41,6 +41,13 @@ public sealed class SettingsPanel : UserControl
     private FlatCombo secondContent = null!;
     private readonly List<(Screen Screen, FlatCheck Check, FlatCombo Content)> monitorRows = new();
     private FlatCheck autoUpdate = null!;
+    private FlatText citySearch = null!;
+    private FlatList cityList = null!;
+    private FlatCheck miniWeather = null!;
+    private FlatCombo miniCity = null!;
+    private FlatCheck miniOnTop = null!;
+    private List<string> workCities = new();
+    private List<GreekCity> shownCities = new();
     private FlatCheck barsEnabled = null!;
     private Label updateStatus = null!;
     private FlatButton installUpdate = null!;
@@ -171,6 +178,8 @@ public sealed class SettingsPanel : UserControl
 
     private static string L(string key) => Loc.T(key);
 
+    private static BarContent SecondContentOf(int index) => index switch { 0 => BarContent.News, 2 => BarContent.Weather, _ => BarContent.Stocks };
+
     // ---- preview of the bars ----------------------------------------------------------------
 
     /// <summary>Tabs whose choices change how a bar looks: Bars, Position, Look, Breaking.</summary>
@@ -185,7 +194,7 @@ public sealed class SettingsPanel : UserControl
         var dark = themeMode.SelectedIndex switch { 1 => false, 2 => true, _ => Theme.IsDark };
         barPreview.SetState(new BarPreviewState(
             (TickerPosition)Math.Max(0, position.SelectedIndex), (BarContent)Math.Max(0, mainContent.SelectedIndex), stocksLeft.Checked,
-            secondEnabled.Checked, secondContent.SelectedIndex == 0 ? BarContent.News : BarContent.Stocks,
+            secondEnabled.Checked, SecondContentOf(secondContent.SelectedIndex),
             dark, opacity.Value, edgeFade.Checked,
             barColor.SelectedIndex switch { 1 => "lightblue", 2 => "accent", 3 => "custom", _ => "theme" }, barSwatch.Rgb,
             taskbarColor.SelectedIndex switch { 1 => "lightblue", 2 => "accent", 3 => "custom", _ => "taskbar" }, taskbarSwatch.Rgb,
@@ -221,6 +230,7 @@ public sealed class SettingsPanel : UserControl
         tabs.AddPage(L("tab.look"), BuildLook());
         tabs.AddPage(L("tab.breaking"), BuildBreaking());
         tabs.AddPage(L("tab.readLater"), BuildReadLater());
+        tabs.AddPage(L("tab.weather"), BuildWeather());
         if (showAboutTabs)
         {
             tabs.AddPage(L("tab.help"), BuildText(AboutTexts.Help));
@@ -370,7 +380,7 @@ public sealed class SettingsPanel : UserControl
         var main = new FlatCard(L("card.mainBar"));
         var mainFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
         mainContent = new FlatCombo { Width = 340 };
-        mainContent.SetItems(new[] { L("content.news"), L("content.stocks"), L("content.both") }, 0);
+        mainContent.SetItems(new[] { L("content.news"), L("content.stocks"), L("content.both"), L("content.weather") }, 0);
         mainFlow.Controls.Add(Row(L("lbl.content"), mainContent, 200));
         stocksLeft = new FlatCheck { Text = L("chk.stocksLeft") };
         mainFlow.Controls.Add(stocksLeft);
@@ -383,7 +393,7 @@ public sealed class SettingsPanel : UserControl
         secondEnabled = new FlatCheck { Text = L("chk.secondEnabled") };
         secondFlow.Controls.Add(secondEnabled);
         secondContent = new FlatCombo { Width = 340 };
-        secondContent.SetItems(new[] { L("content.news"), L("content.stocks") }, 1);
+        secondContent.SetItems(new[] { L("content.news"), L("content.stocks"), L("content.weather") }, 1);
         secondFlow.Controls.Add(Row(L("lbl.content"), secondContent, 200));
         secondNote = Note(L("note.secondBar"), 560);
         secondFlow.Controls.Add(secondNote);
@@ -400,7 +410,7 @@ public sealed class SettingsPanel : UserControl
             var s = others[i];
             var check = new FlatCheck { Text = Loc.T("fmt.monitor", Array.IndexOf(Screen.AllScreens, s) + 1, s.Bounds.Width, s.Bounds.Height) };
             var content = new FlatCombo { Width = 340 };
-            content.SetItems(new[] { L("content.news"), L("content.stocks"), L("content.both") }, 0);
+            content.SetItems(new[] { L("content.news"), L("content.stocks"), L("content.both"), L("content.weather") }, 0);
             monitorFlow.Controls.Add(check);
             monitorFlow.Controls.Add(Row(L("lbl.content"), content, 200));
             monitorRows.Add((s, check, content));
@@ -556,6 +566,68 @@ public sealed class SettingsPanel : UserControl
             loading = was;
         }
         if (InvokeRequired) BeginInvoke(new Action(Set)); else Set();
+    }
+
+    // ---- weather ---------------------------------------------------------------------------------
+
+    private static string CityName(GreekCity c) => Loc.IsGreek ? c.NameEl : c.NameEn;
+
+    private Control BuildWeather()
+    {
+        var page = NewPage(out var flow);
+        flow.Controls.Add(Note(L("note.weather"), 700));
+
+        var card = new FlatCard(L("tab.weather"));
+        var inner = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        citySearch = new FlatText { Width = 300 };
+        var all = new FlatButton { Text = L("btn.selectAll") };
+        var none = new FlatButton { Text = L("btn.selectNone") };
+        var searchRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
+        searchRow.Controls.Add(citySearch);
+        searchRow.Controls.Add(all);
+        searchRow.Controls.Add(none);
+        inner.Controls.Add(Row(L("lbl.search"), searchRow, 150));
+        cityList = new FlatList { Width = 680, Height = 300 };
+        cityList.SetShowChecks(true);
+        inner.Controls.Add(cityList);
+        card.Controls.Add(inner);
+        flow.Controls.Add(card);
+
+        var mini = new FlatCard(L("card.miniWeather"));
+        var miniFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        miniWeather = new FlatCheck { Text = L("chk.miniWeather") };
+        miniFlow.Controls.Add(miniWeather);
+        miniCity = new FlatCombo { Width = 340 };
+        miniCity.SetItems(GreekCities.All.Select(CityName), 0);
+        miniFlow.Controls.Add(Row(L("lbl.miniCity"), miniCity, 200));
+        miniOnTop = new FlatCheck { Text = L("chk.miniOnTop") };
+        miniFlow.Controls.Add(miniOnTop);
+        miniFlow.Controls.Add(Note(L("note.miniWeather"), 560));
+        mini.Controls.Add(miniFlow);
+        flow.Controls.Add(mini);
+
+        citySearch.TextValueChanged += (_, _) => ShowCities();
+        cityList.ItemChecked += (index, isChecked) =>
+        {
+            if (index < 0 || index >= shownCities.Count) return;
+            var id = shownCities[index].Id;
+            if (isChecked) { if (!workCities.Contains(id)) workCities.Add(id); }
+            else workCities.Remove(id);
+        };
+        all.Click += (_, _) => { foreach (var c in shownCities) if (!workCities.Contains(c.Id)) workCities.Add(c.Id); ShowCities(); };
+        none.Click += (_, _) => { foreach (var c in shownCities) workCities.Remove(c.Id); ShowCities(); };
+        ShowCities();
+        return page;
+    }
+
+    private void ShowCities()
+    {
+        if (cityList is null || cityList.IsDisposed) return;
+        var term = citySearch.Value.Trim();
+        shownCities = GreekCities.All.Where(c => term.Length == 0 || c.NameEl.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                                                 c.NameEn.Contains(term, StringComparison.OrdinalIgnoreCase)).ToList();
+        cityList.ClearRows();
+        foreach (var c in shownCities) cityList.AddRow(CityName(c), workCities.Contains(c.Id));
     }
 
     // ---- updates -----------------------------------------------------------------------------
@@ -1020,11 +1092,16 @@ public sealed class SettingsPanel : UserControl
             hideRead.Checked = c.HideRead;
             barsEnabled.Checked = c.BarsEnabled;
             autoUpdate.Checked = c.CheckForUpdates;
+            workCities = c.WeatherCities.ToList();
+            ShowCities();
+            miniWeather.Checked = c.MiniWeatherEnabled;
+            miniCity.SelectSilently(Math.Max(0, GreekCities.All.ToList().FindIndex(x => x.Id == c.MiniWeatherCity)));
+            miniOnTop.Checked = c.MiniWeatherOnTop;
 
             mainContent.SelectSilently((int)c.MainContent);
             stocksLeft.Checked = c.SplitStocksOnLeft;
             secondEnabled.Checked = c.SecondBarEnabled;
-            secondContent.SelectSilently(c.SecondContent == BarContent.News ? 0 : 1);
+            secondContent.SelectSilently(c.SecondContent switch { BarContent.News => 0, BarContent.Weather => 2, _ => 1 });
             foreach (var (screen, check, content) in monitorRows)
             {
                 var saved = c.MonitorBars.FirstOrDefault(m => string.Equals(m.Device, screen.DeviceName, StringComparison.OrdinalIgnoreCase));
@@ -1122,11 +1199,15 @@ public sealed class SettingsPanel : UserControl
         c.PauseOnOtherWindow = pauseOther.Checked;
         c.HideRead = hideRead.Checked;
         c.CheckForUpdates = autoUpdate.Checked;
+        c.WeatherCities = workCities.ToList();
+        c.MiniWeatherEnabled = miniWeather.Checked;
+        c.MiniWeatherCity = GreekCities.All[Math.Clamp(miniCity.SelectedIndex, 0, GreekCities.All.Count - 1)].Id;
+        c.MiniWeatherOnTop = miniOnTop.Checked;
 
         c.MainContent = (BarContent)Math.Max(0, mainContent.SelectedIndex);
         c.SplitStocksOnLeft = stocksLeft.Checked;
         c.SecondBarEnabled = secondEnabled.Checked && position.SelectedIndex != (int)TickerPosition.TaskbarIntegrated;
-        c.SecondContent = secondContent.SelectedIndex == 0 ? BarContent.News : BarContent.Stocks;
+        c.SecondContent = SecondContentOf(secondContent.SelectedIndex);
         // Extra bars of the monitors shown here; entries of monitors that are not connected right now are kept.
         var shown = monitorRows.Select(r => r.Screen.DeviceName).ToHashSet(StringComparer.OrdinalIgnoreCase);
         c.MonitorBars = c.MonitorBars.Where(m => !shown.Contains(m.Device)).Concat(monitorRows.Select(r =>

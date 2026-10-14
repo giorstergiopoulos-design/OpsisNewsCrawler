@@ -53,6 +53,16 @@ public sealed class AppConfig
     /// <summary>Master switch: false hides every bar and stops all downloads until it is turned on again.</summary>
     public bool BarsEnabled { get; set; } = true;
 
+    /// <summary>Cities (ids of <see cref="GreekCities"/>) shown by a bar whose content is "Weather", in this order.</summary>
+    public List<string> WeatherCities { get; set; } = GreekCities.DefaultSelection.ToList();
+
+    /// <summary>The small weather bar on the desktop (one city: icon, temperature, wind, humidity). Click it for the next selected city.</summary>
+    public bool MiniWeatherEnabled { get; set; }
+    public string MiniWeatherCity { get; set; } = "athens";
+    public int MiniWeatherX { get; set; } = int.MinValue;
+    public int MiniWeatherY { get; set; } = int.MinValue;
+    public bool MiniWeatherOnTop { get; set; }
+
     /// <summary>Ask GitHub once a day whether a newer release exists. Off until the user turns it on; nothing is installed without asking.</summary>
     public bool CheckForUpdates { get; set; }
     public DateTimeOffset LastUpdateCheck { get; set; } = DateTimeOffset.MinValue;
@@ -354,6 +364,8 @@ public sealed class AppConfig
         BreakingDurationMinutes = Math.Clamp(BreakingDurationMinutes, 1, 240);
         LiveFeeds = (LiveFeeds ?? new()).Where(l => l is not null && !string.IsNullOrWhiteSpace(l.Url)).ToList();
         if (!Enum.IsDefined(MainContent)) MainContent = BarContent.News;
+        WeatherCities = (WeatherCities ?? new()).Where(id => GreekCities.Find(id) is not null).Distinct().ToList();
+        if (GreekCities.Find(MiniWeatherCity) is null) MiniWeatherCity = "athens";
         if (!Enum.IsDefined(SecondContent) || SecondContent == BarContent.Both) SecondContent = BarContent.Stocks;
         if (Position == TickerPosition.TaskbarIntegrated) SecondBarEnabled = false;
         Feeds = new(); // migrated; not written back

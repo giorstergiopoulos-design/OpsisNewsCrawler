@@ -53,3 +53,7 @@ AMS (Amsterdam), EPA (Paris), EBR (Brussels), ELI (Lisbon), BIT (Milan). Likely:
 
 ## athens.euronext.com ticker tape (checked 2026-10-14)
 `/en/fragments/tickerTapeData?type=2` returns ~60 Athens shares (name, price, open, close, change) as JSON over plain HTTP; robots.txt does not disallow it. It is an internal site fragment (no published API/terms), so it is NOT used; the app keeps the official delayed trade file + OpenFIGI. Candidate fallback only.
+
+## Weather (added 2026-10-14)
+Open-Meteo (https://open-meteo.com, `api.open-meteo.com/v1/forecast`, `current=` variables): free for non-commercial use, no API key, data licensed CC BY 4.0 — the attribution is in the Weather tab note and here. One request carries up to 100 places (the 71 Greek cities take about half a second). Readings are cached 10 minutes, refreshed every 15. Terms: https://open-meteo.com/en/terms
+Other keyless prices added the same day: gold-api.com (BTC, ETH), Frankfurter/ECB (currency pairs; robots.txt allows everything).

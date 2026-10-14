@@ -21,6 +21,7 @@ internal sealed class TickerCanvas : Control
     private const int LeftPad = 16;
     private const int IconSize = 16;
     private const int IconGap = 7;
+    private const int WeatherIconSize = 22;
     private const int SourceTitleGap = 5;
     private const int ItemGap = 44;
     private const int HoverPad = 7;
@@ -288,7 +289,8 @@ internal sealed class TickerCanvas : Control
             var title = uppercase ? UpperNoAccents(item.Title) : item.Title;
             var sourceWidth = Measure(source + ":", sourceFont);
             var titleWidth = Measure(title, titleFont);
-            var width = (showIcons && !isQuote ? IconSize + IconGap : 0) + sourceWidth + SourceTitleGap + titleWidth + ItemGap;
+            var iconWidth = item.Kind == NewsItemKind.Weather ? WeatherIconSize + IconGap : showIcons && !isQuote ? IconSize + IconGap : 0;
+            var width = iconWidth + sourceWidth + SourceTitleGap + titleWidth + ItemGap;
             entries.Add(new Entry(item, host, source, title, x, sourceWidth, width));
             x += width;
         }
@@ -578,7 +580,12 @@ internal sealed class TickerCanvas : Control
             return;
         }
         float x = left;
-        if (showIcons && !isQuote)
+        if (entry.Item.Kind == NewsItemKind.Weather)
+        {
+            WeatherIcons.Draw(g, new Rectangle(left, (Height - WeatherIconSize) / 2, WeatherIconSize, WeatherIconSize), entry.Item.Icon, darkSurface);
+            x += WeatherIconSize + IconGap;
+        }
+        else if (showIcons && !isQuote)
         {
             DrawIcon(g, entry, new Rectangle(left, (Height - IconSize) / 2, IconSize, IconSize));
             x += IconSize + IconGap;
@@ -598,11 +605,15 @@ internal sealed class TickerCanvas : Control
     {
         var contentWidth = entry.Width - ItemGap;
         var x = (float)(Width - logicalLeft); // right edge of the entry
-        var hasIcon = showIcons && !isQuote;
+        var isWeather = entry.Item.Kind == NewsItemKind.Weather;
+        var iconSize = isWeather ? WeatherIconSize : IconSize;
+        var hasIcon = isWeather || showIcons && !isQuote;
         if (hasIcon)
         {
-            DrawIcon(g, entry, new Rectangle((int)x - IconSize, (Height - IconSize) / 2, IconSize, IconSize));
-            x -= IconSize + IconGap;
+            var iconRect = new Rectangle((int)x - iconSize, (Height - iconSize) / 2, iconSize, iconSize);
+            if (isWeather) WeatherIcons.Draw(g, iconRect, entry.Item.Icon, darkSurface);
+            else DrawIcon(g, entry, iconRect);
+            x -= iconSize + IconGap;
         }
 
         var sourceWidth = entry.SourceWidth;
@@ -610,7 +621,7 @@ internal sealed class TickerCanvas : Control
             g.DrawString(entry.Source + ":", sourceFont, sourceBrush, new RectangleF(x - sourceWidth - 4, textY, sourceWidth + 8, textHeight + 2), TextFormatRtl);
         x -= sourceWidth + SourceTitleGap;
 
-        var titleWidth = Math.Max(10, contentWidth - (hasIcon ? IconSize + IconGap : 0) - sourceWidth - SourceTitleGap);
+        var titleWidth = Math.Max(10, contentWidth - (hasIcon ? iconSize + IconGap : 0) - sourceWidth - SourceTitleGap);
         var color = isQuote ? TrendColor(entry.Item.Trend) : hovered ? hoverTitleColor : titleColor;
         using var titleBrush = new SolidBrush(color);
         g.DrawString(entry.Title, titleFont, titleBrush, new RectangleF(x - titleWidth - 4, textY, titleWidth + 8, textHeight + 2), TextFormatRtl);

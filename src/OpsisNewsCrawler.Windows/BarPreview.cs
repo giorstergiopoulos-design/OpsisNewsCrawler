@@ -213,8 +213,30 @@ internal sealed class BarPreview : Control
             g.ResetClip();
         }
 
+        void Weather(Rectangle area)
+        {
+            g.SetClip(area, CombineMode.Intersect);
+            var xx = area.Left + 6f;
+            var samples = new[] { (City: "athens", Code: 1, Temp: 16.6, Wind: 15.0, Dir: 0, Hum: 68), (City: "thessaloniki", Code: 61, Temp: 14.2, Wind: 23.0, Dir: 45, Hum: 81), (City: "heraklion", Code: 0, Temp: 19.0, Wind: 9.0, Dir: 315, Hum: 62) };
+            foreach (var s in samples)
+            {
+                if (xx >= area.Right) break;
+                var city = GreekCities.Find(s.City)!;
+                var item = WeatherInfo.ToItem(city, new WeatherReading(s.City, s.Temp, s.Hum, s.Wind, s.Dir, s.Code, true, DateTimeOffset.Now), Loc.IsGreek);
+                var size = Math.Min(area.Height - 4, 20);
+                WeatherIcons.Draw(g, new Rectangle((int)xx, area.Top + (area.Height - size) / 2, size, size), item.Icon, textColor.GetBrightness() > 0.5f);
+                xx += size + 5;
+                g.DrawString(item.Source, bold, textBrush, new RectangleF(xx, area.Top, 300, area.Height), sf);
+                xx += g.MeasureString(item.Source, bold).Width + 3;
+                g.DrawString(item.Title, font, textBrush, new RectangleF(xx, area.Top, 600, area.Height), sf);
+                xx += g.MeasureString(item.Title, font).Width + 24;
+            }
+            g.ResetClip();
+        }
+
         switch (content)
         {
+            case BarContent.Weather: Weather(r); break;
             case BarContent.News: News(r); break;
             case BarContent.Stocks: Quotes(r); break;
             default:
