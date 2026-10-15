@@ -681,7 +681,7 @@ public sealed class SettingsPanel : UserControl
     {
         if (updateStatus is null || updateStatus.IsDisposed) return;
         var u = host.AvailableUpdate;
-        installUpdate.Visible = u is not null && !host.HostedByOpsis && u.SetupUrl is not null && u.ChecksumUrl is not null;
+        installUpdate.Visible = u is not null && u.SetupUrl is not null && u.ChecksumUrl is not null;
         openUpdatePage.Visible = u is not null;
         if (u is not null) updateStatus.Text = Loc.T("msg.updateAvailable", u.Version, AboutTexts.Version);
     }
@@ -710,14 +710,16 @@ public sealed class SettingsPanel : UserControl
     private async Task InstallUpdateAsync()
     {
         if (host.AvailableUpdate is not { } u) return;
+        // Inside Opsis the plugin files are in use: the update waits until Opsis is closed, which the user must agree to.
+        if (host.HostedByOpsis && MessageBox.Show(this, L("msg.confirmUpdateOnExit"), L("app.name"), MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
         installUpdate.Enabled = false;
         updateStatus.Text = L("msg.downloading");
-        var result = await UpdateInstaller.DownloadAndStartAsync(u);
+        var result = await UpdateInstaller.DownloadAndStartAsync(u, host.HostedByOpsis);
         if (IsDisposed) return;
         installUpdate.Enabled = true;
         updateStatus.Text = result switch
         {
-            UpdateInstaller.Result.Started => L("msg.updateStarted"),
+            UpdateInstaller.Result.Started => L(host.HostedByOpsis ? "msg.updateScheduled" : "msg.updateStarted"),
             UpdateInstaller.Result.ChecksumMismatch or UpdateInstaller.Result.ChecksumMissing => L("msg.verifyFailed"),
             _ => L("msg.updateFailed")
         };

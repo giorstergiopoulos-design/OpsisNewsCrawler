@@ -10,7 +10,8 @@ internal static class UpdateInstaller
 
     private const long MaxSetupBytes = 120L * 1024 * 1024;
 
-    public static async Task<Result> DownloadAndStartAsync(UpdateInfo update, CancellationToken ct = default)
+    /// <param name="waitForExitOfHost">Inside Opsis its files cannot be replaced while it runs: the verified setup then starts silently, in the integrated mode, once the host process has ended.</param>
+    public static async Task<Result> DownloadAndStartAsync(UpdateInfo update, bool waitForExitOfHost = false, CancellationToken ct = default)
     {
         if (update.SetupUrl is null) return Result.NoSetup;
         if (update.ChecksumUrl is null) return Result.ChecksumMissing; // never run something that cannot be verified
@@ -32,6 +33,20 @@ internal static class UpdateInstaller
             if (actual != expected) return Result.ChecksumMismatch;
 
             await File.WriteAllBytesAsync(file, bytes, ct).ConfigureAwait(false);
+            if (waitForExitOfHost)
+            {
+                // A hidden helper waits for this process (Opsis) to end, then runs the verified setup; the path is our own temp folder.
+                var pid = Environment.ProcessId;
+                var command = $"Wait-Process -Id {pid} -ErrorAction SilentlyContinue; Start-Process -FilePath '{file.Replace("'", "''")}' -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/MODE=integrated' -Wait";
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("powershell.exe")
+                {
+                    ArgumentList = { "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", command },
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                });
+                return Result.Started;
+            }
+
             // The normal wizard (not silent): the user sees and confirms the update; setup asks to close the running bar.
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(file) { UseShellExecute = true });
             return Result.Started;

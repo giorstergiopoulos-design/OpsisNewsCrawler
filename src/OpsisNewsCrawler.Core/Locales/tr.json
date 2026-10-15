@@ -205,5 +205,7 @@
   "wind.nw": "KB",
   "lbl.height": "Yükseklik (piksel)",
   "btn.centerDesktop": "Masaüstünde ortala",
-  "note.miniWeather2": "Masaüstünün ortasında, diğer pencerelerin altında durur (“diğer pencerelerin üstünde” seçmediyseniz). Ana çubukla aynı renk, saydamlık, arka plan malzemesi ve solan uçlara sahiptir (Görünüm sekmesi). Tüm şehirler sığarsa sabit durur, aksi halde kayar. Değişiklikler “Uygula” ile geçerli olur."
+  "note.miniWeather2": "Masaüstünün ortasında, diğer pencerelerin altında durur (“diğer pencerelerin üstünde” seçmediyseniz). Ana çubukla aynı renk, saydamlık, arka plan malzemesi ve solan uçlara sahiptir (Görünüm sekmesi). Tüm şehirler sığarsa sabit durur, aksi halde kayar. Değişiklikler “Uygula” ile geçerli olur.",
+  "msg.confirmUpdateOnExit": "Opsis içinde crawler dosyaları kullanımda. Güncelleme, Opsis'i kapattığınız anda otomatik kurulacak; sonra Opsis'i yeniden başlatın. Devam edilsin mi?",
+  "msg.updateScheduled": "Dosya indirildi ve doğrulandı. Opsis'i kapatın; güncelleme kurulur ve Opsis'i yeniden açabilirsiniz."
 }

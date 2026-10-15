@@ -205,5 +205,7 @@
   "wind.nw": "NO",
   "lbl.height": "Altezza (pixel)",
   "btn.centerDesktop": "Centra sul desktop",
-  "note.miniWeather2": "Sta al centro del desktop, sotto le altre finestre (a meno che tu scelga «sopra le altre finestre»). Ha gli stessi colori, trasparenza, materiale di sfondo ed estremità sfumate della barra principale (scheda Aspetto). Se ci stanno tutte le città resta ferma, altrimenti scorre. Le modifiche si applicano con «Applica»."
+  "note.miniWeather2": "Sta al centro del desktop, sotto le altre finestre (a meno che tu scelga «sopra le altre finestre»). Ha gli stessi colori, trasparenza, materiale di sfondo ed estremità sfumate della barra principale (scheda Aspetto). Se ci stanno tutte le città resta ferma, altrimenti scorre. Le modifiche si applicano con «Applica».",
+  "msg.confirmUpdateOnExit": "Dentro Opsis i file del crawler sono in uso. L'aggiornamento si installerà automaticamente appena chiudi Opsis; poi riavvia Opsis. Continuare?",
+  "msg.updateScheduled": "Il file è stato scaricato e verificato. Chiudi Opsis; l'aggiornamento verrà installato e potrai riaprire Opsis."
 }

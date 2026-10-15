@@ -124,6 +124,15 @@ internal static class Native
     }
 
     /// <summary>Rectangle of the primary taskbar in screen coordinates (empty when not found).</summary>
+    [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr hWnd);
+
+    /// <summary>DPI of the taskbar window and of the given window (0 when unknown), for the log.</summary>
+    internal static (uint Taskbar, uint Own) DescribeDpi(IntPtr own)
+    {
+        try { return (GetDpiForWindow(FindWindow("Shell_TrayWnd", null)), GetDpiForWindow(own)); }
+        catch (EntryPointNotFoundException) { return (0, 0); }
+    }
+
     internal static Rectangle GetTaskbarRect()
     {
         var h = FindWindow("Shell_TrayWnd", null);

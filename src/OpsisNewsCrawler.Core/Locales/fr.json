@@ -205,5 +205,7 @@
   "wind.nw": "NO",
   "lbl.height": "Hauteur (pixels)",
   "btn.centerDesktop": "Centrer sur le Bureau",
-  "note.miniWeather2": "Elle se place au milieu du Bureau, sous les autres fenêtres (sauf si vous choisissez « au-dessus des autres fenêtres »). Mêmes couleurs, transparence, matériau d'arrière-plan et extrémités estompées que la barre principale (onglet Apparence). Si toutes les villes tiennent, elle reste fixe, sinon elle défile. Les changements s'appliquent avec « Appliquer »."
+  "note.miniWeather2": "Elle se place au milieu du Bureau, sous les autres fenêtres (sauf si vous choisissez « au-dessus des autres fenêtres »). Mêmes couleurs, transparence, matériau d'arrière-plan et extrémités estompées que la barre principale (onglet Apparence). Si toutes les villes tiennent, elle reste fixe, sinon elle défile. Les changements s'appliquent avec « Appliquer ».",
+  "msg.confirmUpdateOnExit": "Dans Opsis, les fichiers du crawler sont en cours d'utilisation. La mise à jour s'installera automatiquement dès que vous fermerez Opsis ; relancez ensuite Opsis. Continuer ?",
+  "msg.updateScheduled": "Le fichier a été téléchargé et vérifié. Fermez Opsis ; la mise à jour s'installe alors et vous pourrez rouvrir Opsis."
 }

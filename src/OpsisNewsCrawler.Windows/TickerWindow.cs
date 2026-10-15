@@ -36,6 +36,7 @@ public sealed class TickerWindow : Form
     }
 
     private bool desktopLayer;
+    private Rectangle lastLoggedIntegrated;
 
     /// <summary>True: the bar lies on the desktop, below all other windows. False (normal): always on top.</summary>
     public void SetDesktopLayer(bool value)
@@ -713,6 +714,13 @@ public sealed class TickerWindow : Form
                     right = Math.Min(tb.Right, span.Right);
                 }
                 target = new Rectangle(left, tb.Top, Math.Max(200, right - left), tb.Height);
+                if (target != lastLoggedIntegrated)
+                {
+                    // Help to find out why a bar inside the taskbar might not match its height on another PC.
+                    lastLoggedIntegrated = target;
+                    var (tbDpi, ownDpi) = IsHandleCreated ? Native.DescribeDpi(Handle) : (0u, 0u);
+                    Log.Write($"Bar inside the taskbar: taskbar {tb.Left},{tb.Top} {tb.Width}x{tb.Height} (dpi {tbDpi}), bar {target.Left},{target.Top} {target.Width}x{target.Height} (window dpi {ownDpi}, screen {screen.Bounds.Width}x{screen.Bounds.Height})");
+                }
                 break;
             default:
                 if (wantAppBar)

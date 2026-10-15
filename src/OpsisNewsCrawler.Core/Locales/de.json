@@ -205,5 +205,7 @@
   "wind.nw": "NW",
   "lbl.height": "Höhe (Pixel)",
   "btn.centerDesktop": "Auf dem Desktop zentrieren",
-  "note.miniWeather2": "Sie liegt in der Mitte des Desktops unter den anderen Fenstern (außer Sie wählen „über anderen Fenstern“). Farben, Transparenz, Hintergrundmaterial und ausblendende Enden entsprechen der Hauptleiste (Tab Aussehen). Passen alle Städte hinein, steht sie still, sonst scrollt sie. Änderungen gelten mit „Übernehmen“."
+  "note.miniWeather2": "Sie liegt in der Mitte des Desktops unter den anderen Fenstern (außer Sie wählen „über anderen Fenstern“). Farben, Transparenz, Hintergrundmaterial und ausblendende Enden entsprechen der Hauptleiste (Tab Aussehen). Passen alle Städte hinein, steht sie still, sonst scrollt sie. Änderungen gelten mit „Übernehmen“.",
+  "msg.confirmUpdateOnExit": "In Opsis sind die Dateien des Crawlers in Benutzung. Das Update wird automatisch installiert, sobald Sie Opsis schließen; starten Sie Opsis danach neu. Fortfahren?",
+  "msg.updateScheduled": "Die Datei wurde heruntergeladen und geprüft. Schließen Sie Opsis; danach wird das Update installiert und Sie können Opsis wieder öffnen."
 }
