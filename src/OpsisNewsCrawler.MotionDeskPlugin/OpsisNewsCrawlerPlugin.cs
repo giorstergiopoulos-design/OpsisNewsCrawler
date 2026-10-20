@@ -18,6 +18,8 @@ public sealed class OpsisNewsCrawlerPlugin : IOpsisNewsCrawlerPlugin
 
     public OpsisNewsCrawlerPlugin()
     {
+        // Diagnostics: when Opsis cannot show the plugin, crawler.log says which step failed.
+        Log.Write($"Plugin {AboutTexts.Version} created inside {AppDomain.CurrentDomain.FriendlyName} (runtime {Environment.Version}).");
         _controller.SettingsRequested += OnSettingsRequested;
     }
 
@@ -35,7 +37,11 @@ public sealed class OpsisNewsCrawlerPlugin : IOpsisNewsCrawlerPlugin
     public string Name => "Opsis News Crawler";
     public string Version => AboutTexts.Version;
 
-    public void Start() => _controller.Start();
+    public void Start()
+    {
+        try { _controller.Start(); Log.Write("Plugin started."); }
+        catch (Exception ex) { Log.Write($"Plugin Start failed: {ex}"); throw; }
+    }
     public void Stop() => _controller.Stop();
     public void Pause() { _paused = true; _controller.Pause(); }
     public void Resume() { _paused = false; _controller.Resume(); }
@@ -86,7 +92,11 @@ public sealed class OpsisNewsCrawlerPlugin : IOpsisNewsCrawlerPlugin
                 NavigationKey,
                 "News Crawler",
                 "News Crawler",
-                () => new SettingsPanel(_controller.Host, showCloseButton: false, showAboutTabs: false) { HostThemeLocked = true },
+                () =>
+                {
+                    try { return new SettingsPanel(_controller.Host, showCloseButton: false, showAboutTabs: false) { HostThemeLocked = true }; }
+                    catch (Exception ex) { Log.Write($"Plugin settings page failed: {ex}"); throw; }
+                },
                 90)
         };
 }

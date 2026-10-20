@@ -95,8 +95,14 @@ public sealed class TickerWindow : Form
     /// <summary>The user clicked an article (it was opened in the browser).</summary>
     public event Action<NewsItem>? ItemOpened;
 
+    /// <summary>A city of the weather line was clicked: the item and the bounds of this bar.</summary>
+    public event Action<NewsItem, Rectangle>? WeatherRequested;
+
     /// <summary>The user Ctrl+clicked an article: save it to the read-later list.</summary>
     public event Action<NewsItem>? ItemSaveRequested;
+
+    /// <summary>Mark an article as read from its context menu.</summary>
+    public event Action<NewsItem>? ItemMarkReadRequested;
 
     /// <summary>Shows a short message on the bar.</summary>
     public void ShowToast(string text)
@@ -214,6 +220,7 @@ public sealed class TickerWindow : Form
         foreach (var c in new[] { canvas, canvasB })
         {
             c.HoverChanged += OnHoverChanged;
+            c.WeatherClicked += item => WeatherRequested?.Invoke(item, Bounds);
             c.ItemClicked += item =>
             {
                 if ((ModifierKeys & Keys.Control) != 0 && item.Kind == NewsItemKind.News)
@@ -225,10 +232,15 @@ public sealed class TickerWindow : Form
                 ItemOpened?.Invoke(item);
             };
             c.MouseWheel += OnCanvasMouseWheel;
-            c.ContextClicked += () =>
+            c.ContextClicked += item =>
             {
                 HidePreview();
-                SettingsRequested?.Invoke();
+                if (item is null || string.IsNullOrWhiteSpace(item.Url))
+                {
+                    SettingsRequested?.Invoke();
+                    return;
+                }
+                ShowArticleMenu(c, item);
             };
         }
         LayoutCanvases();
@@ -237,7 +249,7 @@ public sealed class TickerWindow : Form
         focusTimer.Tick += (_, _) =>
         {
             CheckForeground();
-            if (desktopLayer && Visible) Native.SendToBottom(Handle);
+            if (desktopLayer && !editMode && Visible) Native.SendToBottom(Handle);
         };
         hoverTimer.Tick += (_, _) => ShowPendingPreview();
         taskbarTimer.Tick += (_, _) => FollowTaskbarTick();
@@ -245,6 +257,35 @@ public sealed class TickerWindow : Form
         SystemEvents.UserPreferenceChanged += OnUserPreferenceChanged;
         Theme.Changed += ApplyLook;
         ApplyLook();
+    }
+
+    private void ShowArticleMenu(Control owner, NewsItem item)
+    {
+        var menu = new ContextMenuStrip { ShowImageMargin = false };
+        var greek = Loc.IsGreek;
+        menu.Items.Add(greek ? "Άνοιγμα άρθρου" : "Open article", null, (_, _) =>
+        {
+            OpenUrl(item.Url);
+            ItemOpened?.Invoke(item);
+        });
+        if (item.Kind == NewsItemKind.News)
+        {
+            menu.Items.Add(greek ? "Διάβασε αργότερα" : "Read later", null, (_, _) => ItemSaveRequested?.Invoke(item));
+            menu.Items.Add(greek ? "Σήμανση ως διαβασμένο" : "Mark as read", null, (_, _) => ItemMarkReadRequested?.Invoke(item));
+        }
+        menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add(greek ? "Αντιγραφή συνδέσμου" : "Copy link", null, (_, _) =>
+        {
+            try { Clipboard.SetText(item.Url); ShowToast(greek ? "Ο σύνδεσμος αντιγράφηκε" : "Link copied"); }
+            catch (Exception ex) when (ex is System.Runtime.InteropServices.ExternalException or ThreadStateException) { }
+        });
+        menu.Items.Add(greek ? "Ρυθμίσεις…" : "Settings…", null, (_, _) => SettingsRequested?.Invoke());
+        // Not disposed inside Closed: the menu is still handling the click that closed it (that caused "Cannot access a disposed object").
+        menu.Closed += (_, _) =>
+        {
+            if (IsHandleCreated && !IsDisposed) BeginInvoke(new Action(menu.Dispose));
+        };
+        menu.Show(owner, owner.PointToClient(Cursor.Position));
     }
 
     protected override void OnHandleCreated(EventArgs e)
@@ -647,6 +688,30 @@ public sealed class TickerWindow : Form
             MinimumSize = Size.Empty;
             MaximumSize = Size.Empty;
         }
+        if (desktopLayer && IsHandleCreated)
+        {
+            // A bar that lies on the desktop must come to the front while it is moved, otherwise other windows hide it.
+            if (editMode) Native.KeepTopMost(Handle); else Native.SendToBottom(Handle);
+        }
+        if (editMode) SnapCursorToBar();
+    }
+
+    /// <summary>
+    /// When moving starts, the mouse pointer jumps onto the middle of the bar and shows the four-arrow move cursor,
+    /// so the user can drag the bar at once (the settings button that started the move is somewhere else on the screen).
+    /// </summary>
+    private void SnapCursorToBar()
+    {
+        try
+        {
+            var b = Bounds;
+            Cursor.Position = new Point(b.Left + b.Width / 2, b.Top + b.Height / 2);
+            Cursor.Current = Cursors.SizeAll;
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            // Not allowed to move the pointer (e.g. a secure desktop): the bar can still be dragged.
+        }
     }
 
     /// <summary>A bar for another monitor: sits at the bottom of that screen's work area, nothing else of the primary taskbar logic applies.</summary>
@@ -833,10 +898,17 @@ public sealed class TickerWindow : Form
         });
     }
 
-    private const int WM_NCHITTEST = 0x84, WM_EXITSIZEMOVE = 0x232;
+    private const int WM_NCHITTEST = 0x84, WM_EXITSIZEMOVE = 0x232, WM_SETCURSOR = 0x20;
 
     protected override void WndProc(ref Message m)
     {
+        // While the bar is being moved, the whole bar (except the two width handles) shows the four-arrow move cursor.
+        if (editMode && m.Msg == WM_SETCURSOR && (int)(m.LParam.ToInt64() & 0xFFFF) == 2) // HTCAPTION
+        {
+            Cursor.Current = Cursors.SizeAll;
+            m.Result = new IntPtr(1);
+            return;
+        }
         if (editMode && m.Msg == WM_NCHITTEST)
         {
             var lp = m.LParam.ToInt64();

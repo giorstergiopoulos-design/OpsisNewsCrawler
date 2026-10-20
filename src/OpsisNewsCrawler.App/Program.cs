@@ -41,6 +41,16 @@ internal static class Program
         menuBars.Click += (_, _) => host.SetBarsEnabled(!host.Config.BarsEnabled);
         host.BarsEnabledChanged += () => menuBars.Checked = host.Config.BarsEnabled;
         menu.Items.Add(menuBars);
+        var snoozeMenu = new ToolStripMenuItem(Loc.IsGreek ? "Απόκρυψη προσωρινά" : "Snooze bars");
+        var snooze15 = new ToolStripMenuItem(Loc.IsGreek ? "Για 15 λεπτά" : "For 15 minutes");
+        var snooze60 = new ToolStripMenuItem(Loc.IsGreek ? "Για 60 λεπτά" : "For 60 minutes");
+        var cancelSnooze = new ToolStripMenuItem(Loc.IsGreek ? "Ακύρωση απόκρυψης" : "Cancel snooze") { Enabled = false };
+        snooze15.Click += (_, _) => host.SnoozeBars(TimeSpan.FromMinutes(15));
+        snooze60.Click += (_, _) => host.SnoozeBars(TimeSpan.FromMinutes(60));
+        cancelSnooze.Click += (_, _) => host.CancelSnooze();
+        snoozeMenu.DropDownItems.AddRange(new ToolStripItem[] { snooze15, snooze60, cancelSnooze });
+        host.SnoozeChanged += active => cancelSnooze.Enabled = active;
+        menu.Items.Add(snoozeMenu);
         var menuSettings = menu.Items.Add(Loc.T("tray.settings"), null, (_, _) => settings.ShowSettings());
         var menuRefresh = menu.Items.Add(Loc.T("tray.refresh"), null, (_, _) => host.Refresh());
         menu.Items.Add(new ToolStripSeparator());
@@ -56,6 +66,10 @@ internal static class Program
             menuBars.Text = Loc.T("chk.barsEnabled");
             menuSettings.Text = Loc.T("tray.settings");
             menuRefresh.Text = Loc.T("tray.refresh");
+            snoozeMenu.Text = Loc.IsGreek ? "Απόκρυψη προσωρινά" : "Snooze bars";
+            snooze15.Text = Loc.IsGreek ? "Για 15 λεπτά" : "For 15 minutes";
+            snooze60.Text = Loc.IsGreek ? "Για 60 λεπτά" : "For 60 minutes";
+            cancelSnooze.Text = Loc.IsGreek ? "Ακύρωση απόκρυψης" : "Cancel snooze";
             menuExit.Text = Loc.T("tray.exit");
         };
         tray.DoubleClick += (_, _) => settings.ShowSettings();
@@ -73,6 +87,13 @@ internal static class Program
                 host.SimulateBreaking("Έκτακτο: δοκιμαστική είδηση για τον έλεγχο της μπάρας");
             };
             t.Start();
+        }
+
+        if (host.Config.IsFirstRun && !args.Contains("--settings"))
+        {
+            // First start ever: show the settings once so the owner can pick language, content and position.
+            settings.SelectTab(0);
+            settings.ShowSettings();
         }
 
         if (args.Contains("--settings"))

@@ -27,8 +27,19 @@ foreach ($name in "OpsisNewsCrawler.MotionDeskPlugin.dll", "OpsisNewsCrawler.Win
 }
 "payload version: $appVersion"
 
-$iscc = "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe"
-if (-not (Test-Path $iscc)) { $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" }
+# Any installed Inno Setup (5, 6, 7...): the newest folder name wins; an ISCC on the PATH is used first.
+$iscc = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source
+if (-not $iscc) {
+  $iscc = @("$env:LOCALAPPDATA\Programs", $env:ProgramFiles, ${env:ProgramFiles(x86)}) |
+    Where-Object { $_ -and (Test-Path $_) } |
+    ForEach-Object { Get-ChildItem $_ -Directory -Filter "Inno Setup*" -ErrorAction SilentlyContinue } |
+    Sort-Object Name -Descending |
+    ForEach-Object { Join-Path $_.FullName "ISCC.exe" } |
+    Where-Object { Test-Path $_ } |
+    Select-Object -First 1
+}
+if (-not $iscc) { throw "Inno Setup (ISCC.exe) not found - install it from https://jrsoftware.org/isdl.php" }
+"Inno Setup: $iscc"
 & $iscc "$r\OpsisNewsCrawler.iss" | Select-String "Error|Successful"
 if ($LASTEXITCODE -ne 0) { throw "installer compile failed" }
 

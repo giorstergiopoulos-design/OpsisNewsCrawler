@@ -58,22 +58,16 @@ echo.
 echo [2/3] Creating installer...
 
 set "ISCC="
-where ISCC >nul 2>&1
-if not errorlevel 1 set "ISCC=ISCC"
-if not defined ISCC if exist "%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe" set "ISCC=%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe"
-if not defined ISCC if exist "%ProgramFiles%\Inno Setup 6\ISCC.exe" set "ISCC=%ProgramFiles%\Inno Setup 6\ISCC.exe"
-if not defined ISCC if exist "%LocalAppData%\Programs\Inno Setup 6\ISCC.exe" set "ISCC=%LocalAppData%\Programs\Inno Setup 6\ISCC.exe"
+call :FINDISCC
 
 if not defined ISCC (
-  echo [WARN] Inno Setup 6 was not found.
+  echo [WARN] Inno Setup was not found ^(any version 5, 6 or 7 is fine^).
   where winget >nul 2>&1
   if not errorlevel 1 (
     choice /c YN /m "Install Inno Setup now with winget?"
     if not errorlevel 2 (
       winget install --id JRSoftware.InnoSetup -e --accept-package-agreements --accept-source-agreements
-      if exist "%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe" set "ISCC=%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe"
-      if not defined ISCC if exist "%ProgramFiles%\Inno Setup 6\ISCC.exe" set "ISCC=%ProgramFiles%\Inno Setup 6\ISCC.exe"
-      if not defined ISCC if exist "%LocalAppData%\Programs\Inno Setup 6\ISCC.exe" set "ISCC=%LocalAppData%\Programs\Inno Setup 6\ISCC.exe"
+      call :FINDISCC
     )
   )
 )
@@ -81,9 +75,11 @@ if not defined ISCC (
 if not defined ISCC (
   echo [ERROR] Inno Setup compiler ^(ISCC.exe^) not found.
   echo Install it from https://jrsoftware.org/isdl.php and run this file again.
+  echo Or set the full path yourself first:  set ISCC=C:\path\to\ISCC.exe
   pause
   exit /b 1
 )
+echo Inno Setup compiler: "!ISCC!"
 
 set "ISS="
 for /r "%~dp0" %%F in (*.iss) do if not defined ISS set "ISS=%%F"
@@ -150,3 +146,31 @@ start "" /wait "!UNINS!"
 echo [OK] Uninstall finished.
 pause
 exit /b 0
+
+:FINDISCC
+rem Looks for ISCC.exe of ANY installed Inno Setup version (the newest folder name wins), per-user and all-users installs.
+if defined ISCC if exist "!ISCC!" goto :eof
+set "ISCC="
+where ISCC >nul 2>&1
+if not errorlevel 1 (
+  for /f "delims=" %%P in ('where ISCC') do if not defined ISCC set "ISCC=%%P"
+  if defined ISCC goto :eof
+)
+for %%R in ("%LocalAppData%\Programs" "%ProgramFiles%" "%ProgramFiles(x86)%") do (
+  if exist "%%~R" (
+    for /f "delims=" %%D in ('dir /b /ad /o-n "%%~R\Inno Setup*" 2^>nul') do (
+      if not defined ISCC if exist "%%~R\%%D\ISCC.exe" set "ISCC=%%~R\%%D\ISCC.exe"
+    )
+  )
+)
+if defined ISCC goto :eof
+rem Last resort: the uninstall entries written by the Inno Setup installer.
+for %%V in (7 6 5) do (
+  for %%K in (HKCU HKLM) do (
+    if not defined ISCC for /f "tokens=2,*" %%A in ('reg query "%%K\Software\Microsoft\Windows\CurrentVersion\Uninstall\Inno Setup %%V_is1" /v InstallLocation 2^>nul ^| find "InstallLocation"') do (
+      if exist "%%~B\ISCC.exe" set "ISCC=%%~B\ISCC.exe"
+    )
+  )
+)
+goto :eof
+

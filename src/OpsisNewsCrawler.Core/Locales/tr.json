@@ -207,5 +207,18 @@
   "btn.centerDesktop": "Masaüstünde ortala",
   "note.miniWeather2": "Masaüstünün ortasında, diğer pencerelerin altında durur (“diğer pencerelerin üstünde” seçmediyseniz). Ana çubukla aynı renk, saydamlık, arka plan malzemesi ve solan uçlara sahiptir (Görünüm sekmesi). Tüm şehirler sığarsa sabit durur, aksi halde kayar. Değişiklikler “Uygula” ile geçerli olur.",
   "msg.confirmUpdateOnExit": "Opsis içinde crawler dosyaları kullanımda. Güncelleme, Opsis'i kapattığınız anda otomatik kurulacak; sonra Opsis'i yeniden başlatın. Devam edilsin mi?",
-  "msg.updateScheduled": "Dosya indirildi ve doğrulandı. Opsis'i kapatın; güncelleme kurulur ve Opsis'i yeniden açabilirsiniz."
+  "msg.updateScheduled": "Dosya indirildi ve doğrulandı. Opsis'i kapatın; güncelleme kurulur ve Opsis'i yeniden açabilirsiniz.",
+  "settings.search": "Ayarları ara…",
+  "settings.noResults": "Eşleşen ayar bulunamadı.",
+  "settings.export": "Ayarları dışa aktar",
+  "settings.import": "Ayarları içe aktar",
+  "settings.exportTitle": "Ayarları dışa aktar",
+  "settings.importTitle": "Ayarları içe aktar",
+  "settings.exported": "Ayarlar başarıyla dışa aktarıldı.",
+  "settings.imported": "Ayarlar içe aktarıldı ve uygulandı.",
+  "settings.importConfirm": "İçe aktarma mevcut ayarların yerini alacak. Devam edilsin mi?",
+  "settings.importFailed": "Ayarlar içe aktarılamadı:",
+  "btn.saveSettings": "Ayarları kaydet",
+  "settings.unsavedChanges": "Kaydedilmemiş değişiklikler",
+  "settings.unsavedPrompt": "Kaydedilmemiş değişiklikler var. Kaydetmek için Evet, atmak için Hayır veya düzenlemeye devam etmek için İptal seçeneğini seçin."
 }

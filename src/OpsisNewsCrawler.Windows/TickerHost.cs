@@ -17,6 +17,8 @@ public sealed class TickerHost : IDisposable
     private readonly QuoteService quotes = new();
     private readonly System.Windows.Forms.Timer refreshTimer = new();
     private readonly System.Windows.Forms.Timer quoteTimer = new();
+    private readonly System.Windows.Forms.Timer snoozeTimer = new();
+    private bool snoozed;
     private readonly CancellationTokenSource cts = new();
     private readonly ReadStore readStore = new();
 
@@ -27,6 +29,8 @@ public sealed class TickerHost : IDisposable
     private bool refreshing;
     private bool refreshingQuotes;
     private bool pendingForced;
+    private DateTimeOffset? newsDataAt;
+    private List<string> newsFailedFeeds = new();
     private bool hasRealItems;
     private bool hasQuotes;
     private bool disposed;
@@ -110,6 +114,9 @@ public sealed class TickerHost : IDisposable
         Theme.SetMode(Config.ThemeMode, Config.OpacityPercent / 100.0);
         Loc.SetLanguage(Config.Language);
 
+        LoadCachedNews();
+        LoadCachedWeather();
+
         Window = new TickerWindow(State, hostWindowDetector);
         WireWindow(Window);
         Window.PlacementEdited += b =>
@@ -128,10 +135,21 @@ public sealed class TickerHost : IDisposable
         };
         quoteTimer.Tick += (_, _) =>
         {
+            // Re-evaluate the interval as the exchange session opens/closes.
+            quoteTimer.Interval = GetQuoteRefreshIntervalMilliseconds();
             if (!Window.IsPausedByForeground) _ = RefreshQuotesAsync();
         };
         Loc.Changed += OnLanguageChanged;
         weatherTimer.Tick += (_, _) => _ = RefreshWeatherAsync();
+        alertTimer.Tick += (_, _) => _ = CheckWeatherAlertsAsync();
+        snoozeTimer.Tick += (_, _) =>
+        {
+            snoozeTimer.Stop();
+            if (disposed || !started || !Config.BarsEnabled) return;
+            snoozed = false;
+            StartBars();
+            SnoozeChanged?.Invoke(false);
+        };
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplaysChanged;
         Window.LiveRequested += ToggleLivePreview;
         breakingTimer.Tick += (_, _) =>
@@ -165,10 +183,22 @@ public sealed class TickerHost : IDisposable
             if (Config.HideRead && allItems.Count > 0) PushAll();
         };
         w.SettingsRequested += () => SettingsRequested?.Invoke();
+        w.WeatherRequested += ShowWeatherMap;
         w.ItemSaveRequested += item =>
         {
             var added = ReadLater.Add(item);
             w.ShowToast(Loc.T(added ? "msg.savedLater" : "msg.alreadySaved"));
+        };
+        w.ItemMarkReadRequested += item =>
+        {
+            readStore.MarkRead(item.Url);
+            if (breakingActive)
+            {
+                breakingItems.RemoveAll(i => string.Equals(i.Url, item.Url, StringComparison.OrdinalIgnoreCase));
+                if (breakingItems.Count == 0) EndBreaking();
+            }
+            if (Config.HideRead) PushAll();
+            w.ShowToast(Loc.IsGreek ? "Σημειώθηκε ως διαβασμένο" : "Marked as read");
         };
         w.ScrollSpeedChanged += speed =>
         {
@@ -192,10 +222,31 @@ public sealed class TickerHost : IDisposable
     public bool LanguageFollowsHost { get; set; }
 
     /// <summary>Pushes the values of <see cref="Config"/> into the windows and timers. Does not save.</summary>
+    private GlobalHotkey? hotkey;
+
+    /// <summary>Registers or removes the Ctrl+Alt+N hot key that shows / hides the bars.</summary>
+    private void UpdateHotkey()
+    {
+        var want = Config.ToggleHotkey && !HostedByOpsis && !disposed;
+        if (want && hotkey is null)
+        {
+            hotkey = new GlobalHotkey();
+            hotkey.Pressed += () => SetBarsEnabled(!Config.BarsEnabled);
+            if (!hotkey.Register(GlobalHotkey.ModControl | GlobalHotkey.ModAlt, 0x4E))
+                Log.Write("Hot key Ctrl+Alt+N could not be registered (another program uses it).");
+        }
+        else if (!want && hotkey is not null)
+        {
+            hotkey.Dispose();
+            hotkey = null;
+        }
+    }
+
     public void ApplyConfig()
     {
         if (!LanguageFollowsHost) Loc.SetLanguage(Config.Language);
         Theme.SetMode(Config.ThemeMode, Config.OpacityPercent / 100.0);
+        UpdateHotkey();
 
         ConfigureWindow(Window, Config.Position, main: true);
         Window.SetBackdropStyle(Config.BarBackdrop);
@@ -229,15 +280,19 @@ public sealed class TickerHost : IDisposable
         SyncMonitorWindows();
 
         refreshTimer.Interval = Config.RefreshIntervalSeconds * 1000;
-        quoteTimer.Interval = Config.QuoteRefreshSeconds * 1000;
+        quoteTimer.Interval = GetQuoteRefreshIntervalMilliseconds();
         PushAll();
         if (BarsOn)
         {
             _ = RefreshQuotesAsync();
             _ = RefreshWeatherAsync();
+            _ = RefreshExtraNewsAsync();
             UpdateMiniWeather();
         }
     }
+
+    private int GetQuoteRefreshIntervalMilliseconds() =>
+        QuoteRefreshPolicy.GetIntervalSeconds(Config.Watchlist, Config.QuoteRefreshSeconds, DateTimeOffset.Now) * 1000;
 
     /// <summary>Screens that currently get an extra bar: enabled in the settings, still connected and not the primary one.</summary>
     private IEnumerable<(MonitorBar Cfg, Screen Screen)> WantedMonitors() =>
@@ -347,7 +402,7 @@ public sealed class TickerHost : IDisposable
 
     public void SaveConfig() => Config.Save(configPath);
 
-    private bool BarsOn => started && Config.BarsEnabled;
+    private bool BarsOn => started && Config.BarsEnabled && !snoozed;
 
     public void Start()
     {
@@ -366,10 +421,12 @@ public sealed class TickerHost : IDisposable
         refreshTimer.Start();
         quoteTimer.Start();
         weatherTimer.Start();
+        alertTimer.Start();
         breakingTimer.Start();
         _ = RefreshAsync(force: true);
         _ = RefreshQuotesAsync();
         _ = RefreshWeatherAsync();
+        _ = CheckWeatherAlertsAsync();
         UpdateMiniWeather();
     }
 
@@ -377,9 +434,12 @@ public sealed class TickerHost : IDisposable
     {
         breakingTimer.Stop();
         CloseLivePreview();
+        weatherMap?.Close();
+        weatherMap = null;
         refreshTimer.Stop();
         quoteTimer.Stop();
         weatherTimer.Stop();
+        alertTimer.Stop();
         Window.StopTicker();
         SecondWindow?.StopTicker();
         foreach (var extra in ExtraWindows) extra.StopTicker();
@@ -389,11 +449,41 @@ public sealed class TickerHost : IDisposable
     /// <summary>Raised after the master switch changed (tray menu and settings keep their check marks in step).</summary>
     public event Action? BarsEnabledChanged;
 
+    /// <summary>Raised when a temporary snooze starts or ends.</summary>
+    public event Action<bool>? SnoozeChanged;
+
+    /// <summary>Temporarily hides all bars without changing the saved enabled setting.</summary>
+    public void SnoozeBars(TimeSpan duration)
+    {
+        if (disposed || !started || !Config.BarsEnabled) return;
+        var milliseconds = (int)Math.Clamp(duration.TotalMilliseconds, 1000, 60 * 60 * 1000);
+        snoozeTimer.Stop();
+        snoozeTimer.Interval = milliseconds;
+        snoozed = true;
+        StopBars();
+        snoozeTimer.Start();
+        SnoozeChanged?.Invoke(true);
+    }
+
+    /// <summary>Cancels a temporary snooze and restores the bars if they are enabled.</summary>
+    public void CancelSnooze()
+    {
+        if (!snoozed) return;
+        snoozeTimer.Stop();
+        snoozed = false;
+        if (started && Config.BarsEnabled) StartBars();
+        SnoozeChanged?.Invoke(false);
+    }
+
     /// <summary>Turns every bar on or off. Off: the bars disappear and nothing is downloaded.</summary>
     public void SetBarsEnabled(bool on)
     {
         if (Config.BarsEnabled == on) return;
         Config.BarsEnabled = on;
+        var wasSnoozed = snoozed;
+        snoozeTimer.Stop();
+        snoozed = false;
+        if (wasSnoozed) SnoozeChanged?.Invoke(false);
         SaveConfig();
         if (started)
         {
@@ -405,10 +495,15 @@ public sealed class TickerHost : IDisposable
     public void Stop()
     {
         started = false;
+        snoozeTimer.Stop();
+        snoozed = false;
         breakingTimer.Stop();
         CloseLivePreview();
+        weatherMap?.Close();
+        weatherMap = null;
         refreshTimer.Stop();
         quoteTimer.Stop();
+        alertTimer.Stop();
         Window.StopTicker();
         SecondWindow?.StopTicker();
         foreach (var extra in ExtraWindows) extra.StopTicker();
@@ -458,6 +553,8 @@ public sealed class TickerHost : IDisposable
         State.SetScrollOffset(0);
         State2.SetScrollOffset(0);
         allItems = new();
+        newsFailedFeeds = new();
+        LoadCachedNews();
         _ = RefreshAsync(force: true);
     }
 
@@ -472,21 +569,156 @@ public sealed class TickerHost : IDisposable
 
     // ---- what the bars show ---------------------------------------------------------------
 
-    private bool NeedsNews => Config.MainContent is BarContent.News or BarContent.Both || (Config.SecondBarEnabled && Config.SecondContent is BarContent.News or BarContent.Both) || ExtraContents().Any(c => c is BarContent.News or BarContent.Both);
-    private bool NeedsStocks => Config.MainContent is BarContent.Stocks or BarContent.Both || (Config.SecondBarEnabled && Config.SecondContent is BarContent.Stocks or BarContent.Both) || ExtraContents().Any(c => c is BarContent.Stocks or BarContent.Both);
-
-    private IEnumerable<BarContent> ExtraContents() => WantedMonitors().Select(x => x.Cfg.Content);
-
-    private IReadOnlyList<NewsItem> NewsForDisplay()
+    /// <summary>What every bar that is on shows right now (main, second, monitors, desktop bar).</summary>
+    private IEnumerable<BarSlots> AllBarSlots()
     {
-        if (allItems.Count == 0)
-            return new[] { Placeholder(hasRealItems ? Loc.T("ph.newsUnavailable") : Loc.T("ph.loadingNews")) };
-        var visible = Config.HideRead ? allItems.Where(i => !readStore.IsRead(i.Url)).ToList() : allItems;
-        return visible.Count == 0 ? new[] { Placeholder(Loc.T("ph.allRead")) } : visible;
+        yield return Config.MainSlots();
+        if (Config.SecondBarEnabled) yield return Config.SecondSlots();
+        foreach (var (cfg, _) in WantedMonitors()) yield return cfg.Slots();
+        if (Config.MiniWeatherEnabled) yield return Config.MiniSlots();
     }
 
-    private IReadOnlyList<NewsItem> StocksForDisplay() =>
-        stockItems.Count > 0 ? stockItems : new[] { Placeholder(hasQuotes ? Loc.T("ph.quotesUnavailable") + (quotes.LastFailed.Count > 0 ? " (" + string.Join(", ", quotes.LastFailed) + ")" : "") : Loc.T("ph.loadingQuotes")) };
+    private bool Needs(SlotKind kind) => AllBarSlots().Any(slots => slots.Has(kind));
+    private bool NeedsNews => Needs(SlotKind.News);
+    private bool NeedsStocks => Needs(SlotKind.Stocks);
+
+    private bool IsActiveCategory(string? id) => string.IsNullOrWhiteSpace(id) || string.Equals(id, Config.ActiveCategory, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>News categories other than the active one that some bar shows (a half of a split bar, or a whole bar).</summary>
+    private List<string> ExtraNewsCategories() => AllBarSlots().SelectMany(slots => slots.All())
+        .Where(slot => slot.Kind == SlotKind.News && !IsActiveCategory(slot.Category))
+        .Select(slot => slot.Category!).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+    // ---- no internet / a provider is down: the last stored data plus a message ----------------
+
+    private static bool InternetAvailable()
+    {
+        try { return System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable(); }
+        catch (Exception ex) when (ex is System.Net.NetworkInformation.NetworkInformationException or InvalidOperationException) { return true; }
+    }
+
+    /// <summary>A scrolling warning: no internet, or which provider does not answer, and the time of the data still shown.</summary>
+    private static NewsItem? Notice(IReadOnlyCollection<string> failedProviders, DateTimeOffset? dataAt)
+    {
+        if (failedProviders.Count == 0) return null;
+        var head = InternetAvailable() ? Loc.T("net.providerDown", string.Join(", ", failedProviders)) : Loc.T("net.offline");
+        var tail = dataAt is { } at ? Loc.T("net.showingStored", at.ToLocalTime().ToString("dd/MM HH:mm")) : Loc.T("net.noStored");
+        return Placeholder(head + " — " + tail);
+    }
+
+    private static IReadOnlyList<NewsItem> WithNotice(NewsItem? notice, IReadOnlyList<NewsItem> items) =>
+        notice is null ? items : new[] { notice }.Concat(items).ToList();
+
+    private void LoadCachedNews()
+    {
+        var cached = DataCache.Load<List<NewsItem>>("news-" + Config.ActiveCategory);
+        if (cached?.Data is not { Count: > 0 } items) return;
+        allItems = items;
+        newsDataAt = cached.At;
+        hasRealItems = true;
+    }
+
+    private void LoadCachedWeather()
+    {
+        var cached = DataCache.Load<List<WeatherReading>>("weather");
+        if (cached?.Data is not { Count: > 0 } readings) return;
+        weatherReadings = readings;
+        weatherDataAt = cached.At;
+        hasWeather = true;
+    }
+
+    private IReadOnlyList<NewsItem> NewsForDisplay() =>
+        WithNotice(Notice(newsFailedFeeds, newsDataAt), NewsItemsOnly());
+
+    private IReadOnlyList<NewsItem> NewsItemsOnly() => FilterNews(allItems, hasRealItems);
+
+    private IReadOnlyList<NewsItem> FilterNews(List<NewsItem> source, bool hasReal)
+    {
+        if (source.Count == 0)
+            return new[] { Placeholder(hasReal ? Loc.T("ph.newsUnavailable") : Loc.T("ph.loadingNews")) };
+        IReadOnlyList<NewsItem> candidates = NewsKeywordFilter.Filter(source, Config.MutedNewsKeywords);
+        if (Config.StockNewsOnly) candidates = StockNewsFilter.Filter(candidates, Config.Watchlist);
+        var visible = Config.HideRead ? candidates.Where(i => !readStore.IsRead(i.Url)).ToList() : candidates.ToList();
+        if (visible.Count > 0) return visible;
+        if (Config.StockNewsOnly && candidates.Count == 0)
+            return new[] { Placeholder(Loc.IsGreek ? "Δεν βρέθηκαν ειδήσεις για τις επιλεγμένες μετοχές" : "No stories matched your selected shares") };
+        return new[] { Placeholder(Loc.T("ph.allRead")) };
+    }
+
+    // News of categories that are not the active one (shown in a bar or in one half of a split bar).
+    private readonly Dictionary<string, List<NewsItem>> extraNews = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, DateTimeOffset> extraNewsAt = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, List<string>> extraNewsFailed = new(StringComparer.OrdinalIgnoreCase);
+    private readonly RssNewsProvider extraNewsProvider = new();
+    private bool refreshingExtra;
+
+    private IReadOnlyList<NewsItem> CategoryNewsForDisplay(string id)
+    {
+        if (!extraNews.TryGetValue(id, out var items))
+        {
+            // First time: the stored copy of the last run, if any.
+            var cached = DataCache.Load<List<NewsItem>>("news-" + id);
+            items = cached?.Data ?? new List<NewsItem>();
+            extraNews[id] = items;
+            if (cached is not null && items.Count > 0) extraNewsAt[id] = cached.At;
+        }
+        var failed = extraNewsFailed.TryGetValue(id, out var f) ? f : new List<string>();
+        DateTimeOffset? at = extraNewsAt.TryGetValue(id, out var t) ? t : null;
+        return WithNotice(Notice(failed, at), FilterNews(items, items.Count > 0));
+    }
+
+    /// <summary>Fetches the categories of <see cref="ExtraNewsCategories"/>, one after the other, and keeps (and stores) the last good result of each.</summary>
+    private async Task RefreshExtraNewsAsync()
+    {
+        if (disposed || refreshingExtra) return;
+        var wanted = ExtraNewsCategories();
+        if (wanted.Count == 0) return;
+        refreshingExtra = true;
+        try
+        {
+            foreach (var id in wanted)
+            {
+                if (disposed || cts.IsCancellationRequested) return;
+                var items = await extraNewsProvider.FetchAsync(Config.GetFeeds(id), Config.MaxItemsPerFeed, cts.Token, Config.NewsMaxAgeHours, Config.NewsSortNewestFirst);
+                var failedFeeds = extraNewsProvider.LastFailedFeeds.ToList();
+                var category = id;
+                void Apply()
+                {
+                    if (disposed) return;
+                    if (items.Count > 0)
+                    {
+                        extraNews[category] = items.ToList();
+                        extraNewsAt[category] = DateTimeOffset.Now;
+                        extraNewsFailed.Remove(category);
+                        DataCache.Save("news-" + category, extraNews[category]);
+                    }
+                    else extraNewsFailed[category] = failedFeeds;
+                    PushAll();
+                }
+                if (Window.IsHandleCreated && Window.InvokeRequired) Window.Invoke(new Action(Apply)); else Apply();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            Log.Write($"extra news failed: {ex.GetType().Name}: {ex.Message}");
+        }
+        finally
+        {
+            refreshingExtra = false;
+        }
+    }
+
+    private IReadOnlyList<NewsItem> StocksForDisplay()
+    {
+        var failed = quotes.LastFailed.Select(QuoteService.ProviderName).Distinct().ToList();
+        var storedAt = quotes.StaleSources.Count > 0 ? quotes.StaleSources.Values.Min() : (DateTimeOffset?)null;
+        var notice = Notice(failed, storedAt);
+        if (stockItems.Count > 0) return WithNotice(notice, stockItems);
+        return new[] { notice ?? Placeholder(hasQuotes ? Loc.T("ph.quotesUnavailable") : Loc.T("ph.loadingQuotes")) };
+    }
 
     private static NewsItem Placeholder(string text) => new(text, "", Loc.T("app.name"), DateTimeOffset.Now);
 
@@ -502,38 +734,33 @@ public sealed class TickerHost : IDisposable
         }
         else
         {
-            PushTo(Window, State, Config.MainContent);
+            PushTo(Window, State, Config.MainSlots());
         }
-        if (SecondWindow is not null) PushTo(SecondWindow, State2, Config.SecondContent);
+        if (SecondWindow is not null) PushTo(SecondWindow, State2, Config.SecondSlots());
         foreach (var (cfg, _) in WantedMonitors())
-            if (monitorWindows.TryGetValue(cfg.Device, out var extra)) PushTo(extra.Window, extra.State, cfg.Content);
-        if (miniWeather is not null) PushTo(miniWeather, miniState, BarContent.Weather);
+            if (monitorWindows.TryGetValue(cfg.Device, out var extra)) PushTo(extra.Window, extra.State, cfg.Slots());
+        if (miniWeather is not null) PushTo(miniWeather, miniState, Config.MiniSlots());
     }
 
-    private void PushTo(TickerWindow w, TickerState st, BarContent content)
+    private void PushTo(TickerWindow w, TickerState st, BarSlots slots)
     {
-        switch (content)
+        if (slots.B is not { } second)
         {
-            case BarContent.News:
-                w.SetSplit(false);
-                w.SetItems(NewsForDisplay(), st.ScrollOffset);
-                break;
-            case BarContent.Stocks:
-                w.SetSplit(false);
-                w.SetItems(StocksForDisplay(), st.ScrollOffset);
-                break;
-            case BarContent.Weather:
-                w.SetSplit(false);
-                w.SetItems(WeatherForDisplay(), st.ScrollOffset);
-                break;
-            default:
-                w.SetSplit(true);
-                var stocksLeft = Config.SplitStocksOnLeft;
-                w.SetItems(stocksLeft ? StocksForDisplay() : NewsForDisplay(), st.ScrollOffset);
-                w.SetItemsB(stocksLeft ? NewsForDisplay() : StocksForDisplay(), st.ScrollOffsetB);
-                break;
+            w.SetSplit(false);
+            w.SetItems(ItemsFor(slots.A), st.ScrollOffset);
+            return;
         }
+        w.SetSplit(true);
+        w.SetItems(ItemsFor(slots.A), st.ScrollOffset);
+        w.SetItemsB(ItemsFor(second), st.ScrollOffsetB);
     }
+
+    private IReadOnlyList<NewsItem> ItemsFor(BarSlot slot) => slot.Kind switch
+    {
+        SlotKind.Stocks => StocksForDisplay(),
+        SlotKind.Weather => WeatherForDisplay(),
+        _ => IsActiveCategory(slot.Category) ? NewsForDisplay() : CategoryNewsForDisplay(slot.Category!)
+    };
 
     /// <summary>Forgets which articles were read; they show up in the strip again.</summary>
     public void ResetReadList()
@@ -558,7 +785,8 @@ public sealed class TickerHost : IDisposable
         try
         {
             var category = Config.ActiveCategory;
-            var items = await news.FetchAsync(Config.GetFeeds(category), Config.MaxItemsPerFeed, cts.Token);
+            var items = await news.FetchAsync(Config.GetFeeds(category), Config.MaxItemsPerFeed, cts.Token, Config.NewsMaxAgeHours, Config.NewsSortNewestFirst);
+            var failedFeeds = news.LastFailedFeeds.ToList();
             if (disposed || !string.Equals(category, Config.ActiveCategory, StringComparison.OrdinalIgnoreCase)) return; // the category changed meanwhile; a new refresh is running
 
             void Apply()
@@ -569,13 +797,22 @@ public sealed class TickerHost : IDisposable
                 {
                     hasRealItems = true;
                     allItems = items.ToList();
+                    newsDataAt = DateTimeOffset.Now;
+                    newsFailedFeeds = new();
+                    DataCache.Save("news-" + category, allItems);
                     DetectBreaking(allItems);
+                }
+                else
+                {
+                    // Nothing came back: keep (and say that we keep) what we showed or stored before.
+                    newsFailedFeeds = failedFeeds;
                 }
                 PushAll();
             }
 
             if (Window.IsHandleCreated && Window.InvokeRequired) Window.Invoke(new Action(Apply));
             else Apply();
+            await RefreshExtraNewsAsync();
         }
         catch (OperationCanceledException)
         {
@@ -602,26 +839,139 @@ public sealed class TickerHost : IDisposable
     /// <summary>Finds new urgent headlines; the first time one is seen the intro plays and the bar turns red.</summary>
     private void DetectBreaking(List<NewsItem> items)
     {
-        if (!Config.BreakingEnabled || Config.MainContent is BarContent.Stocks or BarContent.Weather && !breakingActive) return;
+        if (!Config.BreakingEnabled || (!Config.MainSlots().Has(SlotKind.News) && !breakingActive)) return;
         var maxAge = TimeSpan.FromMinutes(Config.BreakingMaxAgeMinutes);
-        var urgent = items.Where(i => Breaking.IsBreaking(i, Config.BreakingKeywords, maxAge) && !readStore.IsRead(i.Url))
+        var urgent = items.Where(i => !NewsKeywordFilter.IsMuted(i, Config.MutedNewsKeywords) && Breaking.IsBreaking(i, Config.BreakingKeywords, maxAge) && !readStore.IsRead(i.Url))
             .Select(i => i with { Breaking = true }).ToList();
         if (urgent.Count == 0) return;
 
         var isNew = urgent.Where(i => !readStore.IsRead("breaking:" + i.Url)).ToList();
         foreach (var i in isNew) readStore.MarkRead("breaking:" + i.Url); // remembered, so a restart does not replay the intro
-        breakingItems = urgent;
+        // Price and weather alerts have no link: they stay on the bar next to the urgent headlines.
+        breakingItems = urgent.Concat(breakingItems.Where(i => string.IsNullOrEmpty(i.Url))).ToList();
         breakingUntil = DateTimeOffset.Now.AddMinutes(Config.BreakingDurationMinutes);
         if (!breakingActive && isNew.Count > 0) StartBreaking();
-        else if (breakingActive) Window.SetLiveAvailable(HasLive);
+        else if (breakingActive)
+        {
+            if (isNew.Count > 0) PlayAlertSound();
+            Window.SetLiveAvailable(HasLive);
+        }
+    }
+
+    /// <summary>Shows an alert on the bar (like an urgent headline) for every price limit that was just passed.</summary>
+    private void CheckPriceAlerts()
+    {
+        if (disposed || Config.PriceAlerts.Count == 0) return;
+        var hits = PriceAlertCheck.Evaluate(Config.PriceAlerts, quotes.LastQuotes);
+        if (hits.Count == 0) return;
+        var culture = System.Globalization.CultureInfo.GetCultureInfo("el-GR");
+        foreach (var (alert, quote) in hits)
+        {
+            var label = string.IsNullOrWhiteSpace(alert.Label) ? quote.Symbol : alert.Label;
+            var text = Loc.Pick(
+                $"🔔 {label} {(alert.Above ? "πάνω από" : "κάτω από")} {alert.Threshold.ToString("0.00##", culture)}: τώρα {quote.Price.ToString("0.00##", culture)}",
+                $"🔔 {label} {(alert.Above ? "above" : "below")} {alert.Threshold.ToString("0.00##", culture)}: now {quote.Price.ToString("0.00##", culture)}");
+            breakingItems.Add(new NewsItem(text, "", Loc.Pick("Ειδοποίηση τιμής", "Price alert"), DateTimeOffset.Now,
+                Summary: label, Kind: NewsItemKind.News, Trend: alert.Above ? 1 : -1, Breaking: true));
+        }
+        breakingUntil = DateTimeOffset.Now.AddMinutes(Config.BreakingDurationMinutes);
+        if (!breakingActive) StartBreaking();
+        PushAll();
+    }
+
+    // ---- weather and map of a city (click on the weather line) ---------------------------------
+
+    private WeatherMapForm? weatherMap;
+
+    private void ShowWeatherMap(NewsItem item, Rectangle barBounds)
+    {
+        if (disposed || !Config.WeatherMapOnClick || GreekCities.Find(item.Key) is not { } city) return;
+        var reading = weatherReadings.FirstOrDefault(r => string.Equals(r.CityId, city.Id, StringComparison.OrdinalIgnoreCase));
+        weatherMap?.Close();
+        weatherMap = new WeatherMapForm(city, reading, weatherFailed, barBounds);
+        var shown = weatherMap;
+        shown.FormClosed += (_, _) => { if (ReferenceEquals(weatherMap, shown)) weatherMap = null; };
+        shown.Show();
     }
 
     private void StartBreaking()
     {
         breakingActive = true;
+        PlayAlertSound();
         Window.StartBreaking();
         Window.SetLiveAvailable(HasLive);
     }
+
+    /// <summary>The short sound of an urgent alert, when the user wants it.</summary>
+    private void PlayAlertSound()
+    {
+        if (!Config.BreakingSound) return;
+        AlertSound.Play();
+    }
+
+    // ---- severe weather for the user's area ---------------------------------------------------
+
+    private readonly WeatherAlertService alertService = new();
+    private readonly System.Windows.Forms.Timer alertTimer = new() { Interval = 30 * 60 * 1000 };
+    private HashSet<string> weatherAlertKeys = new();
+    private bool checkingAlerts;
+
+    /// <summary>
+    /// Every 30 minutes: warnings of severe weather in the next 12 hours for the chosen city. A warning shows once like an urgent headline
+    /// (with the sound) and again only after the condition has passed. These are computed from the forecast, not the official bulletin.
+    /// </summary>
+    private async Task CheckWeatherAlertsAsync()
+    {
+        if (disposed || checkingAlerts || !Config.WeatherAlertsEnabled || !Config.BreakingEnabled) return;
+        checkingAlerts = true;
+        try
+        {
+            var city = Config.ResolveAlertCity();
+            var found = await alertService.FetchAsync(city, cts.Token);
+            if (found is null || disposed) return;
+            void Apply()
+            {
+                if (disposed) return;
+                var keys = found.Select(a => city.Id + ":" + a.Kind).ToHashSet();
+                var fresh = found.Where(a => !weatherAlertKeys.Contains(city.Id + ":" + a.Kind)).ToList();
+                weatherAlertKeys = keys;
+                if (fresh.Count == 0) return;
+                AddWeatherAlertItems(city, fresh);
+            }
+            if (Window.IsHandleCreated && Window.InvokeRequired) Window.BeginInvoke(new Action(Apply)); else Apply();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            Log.Write($"weather alerts failed: {ex.GetType().Name}: {ex.Message}");
+        }
+        finally
+        {
+            checkingAlerts = false;
+        }
+    }
+
+    private void AddWeatherAlertItems(GreekCity city, IReadOnlyList<WeatherAlert> alerts)
+    {
+        var name = Loc.IsGreek ? city.NameEl : city.NameEn;
+        foreach (var a in alerts)
+        {
+            var text = $"⚠ {name}: {Loc.Pick(a.TextEl, a.TextEn)}";
+            breakingItems.Add(new NewsItem(text, "", Loc.Pick("Έκτακτο καιρικό φαινόμενο", "Severe weather"), DateTimeOffset.Now,
+                Summary: Loc.Pick("Αυτόματη ειδοποίηση από την πρόγνωση Open-Meteo για τις επόμενες 12 ώρες· δεν είναι επίσημο δελτίο της ΕΜΥ.",
+                    "Automatic warning from the Open-Meteo forecast for the next 12 hours; not the official HNMS bulletin."),
+                Kind: NewsItemKind.News, Trend: -1, Breaking: true));
+        }
+        breakingUntil = DateTimeOffset.Now.AddMinutes(Config.BreakingDurationMinutes);
+        if (!breakingActive) StartBreaking(); else PlayAlertSound();
+        PushAll();
+    }
+
+    /// <summary>For testing: shows a sample severe-weather warning for the chosen city.</summary>
+    public void SimulateWeatherAlert() =>
+        AddWeatherAlertItems(Config.ResolveAlertCity(), new[] { new WeatherAlert("test", "Δοκιμαστική ειδοποίηση: ισχυροί άνεμοι, ριπές έως 80 km/h", "Test warning: strong winds, gusts up to 80 km/h", DateTimeOffset.Now) });
 
     private void EndBreaking()
     {
@@ -674,17 +1024,20 @@ public sealed class TickerHost : IDisposable
     private IReadOnlyList<WeatherReading> weatherReadings = Array.Empty<WeatherReading>();
     private bool refreshingWeather;
     private bool hasWeather;
+    private bool weatherFailed;
+    private DateTimeOffset? weatherDataAt;
     private TickerWindow? miniWeather;
     private readonly TickerState miniState = new();
 
-    private bool NeedsWeather => Config.MainContent == BarContent.Weather || Config.SecondBarEnabled && Config.SecondContent == BarContent.Weather ||
-                                 ExtraContents().Any(c => c == BarContent.Weather) || Config.MiniWeatherEnabled;
+    private bool NeedsWeather => Needs(SlotKind.Weather);
 
     private IReadOnlyList<NewsItem> WeatherForDisplay()
     {
         if (Config.WeatherCities.Count == 0) return new[] { Placeholder(Loc.T("ph.noCities")) };
-        var items = WeatherService.ToItems(Config.WeatherCities, weatherReadings, Loc.IsGreek);
-        return items.Count > 0 ? items : new[] { Placeholder(hasWeather ? Loc.T("ph.weatherUnavailable") : Loc.T("ph.loadingWeather")) };
+        var items = WeatherService.ToItems(Config.WeatherCities, weatherReadings, Loc.IsGreek, Config.WeatherFields);
+        var notice = weatherFailed ? Notice(new[] { "Open-Meteo" }, weatherDataAt) : null;
+        if (items.Count > 0) return WithNotice(notice, items);
+        return new[] { notice ?? Placeholder(hasWeather ? Loc.T("ph.weatherUnavailable") : Loc.T("ph.loadingWeather")) };
     }
 
     private async Task RefreshWeatherAsync()
@@ -695,17 +1048,27 @@ public sealed class TickerHost : IDisposable
         {
             var ids = Config.WeatherCities.Distinct().ToList();
             var readings = await weather.FetchAsync(ids, cts.Token);
+            var failed = weather.LastFailed;
             void Apply()
             {
                 if (disposed) return;
                 hasWeather = true;
-                weatherReadings = readings;
+                weatherFailed = failed;
+                if (readings.Count > 0)
+                {
+                    weatherReadings = readings; // a failed request returns the previous readings: they stay, with a message
+                    if (!failed)
+                    {
+                        weatherDataAt = DateTimeOffset.Now;
+                        DataCache.Save("weather", readings.ToList());
+                    }
+                }
                 PushAll();
                 UpdateMiniWeather();
             }
             if (!Window.IsHandleCreated) return;
             if (Window.InvokeRequired) Window.BeginInvoke(new Action(Apply)); else Apply();
-            if (readings.Count == 0) _ = RetryWeatherLater();
+            if (readings.Count == 0 || failed) _ = RetryWeatherLater();
         }
         catch (OperationCanceledException)
         {
@@ -714,6 +1077,7 @@ public sealed class TickerHost : IDisposable
         {
             Log.Write($"weather failed: {ex.GetType().Name}: {ex.Message}");
             hasWeather = true;
+            weatherFailed = true;
             _ = RetryWeatherLater();
         }
         finally
@@ -804,7 +1168,7 @@ public sealed class TickerHost : IDisposable
         w.SetDesktopLayer(!Config.MiniWeatherOnTop);
         w.SetCustomBounds(GetMiniWeatherBounds());
         w.SetPosition(TickerPosition.Custom);
-        PushTo(w, miniState, BarContent.Weather);
+        PushTo(w, miniState, Config.MiniSlots());
         if (created) w.StartTicker();
     }
 
@@ -839,7 +1203,7 @@ public sealed class TickerHost : IDisposable
                 {
                     if (disposed) return;
                     hasQuotes = true;
-                    stockItems = list;
+                    if (list.Count > 0 || stockItems.Count == 0) stockItems = list; // nothing came back: keep what is shown
                     PushAll();
                 }
 
@@ -852,6 +1216,7 @@ public sealed class TickerHost : IDisposable
             var items = await quotes.FetchItemsAsync(Config.Watchlist, Loc.IsGreek, cts.Token, Show);
             quotesFailed = quotes.LastFailed.Count > 0 || items.Count == 0 && Config.Watchlist.Any(w => w.Enabled);
             Show(items);
+            CheckPriceAlerts();
             if (quotesFailed) ScheduleQuoteRetry();
         }
         catch (OperationCanceledException)
@@ -880,10 +1245,15 @@ public sealed class TickerHost : IDisposable
         cts.Cancel();
         refreshTimer.Dispose();
         quoteTimer.Dispose();
+        snoozeTimer.Dispose();
+        hotkey?.Dispose();
         weatherTimer.Dispose();
+        alertTimer.Dispose();
         miniWeather?.Dispose();
         breakingTimer.Dispose();
         CloseLivePreview();
+        weatherMap?.Close();
+        weatherMap = null;
         news.Dispose();
         SecondWindow?.Dispose();
         foreach (var extra in ExtraWindows) extra.Dispose();

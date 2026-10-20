@@ -207,5 +207,18 @@
   "btn.centerDesktop": "Centrer sur le Bureau",
   "note.miniWeather2": "Elle se place au milieu du Bureau, sous les autres fenêtres (sauf si vous choisissez « au-dessus des autres fenêtres »). Mêmes couleurs, transparence, matériau d'arrière-plan et extrémités estompées que la barre principale (onglet Apparence). Si toutes les villes tiennent, elle reste fixe, sinon elle défile. Les changements s'appliquent avec « Appliquer ».",
   "msg.confirmUpdateOnExit": "Dans Opsis, les fichiers du crawler sont en cours d'utilisation. La mise à jour s'installera automatiquement dès que vous fermerez Opsis ; relancez ensuite Opsis. Continuer ?",
-  "msg.updateScheduled": "Le fichier a été téléchargé et vérifié. Fermez Opsis ; la mise à jour s'installe alors et vous pourrez rouvrir Opsis."
+  "msg.updateScheduled": "Le fichier a été téléchargé et vérifié. Fermez Opsis ; la mise à jour s'installe alors et vous pourrez rouvrir Opsis.",
+  "settings.search": "Rechercher des paramètres…",
+  "settings.noResults": "Aucun paramètre correspondant.",
+  "settings.export": "Exporter les paramètres",
+  "settings.import": "Importer les paramètres",
+  "settings.exportTitle": "Exporter les paramètres",
+  "settings.importTitle": "Importer les paramètres",
+  "settings.exported": "Paramètres exportés avec succès.",
+  "settings.imported": "Paramètres importés et appliqués.",
+  "settings.importConfirm": "L’importation remplacera les paramètres actuels. Continuer ?",
+  "settings.importFailed": "Impossible d’importer les paramètres :",
+  "btn.saveSettings": "Enregistrer les paramètres",
+  "settings.unsavedChanges": "Modifications non enregistrées",
+  "settings.unsavedPrompt": "Des modifications ne sont pas enregistrées. Choisissez Oui pour enregistrer, Non pour les ignorer ou Annuler pour continuer."
 }

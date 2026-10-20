@@ -145,8 +145,11 @@ internal sealed class TickerCanvas : Control
     public event Action<NewsItem?, Rectangle>? HoverChanged;
     public event Action<NewsItem>? ItemClicked;
 
+    /// <summary>A weather item (it has a city key but no link) was clicked.</summary>
+    public event Action<NewsItem>? WeatherClicked;
+
     /// <summary>Right mouse button released over the strip (used to open the settings).</summary>
-    public event Action? ContextClicked;
+    public event Action<NewsItem?>? ContextClicked;
 
     /// <summary>The pulsing live button at the right end of the bar was clicked.</summary>
     public event Action? LiveClicked;
@@ -365,7 +368,7 @@ internal sealed class TickerCanvas : Control
         hoverIndex = index;
         hoverCopy = copy;
 
-        var clickable = index >= 0 && !string.IsNullOrEmpty(entries[index].Item.Url);
+        var clickable = index >= 0 && (!string.IsNullOrEmpty(entries[index].Item.Url) || entries[index].Item.Kind == NewsItemKind.Weather && !string.IsNullOrEmpty(entries[index].Item.Key));
         Cursor = clickable ? Cursors.Hand : Cursors.Default;
         Invalidate();
 
@@ -400,7 +403,7 @@ internal sealed class TickerCanvas : Control
         base.OnMouseClick(e);
         if (e.Button == MouseButtons.Right)
         {
-            ContextClicked?.Invoke();
+            ContextClicked?.Invoke(hoverIndex >= 0 && hoverIndex < entries.Count ? entries[hoverIndex].Item : null);
             return;
         }
         if (e.Button == MouseButtons.Left && liveVisible && LiveRect().Contains(e.Location))
@@ -410,6 +413,11 @@ internal sealed class TickerCanvas : Control
         }
         if (e.Button != MouseButtons.Left || hoverIndex < 0 || hoverIndex >= entries.Count) return;
         var item = entries[hoverIndex].Item;
+        if (item.Kind == NewsItemKind.Weather)
+        {
+            if (!string.IsNullOrEmpty(item.Key)) WeatherClicked?.Invoke(item);
+            return;
+        }
         if (!string.IsNullOrEmpty(item.Url)) ItemClicked?.Invoke(item);
     }
 
@@ -524,7 +532,7 @@ internal sealed class TickerCanvas : Control
             using var font = new Font("Segoe UI", 15f, FontStyle.Bold);
             using var brush = new SolidBrush(Color.FromArgb((int)(255 * textAlpha), Color.White));
             using var center = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-            g.DrawString(UpperNoAccents(Loc.T("breaking.title")), font, brush, new RectangleF(0, 0, Width, Height), center);
+            g.DrawString(UpperNoAccents(Loc.T("breaking.title") + "  ·  " + Loc.T("breaking.now")), font, brush, new RectangleF(0, 0, Width, Height), center);
         }
     }
 

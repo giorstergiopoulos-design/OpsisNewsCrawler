@@ -207,5 +207,18 @@
   "btn.centerDesktop": "Auf dem Desktop zentrieren",
   "note.miniWeather2": "Sie liegt in der Mitte des Desktops unter den anderen Fenstern (außer Sie wählen „über anderen Fenstern“). Farben, Transparenz, Hintergrundmaterial und ausblendende Enden entsprechen der Hauptleiste (Tab Aussehen). Passen alle Städte hinein, steht sie still, sonst scrollt sie. Änderungen gelten mit „Übernehmen“.",
   "msg.confirmUpdateOnExit": "In Opsis sind die Dateien des Crawlers in Benutzung. Das Update wird automatisch installiert, sobald Sie Opsis schließen; starten Sie Opsis danach neu. Fortfahren?",
-  "msg.updateScheduled": "Die Datei wurde heruntergeladen und geprüft. Schließen Sie Opsis; danach wird das Update installiert und Sie können Opsis wieder öffnen."
+  "msg.updateScheduled": "Die Datei wurde heruntergeladen und geprüft. Schließen Sie Opsis; danach wird das Update installiert und Sie können Opsis wieder öffnen.",
+  "settings.search": "Einstellungen suchen…",
+  "settings.noResults": "Keine passenden Einstellungen gefunden.",
+  "settings.export": "Einstellungen exportieren",
+  "settings.import": "Einstellungen importieren",
+  "settings.exportTitle": "Einstellungen exportieren",
+  "settings.importTitle": "Einstellungen importieren",
+  "settings.exported": "Einstellungen erfolgreich exportiert.",
+  "settings.imported": "Einstellungen importiert und angewendet.",
+  "settings.importConfirm": "Der Import ersetzt die aktuellen Einstellungen. Fortfahren?",
+  "settings.importFailed": "Einstellungen konnten nicht importiert werden:",
+  "btn.saveSettings": "Einstellungen speichern",
+  "settings.unsavedChanges": "Ungespeicherte Änderungen",
+  "settings.unsavedPrompt": "Es gibt ungespeicherte Änderungen. Wählen Sie Ja zum Speichern, Nein zum Verwerfen oder Abbrechen, um weiter zu bearbeiten."
 }

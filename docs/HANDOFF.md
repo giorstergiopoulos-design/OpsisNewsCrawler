@@ -59,3 +59,31 @@ Read `docs/TASKS.md` for the per-task state; this is the summary.
 - New owner requirements N1–N11 (`docs/USER-REQUIREMENTS-2026-10-13b.md`) are implemented: clear taskbar bar, Opsis-style settings, two bars + split, breaking news + live preview, alpha rendering with transparency/fade, Opsis About section, commodities, single-language UI, bar colours, backdrop presets.
 - Opsis side (repo MotionDeskStudio, uncommitted): `src/Services/PluginHost.cs`, nav page, tray items, About section, NoSnap/DeskStrip fixes, `libs\OpsisNewsCrawler.Plugin.Abstractions.dll`, locale keys `About.SectionPlugins`. It builds (0 errors) and was run with the plugin in a scratch folder.
 - Next steps: commit both repos when the owner agrees; test auto-hide taskbar, mouse placement and the Opsis tray items by hand; add other Euronext exchanges (opt-in provider); more languages (copy `Core/Locales/en.json` to `locales\<code>.json`); live feed: YouTube channel handle links (@name) are not resolved yet (video, /live/ and /channel/UC… links are).
+
+
+## 6. Update 2026-10-15 (read this before continuing)
+Version is 0.11.5. The latest source was edited without any compiler or runtime: expect a few compile errors and fix them first.
+Changed files: `Core/PythHermes.cs` (new), `Core/Quotes.cs` (`FredEnergyProvider` = Pyth + FRED, `SourceStatus`/`QuoteService.Statuses()`), `Core/QuoteRefreshPolicy.cs`, `Windows/SettingsPanel.cs` (`Combine`, `BuildInfo`, status card, `PreviewTabs = {1,2}`), tests `PythHermesTests` / `QuoteRefreshPolicyTests`, docs.
+Decisions: Pyth data are index / front-month reference prices, not the NYMEX/ICE tick (say so if the UI ever labels them); Athens stays 15 min delayed (no free live source exists); Yahoo/Stooq stay forbidden. Also present (reviewed by reading only): `Core/PriceAlerts.cs`, `Windows/GlobalHotkey.cs`, `Windows/StartupRegistration.cs`, first-run settings, feed test. Remaining work list: `docs/TASKS.md` round 15, last bullet.
+
+
+## 7. Update 2026-10-17 — version 0.11.5 (still NO compiler: nothing was built or run)
+- Settings = 3 top tabs (`FlatStrip`, large) Settings / Sources / Information, each with a row of sub-buttons (`FlatStrip`, small). `SettingsPanel.AddGroup`, `leaves` list: `--tab N` / `SelectTab(N)` / `TabCount` count sub-pages in order: 0 General, 1 Bars, 2 Position, 3 Desktop bar, 4 Look, 5 Breaking, 6 News flow, 7 Markets flow, 8 Weather flow, 9.. Help, Instructions, History, License, Updates. Bar preview shows on sub-pages 1, 2, 4, 5 (`PreviewSubs`). The old `FlatTabs` rail class is still in `FlatControls.cs` but unused (delete when convenient).
+- Bar content model: `Core/BarSlots.cs` (`BarSlot`, `BarSlots`, `BarSpec`). Config: `MainSlotA/B`, `SecondSlotA/B`, `MiniSlotA/B`, `MonitorBar.SlotA/B` (spec strings `news`, `news:<categoryId>`, `stocks`, `weather`); empty = the old `MainContent`/`SecondContent`/`SplitStocksOnLeft` apply. `TickerHost.AllBarSlots/PushTo/ItemsFor`; news of non-active categories: `extraNews*`, `RefreshExtraNewsAsync` (own `RssNewsProvider`), cached as `news-<id>`.
+- Desktop bar = the old mini weather bar (config names `MiniWeather*` kept). UI in `BuildDesktopBar`. Move mode: `TickerWindow.SetEditMode` warps the pointer onto the bar (`SnapCursorToBar`), `WM_SETCURSOR` shows `SizeAll`, a desktop-layer bar goes topmost while edited.
+- Weather detail fields: `AppConfig.WeatherFields` (`wind, gusts, humidity, feels, rain, cloud, pressure`), `WeatherReading` got optional fields, Open-Meteo `current=` asks for them. Cache from older versions simply lacks them until the next fetch.
+- Offline / provider-down: `Core/DataCache.cs`, `TickerHost.Notice/WithNotice`, keys `net.*`. Breaking: `breaking.now` ("ΣΥΜΒΑΙΝΕΙ ΤΩΡΑ"). Athens "15 min" label removed from the bar (stated in Help and in the Markets flow note).
+- Core review fixes applied: `QuoteStore` lock, Pyth `expo <= 0` only, cancellation checks and `ConcurrentDictionary` in `FredEnergyProvider`, day change for live energy prices from the last FRED value.
+- Not done: FX more often than daily (the ECB publishes once per working day; no verified free live FX source), yfinance (Python library scraping Yahoo, forbidden by its ToS, not usable from .NET).
+- FIRST on Windows: `dotnet build`, fix compile errors (this round touched `SettingsPanel`, `TickerHost`, `BarPreview`, `TickerWindow`, `FlatControls`, `AppConfig`, `Weather`), `dotnet test`, then walk through every sub-page.
+
+
+## 8. Update 2026-10-19 — version 0.11.5.2 (still NO compiler)
+- Alert sound: `Windows/AlertSound.cs` (WAV built in memory, `SoundPlayer`, falls back to `SystemSounds.Exclamation`); `TickerHost.PlayAlertSound` is called from `StartBreaking`, from new urgent headlines while already active, and from weather alerts. Setting: `AppConfig.BreakingSound`.
+- Severe weather for the user's area: `Core/WeatherAlerts.cs` (pure rules + `WeatherAlertService`, Open-Meteo hourly `forecast_hours=12`), `AppConfig.WeatherAlertsEnabled/AlertCityId/ResolveAlertCity()`, `TickerHost.CheckWeatherAlertsAsync` (every 30 min, shows a warning once until the condition passes), UI in Settings → Breaking, tests `WeatherAlertsTests`. These are computed from the forecast, NOT the official EMY bulletin (no verified free official feed was reachable; meteoalarm terms not verified). Do not label them "official".
+- `DetectBreaking` now keeps link-less alert items (price / weather) when the urgent news list is refreshed.
+
+
+## 9. Update 2026-10-19 — version 0.11.5.3 (still NO compiler)
+- Weather + map window: click a city on a weather line → `Windows/WeatherMapForm.cs` (WebView2, `NavigateToString`, Leaflet 1.9.4 from unpkg without SRI, OpenStreetMap tiles with a Referer header set in `WebResourceRequested`; the OSM tile policy asks for identification and light use). Wiring: `NewsItem.Key` (= city id, set in `WeatherInfo.ToItem`), `TickerCanvas.WeatherClicked`, `TickerWindow.WeatherRequested`, `TickerHost.ShowWeatherMap`. Setting `AppConfig.WeatherMapOnClick` (Sources → Weather flow). Source: the user's `weather_ticker_guide.md` (its hard-coded Naxos / per-call HttpClient / unescaped HTML were NOT copied; the existing readings are reused).
+- Open question to verify on Windows: does the OSM tile server accept the Referer set this way; does Leaflet load inside `NavigateToString` pages.

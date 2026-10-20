@@ -1,4 +1,4 @@
-﻿; Inno Setup 6 script for Opsis News Crawler. Saved as UTF-8 with BOM so the Greek texts display correctly.
+﻿; Inno Setup 6/7 script for Opsis News Crawler. Saved as UTF-8 with BOM so the Greek texts display correctly.
 ; Run it through Run-OpsisNewsCrawler-Build.bat (option 2 or 3) after the "bin" folder has been created.
 ;
 ; Two ways to install (chosen on the second wizard page):
@@ -9,7 +9,7 @@
 ; The wizard looks for Opsis (uninstall entry, default folders) and proposes the integrated install when it finds it.
 ; Test switches: /MODE=integrated | /MODE=separate (silent installs), /PLUGINROOT=<folder> (instead of %AppData%\Opsis\plugins).
 #define MyAppName "Opsis News Crawler"
-#define MyAppVersion "0.10.2"
+#define MyAppVersion "0.11.5.3"
 #define MyAppExe "OpsisNewsCrawler.exe"
 #define OpsisAppId "A9E8F765-1234-4567-89AB-CDEF01234567"
 #define PluginFolder "Opsis - Desktop Customization"

@@ -6,7 +6,7 @@ namespace OpsisNewsCrawler.Windows;
 
 /// <summary>What the preview shows: the choices of the settings window as they are right now (not yet applied).</summary>
 internal sealed record BarPreviewState(
-    TickerPosition Position, BarContent Main, bool StocksLeft, bool SecondEnabled, BarContent Second,
+    TickerPosition Position, BarSlots Main, bool SecondEnabled, BarSlots Second,
     bool Dark, int OpacityPercent, bool EdgeFade,
     string BarColorMode, int BarCustom, string TaskbarColorMode, int TaskbarCustom,
     string BarBackdrop, string TaskbarBackdrop);
@@ -108,14 +108,14 @@ internal sealed class BarPreview : Control
             _ => new Rectangle(desk.Left, taskbar.Top - StripHeight, desk.Width, StripHeight)
         };
         var integratedMain = s.Position == TickerPosition.TaskbarIntegrated;
-        DrawStrip(g, mainRect, s.Main, s.StocksLeft, integratedMain, integratedMain ? s.TaskbarColorMode : s.BarColorMode,
+        DrawStrip(g, mainRect, s.Main, integratedMain, integratedMain ? s.TaskbarColorMode : s.BarColorMode,
             integratedMain ? s.TaskbarCustom : s.BarCustom, integratedMain ? s.TaskbarBackdrop : s.BarBackdrop, s, tbTint, style);
         Caption(g, mainRect, Loc.T("card.mainBar"), integratedMain ? freeSpan : mainRect, integratedMain);
 
         // The second bar always lives inside the taskbar.
         if (s.SecondEnabled && !integratedMain)
         {
-            DrawStrip(g, freeSpan, s.Second, false, true, s.TaskbarColorMode, s.TaskbarCustom, s.TaskbarBackdrop, s, tbTint, style);
+            DrawStrip(g, freeSpan, s.Second, true, s.TaskbarColorMode, s.TaskbarCustom, s.TaskbarBackdrop, s, tbTint, style);
             Caption(g, freeSpan, Loc.T("card.secondBar"), freeSpan, true);
         }
     }
@@ -132,7 +132,7 @@ internal sealed class BarPreview : Control
         g.DrawString(text, font, Brushes.White, around.Left + 3, y);
     }
 
-    private void DrawStrip(Graphics g, Rectangle r, BarContent content, bool stocksLeft, bool inTaskbar, string colorMode, int custom,
+    private void DrawStrip(Graphics g, Rectangle r, BarSlots slots, bool inTaskbar, string colorMode, int custom,
         string backdrop, BarPreviewState s, Color taskbarTint, TaskbarStyle style)
     {
         // Background of the strip.
@@ -234,19 +234,25 @@ internal sealed class BarPreview : Control
             g.ResetClip();
         }
 
-        switch (content)
+        void Part(BarSlot slot, Rectangle area)
         {
-            case BarContent.Weather: Weather(r); break;
-            case BarContent.News: News(r); break;
-            case BarContent.Stocks: Quotes(r); break;
-            default:
-                var half = r.Width / 2;
-                var left = new Rectangle(r.Left, r.Top, half, r.Height);
-                var right = new Rectangle(r.Left + half, r.Top, r.Width - half, r.Height);
-                if (stocksLeft) { Quotes(left); News(right); } else { News(left); Quotes(right); }
-                using (var divider = new Pen(Color.FromArgb(120, textColor))) g.DrawLine(divider, r.Left + half, r.Top + 4, r.Left + half, r.Bottom - 4);
-                break;
+            switch (slot.Kind)
+            {
+                case SlotKind.Weather: Weather(area); break;
+                case SlotKind.Stocks: Quotes(area); break;
+                default: News(area); break;
+            }
         }
+
+        if (slots.B is { } second)
+        {
+            var half = r.Width / 2;
+            Part(slots.A, new Rectangle(r.Left, r.Top, half, r.Height));
+            Part(second, new Rectangle(r.Left + half, r.Top, r.Width - half, r.Height));
+            using var divider = new Pen(Color.FromArgb(120, textColor));
+            g.DrawLine(divider, r.Left + half, r.Top + 4, r.Left + half, r.Bottom - 4);
+        }
+        else Part(slots.A, r);
 
         // Faded ends: the same colour as the bar (or the taskbar) painted over the text.
         if (s.EdgeFade)

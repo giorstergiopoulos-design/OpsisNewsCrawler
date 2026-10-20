@@ -207,5 +207,18 @@
   "btn.centerDesktop": "デスクトップの中央に置く",
   "note.miniWeather2": "デスクトップの中央で、他のウィンドウの下に置かれます (「他のウィンドウより手前」を選んだ場合を除く)。色、透明度、背景素材、端のフェードはメインバーと同じです (外観タブ)。すべての都市が収まれば静止し、収まらなければスクロールします。変更は「適用」で反映されます。",
   "msg.confirmUpdateOnExit": "Opsis 内ではクローラーのファイルが使用中です。Opsis を閉じるとすぐに更新が自動でインストールされます。その後 Opsis を再起動してください。続行しますか?",
-  "msg.updateScheduled": "ファイルをダウンロードして検証しました。Opsis を閉じると更新がインストールされ、Opsis を再度開けます。"
+  "msg.updateScheduled": "ファイルをダウンロードして検証しました。Opsis を閉じると更新がインストールされ、Opsis を再度開けます。",
+  "settings.search": "設定を検索…",
+  "settings.noResults": "一致する設定がありません。",
+  "settings.export": "設定をエクスポート",
+  "settings.import": "設定をインポート",
+  "settings.exportTitle": "設定をエクスポート",
+  "settings.importTitle": "設定をインポート",
+  "settings.exported": "設定をエクスポートしました。",
+  "settings.imported": "設定をインポートして適用しました。",
+  "settings.importConfirm": "インポートすると現在の設定が置き換えられます。続行しますか？",
+  "settings.importFailed": "設定をインポートできませんでした：",
+  "btn.saveSettings": "設定を保存",
+  "settings.unsavedChanges": "未保存の変更",
+  "settings.unsavedPrompt": "保存されていない変更があります。保存するには「はい」、破棄するには「いいえ」、編集を続けるには「キャンセル」を選択してください。"
 }

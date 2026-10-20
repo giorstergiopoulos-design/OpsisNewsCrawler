@@ -50,8 +50,22 @@ public sealed class AppConfig
     public bool ShowIcons { get; set; } = true;
     public bool HideRead { get; set; } = true;
 
+    /// <summary>Discard dated RSS items older than this many hours. Undated items are retained.</summary>
+    public int NewsMaxAgeHours { get; set; } = 168;
+
+    /// <summary>When true, show the newest stories first instead of rotating fairly between feeds.</summary>
+    public bool NewsSortNewestFirst { get; set; }
+
+    /// <summary>Only display headlines/summaries that mention an enabled Athens/Euronext watchlist instrument.</summary>
+    public bool StockNewsOnly { get; set; }
+
+    /// <summary>Words or phrases excluded from the ticker news and breaking-news detection.</summary>
+    public List<string> MutedNewsKeywords { get; set; } = new();
+
     /// <summary>Master switch: false hides every bar and stops all downloads until it is turned on again.</summary>
     public bool BarsEnabled { get; set; } = true;
+    /// <summary>Ctrl+Alt+N shows / hides all bars from anywhere (standalone app only).</summary>
+    public bool ToggleHotkey { get; set; }
 
     /// <summary>Cities (ids of <see cref="GreekCities"/>) shown by a bar whose content is "Weather", in this order.</summary>
     public List<string> WeatherCities { get; set; } = GreekCities.DefaultSelection.ToList();
@@ -65,6 +79,13 @@ public sealed class AppConfig
     public int MiniWeatherHeight { get; set; } = 56;
     /// <summary>False (default): the bar lies on the desktop and every other window covers it. True: it stays above other windows.</summary>
     public bool MiniWeatherOnTop { get; set; }
+
+    /// <summary>What the desktop bar (the small free-floating one) shows; empty = weather (the old behaviour). Same spec strings as <see cref="MainSlotA"/>.</summary>
+    public string MiniSlotA { get; set; } = "";
+    public string MiniSlotB { get; set; } = "";
+
+    /// <summary>Weather details shown after the temperature: "wind", "humidity", "feels", "rain", "cloud", "pressure", "gusts".</summary>
+    public List<string> WeatherFields { get; set; } = new() { "wind", "humidity" };
 
     /// <summary>Ask GitHub once a day whether a newer release exists. Off until the user turns it on; nothing is installed without asking.</summary>
     public bool CheckForUpdates { get; set; }
@@ -128,9 +149,36 @@ public sealed class AppConfig
     public bool SecondBarEnabled { get; set; }
     public BarContent SecondContent { get; set; } = BarContent.Stocks;
 
+    // The same choices as above, but each bar can carry up to two parts and each part can be news of any category,
+    // quotes or weather. Empty = not set yet: the old MainContent / SecondContent / SplitStocksOnLeft values apply.
+    // Spec strings: "news", "news:<category id>", "stocks", "weather".
+    public string MainSlotA { get; set; } = "";
+    public string MainSlotB { get; set; } = "";
+    public string SecondSlotA { get; set; } = "";
+    public string SecondSlotB { get; set; } = "";
+
+    public BarSlots MainSlots() => BarSpec.Resolve(MainSlotA, MainSlotB, MainContent, SplitStocksOnLeft);
+    public BarSlots SecondSlots() => BarSpec.Resolve(SecondSlotA, SecondSlotB, SecondContent, false);
+    public BarSlots MiniSlots() => BarSpec.Resolve(MiniSlotA, MiniSlotB, BarContent.Weather, false);
+
     // ---- breaking news ----
     /// <summary>An urgent headline turns the main bar red with capital letters and a short intro animation.</summary>
     public bool BreakingEnabled { get; set; } = true;
+
+    /// <summary>A click on a city of the weather line opens a window with the weather and a map.</summary>
+    public bool WeatherMapOnClick { get; set; } = true;
+
+    /// <summary>A short alert sound when an urgent headline, a price alert or a severe-weather warning appears.</summary>
+    public bool BreakingSound { get; set; } = true;
+
+    /// <summary>Warnings of severe weather for the user's area (computed from the Open-Meteo forecast; not the official bulletin).</summary>
+    public bool WeatherAlertsEnabled { get; set; } = true;
+
+    /// <summary>Id of the city whose weather is watched; empty = the first city of the weather flow (Athens when none).</summary>
+    public string AlertCityId { get; set; } = "";
+
+    public GreekCity ResolveAlertCity() =>
+        GreekCities.Find(AlertCityId) ?? GreekCities.Find(WeatherCities.FirstOrDefault()) ?? GreekCities.Find("athens") ?? GreekCities.All[0];
 
     /// <summary>Words that mark a headline as urgent (compared without accents and case).</summary>
     public List<string> BreakingKeywords { get; set; } = new(Breaking.DefaultKeywords);
@@ -147,6 +195,8 @@ public sealed class AppConfig
     // ---- quotes ----
     public List<QuoteInstrument> Watchlist { get; set; } = QuoteInstrument.Defaults();
     public int QuoteRefreshSeconds { get; set; } = 60;
+    /// <summary>Price limits that raise an alert on the bar.</summary>
+    public List<PriceAlert> PriceAlerts { get; set; } = new();
 
     /// <summary>Id of the category shown in the strip (a built-in mode name or a user category).</summary>
     public string ActiveCategory { get; set; } = nameof(TickerMode.Economy);
@@ -229,6 +279,10 @@ public sealed class AppConfig
 
     public int RefreshIntervalSeconds => Math.Clamp(NewsRefreshSeconds, MinRefreshSeconds, MaxRefreshSeconds);
 
+    /// <summary>True when this run created the settings file (nothing was saved before): the app opens the settings once.</summary>
+    [JsonIgnore]
+    public bool IsFirstRun { get; private set; }
+
     public static AppConfig Load(string? path = null)
     {
         path ??= DefaultPath;
@@ -249,7 +303,7 @@ public sealed class AppConfig
 
             if (!File.Exists(path))
             {
-                config = new AppConfig();
+                config = new AppConfig { IsFirstRun = true };
                 config.Normalize();
                 config.Save(path);
                 return config;
@@ -314,10 +368,13 @@ public sealed class AppConfig
         }
     }
 
-    private void Normalize()
+    internal void Normalize()
     {
         NewsRefreshSeconds = RefreshIntervalSeconds;
         MaxItemsPerFeed = Math.Clamp(MaxItemsPerFeed, 1, 50);
+        NewsMaxAgeHours = Math.Clamp(NewsMaxAgeHours, 1, 720);
+        MutedNewsKeywords = (MutedNewsKeywords ?? new()).Where(k => !string.IsNullOrWhiteSpace(k))
+            .Select(k => k.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).Take(100).ToList();
         ScrollSpeed = Math.Clamp(ScrollSpeed, MinScrollSpeed, MaxScrollSpeed);
         if (!Enum.IsDefined(Mode)) Mode = TickerMode.Economy;
         if (!Enum.IsDefined(Position)) Position = TickerPosition.BottomTaskbar;
@@ -356,7 +413,14 @@ public sealed class AppConfig
         foreach (var d in QuoteInstrument.Defaults())
             if (!Watchlist.Any(i => i.Source == d.Source && string.Equals(i.Code, d.Code, StringComparison.OrdinalIgnoreCase))) Watchlist.Add(d);
         foreach (var w in Watchlist.Where(w => w.Source == QuoteSource.Athens && string.IsNullOrEmpty(w.Market))) w.Market = "XATH";
+        // Collapse duplicates saved by older settings panels. Preserve the user's enabled choice
+        // if any duplicate was enabled, and keep distinct markets separate.
+        Watchlist = Watchlist
+            .GroupBy(i => (i.Source, Market: (i.Market ?? "").Trim().ToUpperInvariant(), Code: i.Code.Trim().ToUpperInvariant()))
+            .Select(g => { var first = g.First(); first.Enabled = g.Any(i => i.Enabled); return first; })
+            .ToList();
         QuoteRefreshSeconds = Math.Clamp(QuoteRefreshSeconds, 30, 3600);
+        PriceAlerts = (PriceAlerts ?? new()).Where(x => x is not null && !string.IsNullOrWhiteSpace(x.Code) && x.Threshold > 0).ToList();
         BreakingKeywords = (BreakingKeywords ?? new()).Where(k => !string.IsNullOrWhiteSpace(k)).Select(k => k.Trim()).Distinct().ToList();
         if (BreakingKeywords.Count == 0) BreakingKeywords = new(Breaking.DefaultKeywords);
         BreakingMaxAgeMinutes = Math.Clamp(BreakingMaxAgeMinutes, 10, 1440);
@@ -365,6 +429,7 @@ public sealed class AppConfig
         if (BarColorMode is not ("theme" or "lightblue" or "accent" or "custom")) BarColorMode = "theme";
         if (TaskbarBarColorMode is not ("taskbar" or "lightblue" or "accent" or "custom")) TaskbarBarColorMode = "taskbar";
         BreakingDurationMinutes = Math.Clamp(BreakingDurationMinutes, 1, 240);
+        if (GreekCities.Find(AlertCityId) is null) AlertCityId = "";
         LiveFeeds = (LiveFeeds ?? new()).Where(l => l is not null && !string.IsNullOrWhiteSpace(l.Url)).ToList();
         if (!Enum.IsDefined(MainContent)) MainContent = BarContent.News;
         WeatherCities = (WeatherCities ?? new()).Where(id => GreekCities.Find(id) is not null).Distinct().ToList();
@@ -372,6 +437,13 @@ public sealed class AppConfig
         MiniWeatherHeight = Math.Clamp(MiniWeatherHeight, 24, 200);
         if (!Enum.IsDefined(SecondContent) || SecondContent == BarContent.Both) SecondContent = BarContent.Stocks;
         if (Position == TickerPosition.TaskbarIntegrated) SecondBarEnabled = false;
+        bool Exists(string id) => FindCategory(id) is not null;
+        MainSlotA = BarSpec.Clean(MainSlotA, Exists); MainSlotB = BarSpec.Clean(MainSlotB, Exists);
+        SecondSlotA = BarSpec.Clean(SecondSlotA, Exists); SecondSlotB = BarSpec.Clean(SecondSlotB, Exists);
+        MiniSlotA = BarSpec.Clean(MiniSlotA, Exists); MiniSlotB = BarSpec.Clean(MiniSlotB, Exists);
+        foreach (var m in MonitorBars ??= new()) { m.SlotA = BarSpec.Clean(m.SlotA, Exists); m.SlotB = BarSpec.Clean(m.SlotB, Exists); }
+        WeatherFields = (WeatherFields ?? new()).Select(f => (f ?? "").Trim().ToLowerInvariant())
+            .Where(f => f is "wind" or "humidity" or "feels" or "rain" or "cloud" or "pressure" or "gusts").Distinct().ToList();
         Feeds = new(); // migrated; not written back
     }
 }
@@ -383,4 +455,10 @@ public sealed class MonitorBar
     public string Device { get; set; } = "";
     public bool Enabled { get; set; }
     public BarContent Content { get; set; } = BarContent.News;
+
+    /// <summary>Same as <see cref="AppConfig.MainSlotA"/>: empty = use <see cref="Content"/>.</summary>
+    public string SlotA { get; set; } = "";
+    public string SlotB { get; set; } = "";
+
+    public BarSlots Slots() => BarSpec.Resolve(SlotA, SlotB, Content, false);
 }

@@ -15,8 +15,12 @@ public sealed class SettingsPanel : UserControl
     private readonly bool showCloseButton;
     private readonly bool showAboutTabs;
     private bool loading;
+    private bool hasUnsavedChanges;
+    private bool dirtyTrackingAttached;
 
-    private FlatTabs tabs = null!;
+    private FlatStrip tabs = null!;
+    private FlatStrip settingsStrip = null!;
+    private readonly List<(int Top, FlatStrip Strip, int Sub)> leaves = new();
     private Label status = null!;
     private bool built;
     private BarPreview barPreview = null!;
@@ -28,6 +32,8 @@ public sealed class SettingsPanel : UserControl
     private FlatNumber refresh = null!;
     private FlatNumber speed = null!;
     private FlatCheck hoverPause = null!;
+    private FlatCheck startWithWindows = null!;
+    private FlatCheck toggleHotkey = null!;
     private FlatCheck icons = null!;
     private FlatCheck preview = null!;
     private FlatCheck pauseOther = null!;
@@ -35,11 +41,12 @@ public sealed class SettingsPanel : UserControl
 
     // Bars
     private FlatCombo defaultBar = null!;
-    private FlatCombo mainContent = null!;
-    private FlatCheck stocksLeft = null!;
+    private SlotPicker mainPicker = null!;
+    private SlotPicker secondPicker = null!;
+    private SlotPicker miniPicker = null!;
+    private readonly Dictionary<string, FlatCheck> weatherFieldChecks = new();
     private FlatCheck secondEnabled = null!;
-    private FlatCombo secondContent = null!;
-    private readonly List<(Screen Screen, FlatCheck Check, FlatCombo Content)> monitorRows = new();
+    private readonly List<(Screen Screen, FlatCheck Check, SlotPicker Picker)> monitorRows = new();
     private FlatCheck autoUpdate = null!;
     private FlatText citySearch = null!;
     private FlatList cityList = null!;
@@ -80,15 +87,28 @@ public sealed class SettingsPanel : UserControl
     private FlatText siteBox = null!;
     private FlatCombo presets = null!;
     private Label discoverStatus = null!;
+    private FlatNumber newsMaxAge = null!;
+    private FlatCheck newsNewestFirst = null!;
+    private FlatCheck stockNewsOnly = null!;
+    private FlatText mutedNewsKeywords = null!;
 
     // Markets
     private List<QuoteInstrument> workWatch = new();
+    private List<PriceAlert> workAlerts = new();
+    private List<QuoteInstrument> alertChoices = new();
+    private string alertChoicesSignature = "";
+    private FlatList alertList = null!;
+    private FlatCombo alertInstrument = null!;
+    private FlatCombo alertDirection = null!;
+    private FlatText alertThreshold = null!;
     private readonly Dictionary<QuoteSource, FlatList> watchLists = new();
     private FlatCombo marketCombo = null!;
     private FlatText stockSearch = null!;
     private FlatList stockList = null!;
     private FlatButton refreshCatalog = null!;
     private Label stockStatus = null!;
+    private Label sourceStatus = null!;
+    private readonly System.Windows.Forms.Timer sourceTimer = new() { Interval = 3000 };
     private List<QuoteInstrument> visibleStocks = new();
     private readonly Dictionary<string, IReadOnlyList<QuoteInstrument>> catalogs = new();
     private string SelectedMic => EuronextCatalog.Markets[Math.Clamp(marketCombo.SelectedIndex, 0, EuronextCatalog.Markets.Count - 1)].Mic;
@@ -111,6 +131,10 @@ public sealed class SettingsPanel : UserControl
 
     // Breaking
     private FlatCheck breakingEnabled = null!;
+    private FlatCheck breakingSound = null!;
+    private FlatCheck weatherMapOnClick = null!;
+    private FlatCheck weatherAlerts = null!;
+    private FlatCombo alertCity = null!;
     private FlatText keywords = null!;
     private FlatNumber maxAge = null!;
     private FlatNumber duration = null!;
@@ -155,6 +179,7 @@ public sealed class SettingsPanel : UserControl
         if (disposing)
         {
             previewTimer.Dispose();
+            sourceTimer.Dispose();
             host.CustomBoundsChanged -= OnCustomBoundsChanged;
             host.ReadLater.Changed -= OnReadLaterChanged;
             host.BarsEnabledChanged -= OnBarsEnabledChanged;
@@ -181,23 +206,21 @@ public sealed class SettingsPanel : UserControl
 
     private static string L(string key) => Loc.T(key);
 
-    private static BarContent SecondContentOf(int index) => index switch { 0 => BarContent.News, 2 => BarContent.Weather, _ => BarContent.Stocks };
-
     // ---- preview of the bars ----------------------------------------------------------------
 
-    /// <summary>Tabs whose choices change how a bar looks: Bars, Position, Look, Breaking.</summary>
-    private static readonly int[] PreviewTabs = { 1, 2, 5, 6 };
+    /// <summary>Sub-pages of the Settings tab whose choices change how a bar looks: Bars, Position, Look, Breaking.</summary>
+    private static readonly int[] PreviewSubs = { 1, 2, 4, 5 };
 
     private void UpdatePreview()
     {
         if (!Visible || !built || barPreview is null || barPreview.IsDisposed || tabs is null) return;
-        var show = PreviewTabs.Contains(tabs.SelectedIndex);
+        var show = tabs.SelectedIndex == 0 && PreviewSubs.Contains(settingsStrip.SelectedIndex);
         if (barPreview.Visible != show) barPreview.Visible = show;
         if (!show) return;
         var dark = themeMode.SelectedIndex switch { 1 => false, 2 => true, _ => Theme.IsDark };
         barPreview.SetState(new BarPreviewState(
-            (TickerPosition)Math.Max(0, position.SelectedIndex), (BarContent)Math.Max(0, mainContent.SelectedIndex), stocksLeft.Checked,
-            secondEnabled.Checked, SecondContentOf(secondContent.SelectedIndex),
+            (TickerPosition)Math.Max(0, position.SelectedIndex), mainPicker.Get(),
+            secondEnabled.Checked, secondPicker.Get(),
             dark, opacity.Value, edgeFade.Checked,
             barColor.SelectedIndex switch { 1 => "lightblue", 2 => "accent", 3 => "custom", _ => "theme" }, barSwatch.Rgb,
             taskbarColor.SelectedIndex switch { 1 => "lightblue", 2 => "accent", 3 => "custom", _ => "taskbar" }, taskbarSwatch.Rgb,
@@ -210,12 +233,13 @@ public sealed class SettingsPanel : UserControl
     private void Rebuild()
     {
         RightToLeft = Loc.IsRtl ? RightToLeft.Yes : RightToLeft.No;
-        var selectedTab = built ? tabs.SelectedIndex : 0;
+        var selectedTab = built ? CurrentLeaf() : 0;
         SuspendLayout();
         foreach (var c in Controls.Cast<Control>().ToList()) c.Dispose();
         Controls.Clear();
+        dirtyTrackingAttached = false;
         Build();
-        tabs.SelectedIndex = Math.Max(0, selectedTab);
+        SelectTab(selectedTab);
         ResumeLayout(true);
     }
 
@@ -223,35 +247,51 @@ public sealed class SettingsPanel : UserControl
     {
         loading = true;
         watchLists.Clear();
-        tabs = new FlatTabs { Dock = DockStyle.Fill };
+        leaves.Clear();
+        tabs = new FlatStrip(true) { Dock = DockStyle.Fill };
 
-        tabs.AddPage(L("tab.general"), BuildGeneral());
-        tabs.AddPage(L("tab.bars"), BuildBars());
-        tabs.AddPage(L("tab.position"), BuildPosition());
-        tabs.AddPage(L("tab.sources"), BuildSources());
-        tabs.AddPage(L("tab.markets"), BuildMarkets());
-        tabs.AddPage(L("tab.look"), BuildLook());
-        tabs.AddPage(L("tab.breaking"), BuildBreaking());
-        tabs.AddPage(L("tab.readLater"), BuildReadLater());
-        tabs.AddPage(L("tab.weather"), BuildWeather());
+        // Three tabs: Settings, Sources, Information. Each has a row of sub-buttons (no side menu any more).
+        settingsStrip = AddGroup(Loc.Pick("Ρυθμίσεις", "Settings"),
+            (Loc.Pick("Γενικά", "General"), BuildGeneral()),
+            (L("tab.bars"), BuildBars()),
+            (L("tab.position"), BuildPosition()),
+            (Loc.Pick("Μπάρα επιφάνειας εργασίας", "Desktop bar"), BuildDesktopBar()),
+            (L("tab.look"), BuildLook()),
+            (L("tab.breaking"), BuildBreaking()));
+        AddGroup(L("tab.sources"),
+            (Loc.Pick("Ροή ειδήσεων", "News flow"), Combine((null, BuildSources()), (L("tab.readLater"), BuildReadLater()))),
+            (Loc.Pick("Ροή αγορών", "Markets flow"), BuildMarkets()),
+            (Loc.Pick("Ροή καιρού", "Weather flow"), BuildWeather()));
+        var info = new List<(string, Control)>();
         if (showAboutTabs)
         {
-            tabs.AddPage(L("tab.help"), BuildText(AboutTexts.Help));
-            tabs.AddPage(L("tab.instructions"), BuildText(AboutTexts.Instructions));
-            tabs.AddPage(L("tab.history"), BuildText(AboutTexts.History));
-            tabs.AddPage(L("tab.license"), BuildText(AboutTexts.License));
+            info.Add((L("tab.help"), BuildInfoPage(() => AboutTexts.Help)));
+            info.Add((L("tab.instructions"), BuildInfoPage(() => AboutTexts.Instructions)));
+            info.Add((L("tab.history"), BuildInfoPage(() => AboutTexts.History)));
+            info.Add((L("tab.license"), BuildInfoPage(() => AboutTexts.License)));
         }
+        info.Add((L("card.updates"), BuildUpdates()));
+        AddGroup(Loc.Pick("Πληροφορίες", "Information"), info.ToArray());
 
         var apply = new FlatButton { Text = L("btn.apply") };
         apply.SetPrimary(true);
         apply.Click += (_, _) => ApplySettings();
-        status = new Label { AutoSize = true, Padding = new Padding(8, 11, 0, 0), Tag = "muted" };
-        var bar = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, FlowDirection = FlowDirection.LeftToRight, Padding = new Padding(12, 8, 12, 10) };
+        var export = new FlatButton { Text = L("settings.export") };
+        export.Click += (_, _) => ExportSettings();
+        var import = new FlatButton { Text = L("settings.import") };
+        import.Click += (_, _) => ImportSettings();
+        status = new Label { AutoSize = true, MaximumSize = new Size(420, 0), Padding = new Padding(8, 11, 0, 0), Tag = "muted" };
+        var bar = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = true, Padding = new Padding(12, 8, 12, 10) };
         bar.Controls.Add(apply);
+        bar.Controls.Add(export);
+        bar.Controls.Add(import);
         if (showCloseButton)
         {
             var close = new FlatButton { Text = L("btn.close") };
-            close.Click += (_, _) => CloseRequested?.Invoke();
+            close.Click += (_, _) =>
+            {
+                if (ConfirmCloseIfNeeded()) CloseRequested?.Invoke();
+            };
             bar.Controls.Add(close);
         }
         bar.Controls.Add(status);
@@ -263,8 +303,51 @@ public sealed class SettingsPanel : UserControl
         built = true;
 
         LoadFromConfig();
+        AttachDirtyTracking();
         Theme.Apply(this);
         loading = false;
+        hasUnsavedChanges = false;
+    }
+
+    /// <summary>One top tab with a row of sub-buttons; every sub-page is one of the existing Build... pages.</summary>
+    private FlatStrip AddGroup(string title, params (string Title, Control Page)[] pages)
+    {
+        var strip = new FlatStrip(false) { Dock = DockStyle.Fill };
+        var top = tabs.Count;
+        for (var i = 0; i < pages.Length; i++)
+        {
+            strip.AddPage(pages[i].Title, pages[i].Page);
+            leaves.Add((top, strip, i));
+        }
+        tabs.AddPage(title, strip);
+        return strip;
+    }
+
+    private int CurrentLeaf()
+    {
+        var index = leaves.FindIndex(l => l.Top == tabs.SelectedIndex && l.Sub == l.Strip.SelectedIndex);
+        return Math.Max(0, index);
+    }
+
+    /// <summary>Puts the content of several pages one under the other on a single scrolling page.</summary>
+    private static Panel Combine(params (string? Heading, Control Page)[] parts)
+    {
+        var page = new Panel { AutoScroll = true, Padding = new Padding(8, 6, 8, 6) };
+        var stack = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        foreach (var (heading, part) in parts)
+        {
+            if (heading is not null)
+                stack.Controls.Add(new Label { Text = Loc.Upper(heading), AutoSize = true, Font = new Font("Segoe UI", 11f, FontStyle.Bold), Margin = new Padding(0, 22, 0, 4), Tag = "accent" });
+            foreach (var child in part.Controls.Cast<Control>().ToList())
+            {
+                part.Controls.Remove(child);
+                child.Dock = DockStyle.None;
+                stack.Controls.Add(child);
+            }
+            part.Dispose();
+        }
+        page.Controls.Add(stack);
+        return page;
     }
 
     private static Panel NewPage(out FlowLayoutPanel flow)
@@ -303,6 +386,10 @@ public sealed class SettingsPanel : UserControl
         };
         barsEnabled = new FlatCheck { Text = L("chk.barsEnabled") };
         flow.Controls.Add(barsEnabled);
+        startWithWindows = new FlatCheck { Text = Loc.Pick("Εκκίνηση με τα Windows", "Start with Windows"), Visible = !host.HostedByOpsis };
+        flow.Controls.Add(startWithWindows);
+        toggleHotkey = new FlatCheck { Text = Loc.Pick("Συντόμευση Ctrl+Alt+N: εμφάνιση / απόκρυψη των μπαρών", "Hot key Ctrl+Alt+N: show / hide the bars"), Visible = !host.HostedByOpsis };
+        flow.Controls.Add(toggleHotkey);
         var languageRow = Row(L("lbl.language"), language);
         languageRow.Visible = !host.LanguageFollowsHost;
         flow.Controls.Add(languageRow);
@@ -336,6 +423,13 @@ public sealed class SettingsPanel : UserControl
         flow.Controls.Add(reset);
         flow.Controls.Add(openLog);
 
+        return page;
+    }
+
+    /// <summary>The update frame (Information tab).</summary>
+    private Control BuildUpdates()
+    {
+        var page = NewPage(out var flow);
         // Updates: only on request or once a day when the user allows it; nothing is installed without a click.
         var updates = new FlatCard(L("card.updates"));
         var updFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
@@ -382,12 +476,9 @@ public sealed class SettingsPanel : UserControl
 
         var main = new FlatCard(L("card.mainBar"));
         var mainFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-        mainContent = new FlatCombo { Width = 340 };
-        mainContent.SetItems(new[] { L("content.news"), L("content.stocks"), L("content.both"), L("content.weather") }, 0);
-        mainFlow.Controls.Add(Row(L("lbl.content"), mainContent, 200));
-        stocksLeft = new FlatCheck { Text = L("chk.stocksLeft") };
-        mainFlow.Controls.Add(stocksLeft);
-        mainFlow.Controls.Add(Note(L("note.split"), 560));
+        mainPicker = new SlotPicker();
+        mainFlow.Controls.Add(mainPicker.Build());
+        mainFlow.Controls.Add(Note(SplitNote(), 600));
         main.Controls.Add(mainFlow);
         flow.Controls.Add(main);
 
@@ -395,9 +486,8 @@ public sealed class SettingsPanel : UserControl
         var secondFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
         secondEnabled = new FlatCheck { Text = L("chk.secondEnabled") };
         secondFlow.Controls.Add(secondEnabled);
-        secondContent = new FlatCombo { Width = 340 };
-        secondContent.SetItems(new[] { L("content.news"), L("content.stocks"), L("content.weather") }, 1);
-        secondFlow.Controls.Add(Row(L("lbl.content"), secondContent, 200));
+        secondPicker = new SlotPicker();
+        secondFlow.Controls.Add(secondPicker.Build());
         secondNote = Note(L("note.secondBar"), 560);
         secondFlow.Controls.Add(secondNote);
         second.Controls.Add(secondFlow);
@@ -412,17 +502,15 @@ public sealed class SettingsPanel : UserControl
         {
             var s = others[i];
             var check = new FlatCheck { Text = Loc.T("fmt.monitor", Array.IndexOf(Screen.AllScreens, s) + 1, s.Bounds.Width, s.Bounds.Height) };
-            var content = new FlatCombo { Width = 340 };
-            content.SetItems(new[] { L("content.news"), L("content.stocks"), L("content.both"), L("content.weather") }, 0);
+            var picker = new SlotPicker();
             monitorFlow.Controls.Add(check);
-            monitorFlow.Controls.Add(Row(L("lbl.content"), content, 200));
-            monitorRows.Add((s, check, content));
+            monitorFlow.Controls.Add(picker.Build());
+            monitorRows.Add((s, check, picker));
         }
         monitorFlow.Controls.Add(Note(others.Count > 0 ? L("note.monitors") : L("note.noOtherMonitor"), 560));
         monitors.Controls.Add(monitorFlow);
         flow.Controls.Add(monitors);
 
-        mainContent.SelectedIndexChanged += (_, _) => UpdateBarsUi();
         secondEnabled.CheckedChanged += (_, _) => UpdateBarsUi();
         return page;
     }
@@ -508,9 +596,38 @@ public sealed class SettingsPanel : UserControl
         feedList = new FlatList { Width = 520, Height = 260 };
         feedList.SetShowChecks(true);
         right.Controls.Add(feedList);
+        var sourceActions = new FlowLayoutPanel { AutoSize = true, WrapContents = true, MaximumSize = new Size(520, 0) };
         var removeFeed = new FlatButton { Text = L("btn.removeFeed") };
         removeFeed.Click += (_, _) => RemoveFeed();
-        right.Controls.Add(removeFeed);
+        var importOpml = new FlatButton { Text = Loc.IsGreek ? "Εισαγωγή OPML…" : "Import OPML…" };
+        importOpml.Click += (_, _) => ImportOpml();
+        var exportOpml = new FlatButton { Text = Loc.IsGreek ? "Εξαγωγή OPML…" : "Export OPML…" };
+        exportOpml.Click += (_, _) => ExportOpml();
+        var testFeed = new FlatButton { Text = Loc.Pick("Δοκιμή", "Test") };
+        testFeed.Click += (_, _) => TestFeeds(selectedOnly: true);
+        var testAll = new FlatButton { Text = Loc.Pick("Δοκιμή όλων", "Test all") };
+        testAll.Click += (_, _) => TestFeeds(selectedOnly: false);
+        var moveUp = new FlatButton { Text = "▲" };
+        moveUp.Click += (_, _) => MoveFeed(-1);
+        var moveDown = new FlatButton { Text = "▼" };
+        moveDown.Click += (_, _) => MoveFeed(1);
+        sourceActions.Controls.AddRange(new Control[] { removeFeed, moveUp, moveDown, testFeed, testAll, importOpml, exportOpml });
+        right.Controls.Add(sourceActions);
+
+        var newsOptions = new FlowLayoutPanel { AutoSize = true, WrapContents = true, MaximumSize = new Size(520, 0), Margin = new Padding(0, 8, 0, 4) };
+        newsOptions.Controls.Add(new Label { Text = Loc.IsGreek ? "Ηλικία ειδήσεων (ώρες):" : "Maximum story age (hours):", AutoSize = true, Margin = new Padding(0, 8, 6, 0) });
+        newsMaxAge = new FlatNumber();
+        newsMaxAge.Configure(1, 720, 24);
+        newsOptions.Controls.Add(newsMaxAge);
+        newsNewestFirst = new FlatCheck { Text = Loc.IsGreek ? "Τα πιο πρόσφατα πρώτα" : "Newest stories first", AutoSize = true, Margin = new Padding(8, 5, 0, 0) };
+        newsOptions.Controls.Add(newsNewestFirst);
+        stockNewsOnly = new FlatCheck { Text = Loc.IsGreek ? "Μόνο ειδήσεις για τις επιλεγμένες μετοχές" : "Only news about my selected shares", AutoSize = true, Margin = new Padding(0, 5, 0, 0) };
+        right.Controls.Add(newsOptions);
+        right.Controls.Add(stockNewsOnly);
+        right.Controls.Add(new Label { Text = Loc.IsGreek ? "Σίγαση λέξεων/φράσεων (διαχωρισμός με ;) :" : "Mute words/phrases (separate with ;) :", AutoSize = true, Margin = new Padding(0, 8, 0, 3) });
+        mutedNewsKeywords = new FlatText { Width = 500 };
+        right.Controls.Add(mutedNewsKeywords);
+        right.Controls.Add(new Label { Text = Loc.IsGreek ? "Αγνοούνται σε τίτλο και περίληψη, χωρίς διάκριση τόνων ή πεζών/κεφαλαίων." : "Matches title and summary, ignoring accents and letter case.", AutoSize = true, MaximumSize = new Size(520, 0), ForeColor = Theme.TextMuted, Margin = new Padding(0, 0, 0, 6) });
 
         right.Controls.Add(new Label { Text = L("lbl.addSite"), AutoSize = true, MaximumSize = new Size(520, 0), Margin = new Padding(0, 10, 0, 4) });
         var addRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
@@ -591,31 +708,15 @@ public sealed class SettingsPanel : UserControl
         BeginInvoke(new Action(LoadMiniBounds));
     }
 
-    private Control BuildWeather()
+    private Control BuildDesktopBar()
     {
         var page = NewPage(out var flow);
-        flow.Controls.Add(Note(L("note.weather"), 700));
-
-        var card = new FlatCard(L("tab.weather"));
-        var inner = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-        citySearch = new FlatText { Width = 300 };
-        var all = new FlatButton { Text = L("btn.selectAll") };
-        var none = new FlatButton { Text = L("btn.selectNone") };
-        var searchRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
-        searchRow.Controls.Add(citySearch);
-        searchRow.Controls.Add(all);
-        searchRow.Controls.Add(none);
-        inner.Controls.Add(Row(L("lbl.search"), searchRow, 150));
-        cityList = new FlatList { Width = 680, Height = 300 };
-        cityList.SetShowChecks(true);
-        inner.Controls.Add(cityList);
-        card.Controls.Add(inner);
-        flow.Controls.Add(card);
-
-        var mini = new FlatCard(L("card.miniWeather"));
+        var mini = new FlatCard(Loc.Pick("Μπάρα επιφάνειας εργασίας", "Desktop bar"));
         var miniFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-        miniWeather = new FlatCheck { Text = L("chk.miniWeather") };
+        miniWeather = new FlatCheck { Text = Loc.Pick("Εμφάνιση μπάρας στην επιφάνεια εργασίας", "Show a bar on the desktop") };
         miniFlow.Controls.Add(miniWeather);
+        miniPicker = new SlotPicker();
+        miniFlow.Controls.Add(miniPicker.Build());
         miniW = new FlatNumber();
         miniW.Configure(200, 4000, 10);
         miniH = new FlatNumber();
@@ -647,9 +748,52 @@ public sealed class SettingsPanel : UserControl
         };
         miniOnTop = new FlatCheck { Text = L("chk.miniOnTop") };
         miniFlow.Controls.Add(miniOnTop);
-        miniFlow.Controls.Add(Note(L("note.miniWeather2"), 560));
+        miniFlow.Controls.Add(Note(Loc.Pick("Μια ελεύθερη μπάρα πάνω στην επιφάνεια εργασίας: διάλεξε τι δείχνει (καιρός, αγορές ή ειδήσεις), πάτα «Μετακίνηση με το ποντίκι» και ο δείκτης πηγαίνει πάνω της για να τη σύρεις όπου θέλεις· από τις άκρες αλλάζει το πλάτος.", "A free bar on the desktop: choose what it shows (weather, markets or news), press \"Move with the mouse\" and the pointer jumps onto it so you can drag it anywhere; the ends change its width."), 600));
         mini.Controls.Add(miniFlow);
         flow.Controls.Add(mini);
+
+        return page;
+    }
+
+    private Control BuildWeather()
+    {
+        var page = NewPage(out var flow);
+        flow.Controls.Add(Note(L("note.weather"), 700));
+
+        var card = new FlatCard(L("tab.weather"));
+        var inner = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        citySearch = new FlatText { Width = 300 };
+        var all = new FlatButton { Text = L("btn.selectAll") };
+        var none = new FlatButton { Text = L("btn.selectNone") };
+        var searchRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
+        searchRow.Controls.Add(citySearch);
+        searchRow.Controls.Add(all);
+        searchRow.Controls.Add(none);
+        inner.Controls.Add(Row(L("lbl.search"), searchRow, 150));
+        cityList = new FlatList { Width = 680, Height = 300 };
+        cityList.SetShowChecks(true);
+        inner.Controls.Add(cityList);
+        card.Controls.Add(inner);
+        flow.Controls.Add(card);
+
+        weatherMapOnClick = new FlatCheck { Text = Loc.Pick("Κλικ σε πόλη της μπάρας: άνοιγμα παραθύρου με καιρό και χάρτη", "Click a city on the bar: open a window with the weather and a map") };
+        flow.Controls.Add(weatherMapOnClick);
+        flow.Controls.Add(Note(Loc.Pick("Ο χάρτης (OpenStreetMap) χρειάζεται σύνδεση στο διαδίκτυο και το Microsoft Edge WebView2 Runtime. Το παράθυρο έχει κουμπί μεγέθυνσης· κλείνει με ✕ ή Esc.", "The map (OpenStreetMap) needs an internet connection and the Microsoft Edge WebView2 Runtime. The window has a maximize button; close it with ✕ or Esc."), 640));
+
+        // What the weather line shows besides the temperature.
+        var fields = new FlatCard(Loc.Pick("Πληροφορίες που εμφανίζονται", "Details shown"));
+        var fieldsFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        weatherFieldChecks.Clear();
+        foreach (var id in WeatherInfo.FieldIds)
+        {
+            var check = new FlatCheck { Text = Loc.T("weather." + (id == "feels" ? "feels" : id)) };
+            weatherFieldChecks[id] = check;
+            fieldsFlow.Controls.Add(check);
+        }
+        fieldsFlow.Controls.Add(Note(Loc.Pick("Η θερμοκρασία εμφανίζεται πάντα. Διάλεξε ποιες επιπλέον πληροφορίες θέλεις να βλέπεις δίπλα της (χωρίς επιλογή: μόνο θερμοκρασία).",
+            "The temperature is always shown. Choose which extra details appear next to it (none: temperature only)."), 600));
+        fields.Controls.Add(fieldsFlow);
+        flow.Controls.Add(fields);
 
         citySearch.TextValueChanged += (_, _) => ShowCities();
         cityList.ItemChecked += (index, isChecked) =>
@@ -799,6 +943,9 @@ public sealed class SettingsPanel : UserControl
     {
         var page = NewPage(out var flow);
         flow.Controls.Add(Note(L("note.markets"), 700));
+        flow.Controls.Add(Note(Loc.Pick(
+            "Περιορισμοί δεδομένων: οι τιμές Αθήνας έχουν καθυστέρηση 15 λεπτών (επίσημα αρχεία Euronext Athens)· οι μετοχές άλλων αγορών Euronext είναι τιμές κλεισίματος· οι ισοτιμίες ΕΚΤ ανανεώνονται μία φορά κάθε εργάσιμη. Μέταλλα, κρυπτονομίσματα και πετρέλαιο/φυσικό αέριο (Pyth) είναι σχεδόν ζωντανά· αν το Pyth δεν απαντά, εμφανίζονται οι ημερήσιες τιμές EIA με ένδειξη ημερομηνίας.",
+            "Data limits: Athens prices are delayed by 15 minutes (official Euronext Athens files); shares of other Euronext markets are closing prices; ECB rates update once per working day. Metals, crypto and oil/natural gas (Pyth) are near-live; if Pyth does not answer, the daily EIA prices are shown with their date."), 700));
 
         // All the shares of one Euronext market: pick the market, search, tick the ones to show.
         var card = new FlatCard(L("card.shares"));
@@ -852,7 +999,128 @@ public sealed class SettingsPanel : UserControl
             small.Controls.Add(list);
             flow.Controls.Add(small);
         }
+
+        // Price alerts: a limit per instrument; when it is passed the bar shows an alert like a breaking headline.
+        var alertCard = new FlatCard(Loc.Pick("Ειδοποιήσεις τιμής", "Price alerts"));
+        var alertFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        alertFlow.Controls.Add(Note(Loc.Pick(
+            "Όταν η τιμή περάσει το όριο, η μπάρα δείχνει ειδοποίηση. Η τιμή πρέπει να είναι επιλεγμένη παραπάνω ώστε να ενημερώνεται.",
+            "When the price passes the limit the bar shows an alert. The instrument must be ticked above so that its price is fetched."), 640));
+        alertList = new FlatList { Width = 640, Height = 30 * 4 + 4 };
+        alertList.SetShowChecks(true);
+        alertList.ItemChecked += (index, isChecked) =>
+        {
+            if (index >= 0 && index < workAlerts.Count) workAlerts[index].Enabled = isChecked;
+        };
+        alertFlow.Controls.Add(alertList);
+        alertInstrument = new FlatCombo { Width = 250 };
+        alertDirection = new FlatCombo { Width = 80 };
+        alertDirection.SetItems(new[] { "≥", "≤" }, 0);
+        alertThreshold = new FlatText { Width = 100 };
+        var addAlert = new FlatButton { Text = L("btn.new") };
+        addAlert.Click += (_, _) => AddAlert();
+        var removeAlert = new FlatButton { Text = L("btn.delete") };
+        removeAlert.Click += (_, _) => RemoveAlert();
+        var alertRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
+        alertRow.Controls.AddRange(new Control[] { alertInstrument, alertDirection, alertThreshold, addAlert, removeAlert });
+        alertFlow.Controls.Add(alertRow);
+        alertCard.Controls.Add(alertFlow);
+        flow.Controls.Add(alertCard);
+
+        // Which price sources answered, how many prices and how fresh (updates by itself while the window is open).
+        var health = new FlatCard(Loc.Pick("Κατάσταση πηγών τιμών", "Price source status"));
+        sourceStatus = new Label { AutoSize = true, Tag = "muted", MaximumSize = new Size(680, 0) };
+        health.Controls.Add(sourceStatus);
+        flow.Controls.Add(health);
+        sourceTimer.Tick -= UpdateSourceStatus;
+        sourceTimer.Tick += UpdateSourceStatus;
+        sourceTimer.Start();
+        UpdateSourceStatus(null, EventArgs.Empty);
         return page;
+    }
+
+    /// <summary>The instruments an alert can be set for: the ticked ones. Rebuilt only when that set changes.</summary>
+    private void RefreshAlertChoices()
+    {
+        if (alertInstrument is null || alertInstrument.IsDisposed) return;
+        var choices = workWatch.Where(w => w.Enabled).ToList();
+        var signature = string.Join("|", choices.Select(c => c.Source + ":" + c.Market + ":" + c.Code));
+        if (signature == alertChoicesSignature) return;
+        alertChoicesSignature = signature;
+        alertChoices = choices;
+        alertInstrument.SetItems(choices.Select(c => string.IsNullOrEmpty(c.Symbol) ? c.DisplayName(Loc.IsGreek) : c.Symbol + " — " + c.DisplayName(Loc.IsGreek)), choices.Count > 0 ? 0 : -1);
+    }
+
+    private void ShowAlerts()
+    {
+        if (alertList is null || alertList.IsDisposed) return;
+        alertList.ClearRows();
+        foreach (var a in workAlerts)
+            alertList.AddRow($"{a.Label}  {(a.Above ? "≥" : "≤")}  {a.Threshold.ToString("0.00##", System.Globalization.CultureInfo.CurrentCulture)}", a.Enabled);
+    }
+
+    private void AddAlert()
+    {
+        RefreshAlertChoices();
+        var index = alertInstrument.SelectedIndex;
+        if (index < 0 || index >= alertChoices.Count) return;
+        var text = (alertThreshold.Value ?? "").Trim().Replace(',', '.');
+        if (!decimal.TryParse(text, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var limit) || limit <= 0)
+        {
+            SetStatus(Loc.Pick("Γράψε ένα έγκυρο όριο (αριθμό μεγαλύτερο από 0).", "Enter a valid limit (a number above 0)."));
+            return;
+        }
+        var inst = alertChoices[index];
+        workAlerts.Add(new PriceAlert
+        {
+            Source = inst.Source, Code = inst.Code, Market = inst.Market,
+            Label = string.IsNullOrEmpty(inst.Symbol) ? inst.DisplayName(Loc.IsGreek) : inst.Symbol,
+            Above = alertDirection.SelectedIndex != 1, Threshold = limit, Enabled = true
+        });
+        alertThreshold.Value = "";
+        ShowAlerts();
+        MarkDirty();
+    }
+
+    private void RemoveAlert()
+    {
+        var index = alertList.SelectedIndex;
+        if (index < 0 || index >= workAlerts.Count) return;
+        workAlerts.RemoveAt(index);
+        ShowAlerts();
+        MarkDirty();
+    }
+
+    private static string SourceName(QuoteSource source) => source switch
+    {
+        QuoteSource.Athens => Loc.Pick("Euronext Αθηνών (15' καθυστέρηση)", "Euronext Athens (15 min delayed)"),
+        QuoteSource.Euronext => Loc.Pick("Άλλες αγορές Euronext (τέλος ημέρας)", "Other Euronext markets (end of day)"),
+        QuoteSource.Metals => Loc.Pick("Μέταλλα (gold-api.com)", "Metals (gold-api.com)"),
+        QuoteSource.Crypto => Loc.Pick("Κρυπτονομίσματα (gold-api.com)", "Crypto (gold-api.com)"),
+        QuoteSource.Currency => Loc.Pick("Νομίσματα (ΕΚΤ, 1 φορά την ημέρα)", "Currencies (ECB, once a day)"),
+        QuoteSource.Energy => Loc.Pick("Ενέργεια (Pyth, εφεδρικά FRED)", "Energy (Pyth, FRED fallback)"),
+        _ => source.ToString()
+    };
+
+    private void UpdateSourceStatus(object? sender, EventArgs e)
+    {
+        if (sourceStatus is null || sourceStatus.IsDisposed) return;
+        RefreshAlertChoices();
+        var rows = QuoteService.Statuses();
+        if (rows.Count == 0)
+        {
+            sourceStatus.Text = Loc.Pick("Δεν έχει γίνει ακόμα λήψη τιμών.", "No prices have been fetched yet.");
+            return;
+        }
+        var lines = rows.Select(s =>
+        {
+            var state = s.Failed ? Loc.Pick("ΑΠΟΤΥΧΙΑ", "FAILED") : Loc.Pick("εντάξει", "ok");
+            var line = $"{(s.Failed ? "✖" : "✔")} {SourceName(s.Source)}: {state}, {s.Count} {Loc.Pick("τιμές", "prices")}, "
+                + $"{Loc.Pick("έλεγχος", "checked")} {s.CheckedAt:HH:mm:ss}";
+            if (s.Newest is { } newest) line += $", {Loc.Pick("νεότερη τιμή", "newest price")} {newest.ToLocalTime():dd/MM HH:mm}";
+            return line;
+        });
+        sourceStatus.Text = string.Join(Environment.NewLine, lines);
     }
 
     // ---- the shares of a Euronext market ----------------------------------------------------
@@ -1028,6 +1296,8 @@ public sealed class SettingsPanel : UserControl
         var page = NewPage(out var flow);
         breakingEnabled = new FlatCheck { Text = L("chk.breakingEnabled") };
         flow.Controls.Add(breakingEnabled);
+        breakingSound = new FlatCheck { Text = Loc.Pick("Ήχος ειδοποίησης όταν εμφανίζεται έκτακτο", "Alert sound when something urgent appears") };
+        flow.Controls.Add(breakingSound);
         keywords = new FlatText { Width = 520 };
         flow.Controls.Add(Row(L("lbl.keywords"), keywords, 330));
         maxAge = new FlatNumber();
@@ -1037,6 +1307,24 @@ public sealed class SettingsPanel : UserControl
         duration.Configure(1, 240, 5);
         flow.Controls.Add(Row(L("lbl.duration"), duration, 330));
         flow.Controls.Add(Note(L("note.breaking"), 700));
+
+        // Severe weather for the user's area.
+        var weatherCard = new FlatCard(Loc.Pick("Έκτακτα καιρικά φαινόμενα στην περιοχή μου", "Severe weather in my area"));
+        var weatherFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        weatherAlerts = new FlatCheck { Text = Loc.Pick("Ειδοποίηση για έκτακτα καιρικά φαινόμενα", "Warn me about severe weather") };
+        weatherFlow.Controls.Add(weatherAlerts);
+        alertCity = new FlatCombo { Width = 360 };
+        alertCity.SetItems(new[] { Loc.Pick("Αυτόματα (η πρώτη πόλη της Ροής καιρού)", "Automatic (the first city of the weather flow)") }
+            .Concat(GreekCities.All.Select(CityName)), 0);
+        weatherFlow.Controls.Add(Row(Loc.Pick("Η περιοχή μου", "My area"), alertCity, 200));
+        weatherFlow.Controls.Add(Note(Loc.Pick(
+            "Κάθε 30 λεπτά ελέγχεται η πρόγνωση των επόμενων 12 ωρών (Open-Meteo) για την πόλη που διαλέγετε: καταιγίδες, ριπές ≥ 75 km/h, έντονη βροχή, χιόνι, καύσωνας (≥ 40 °C) ή παγετός (≤ −3 °C). Εμφανίζεται σαν έκτακτη είδηση, με ήχο. Είναι αυτόματη ειδοποίηση από πρόγνωση και ΔΕΝ είναι το επίσημο δελτίο της ΕΜΥ.",
+            "Every 30 minutes the forecast of the next 12 hours (Open-Meteo) is checked for the city you choose: thunderstorms, gusts ≥ 75 km/h, heavy rain, snow, heat (≥ 40 °C) or frost (≤ −3 °C). It appears as an urgent item, with a sound. It is an automatic warning from a forecast and is NOT the official HNMS bulletin."), 640));
+        var testWeather = new FlatButton { Text = Loc.Pick("Δοκιμή καιρικής ειδοποίησης", "Test the weather warning") };
+        testWeather.Click += (_, _) => host.SimulateWeatherAlert();
+        weatherFlow.Controls.Add(testWeather);
+        weatherCard.Controls.Add(weatherFlow);
+        flow.Controls.Add(weatherCard);
 
         var test = new FlatButton { Text = L("btn.testBreaking") };
         test.Click += (_, _) => host.SimulateBreaking(Loc.IsGreek ? "Έκτακτο: δοκιμαστική είδηση για τον έλεγχο της μπάρας" : "Breaking: test headline to check the bar");
@@ -1098,27 +1386,34 @@ public sealed class SettingsPanel : UserControl
         liveStatus.Text = "";
     }
 
-    private static Control BuildText(string text)
+    /// <summary>A read-only page with one of the long texts (help, instructions, history, license).</summary>
+    private static Control BuildInfoPage(Func<string> text)
     {
         var page = new Panel { Padding = new Padding(8, 6, 8, 6) };
-        var frame = new Panel { Dock = DockStyle.Fill, Padding = new Padding(16, 12, 8, 12), Tag = "surface" };
-        frame.Controls.Add(new TextBox
+        var box = new TextBox
         {
             Multiline = true, ReadOnly = true, Dock = DockStyle.Fill, ScrollBars = ScrollBars.Vertical, BorderStyle = BorderStyle.None,
-            Text = text.Replace("\r\n", "\n").Replace("\n", "\r\n"), Font = new Font("Segoe UI", 10f), TabStop = false, Tag = "surface"
-        });
+            Font = new Font("Segoe UI", 10f), TabStop = false, Tag = "surface",
+            Text = text().Replace("\r\n", "\n").Replace("\n", "\r\n")
+        };
+        var frame = new Panel { Dock = DockStyle.Fill, Padding = new Padding(16, 12, 8, 12), Tag = "surface" };
+        frame.Controls.Add(box);
         page.Controls.Add(frame);
         return page;
     }
 
     // ---- loading / saving ----------------------------------------------------------------
 
-    /// <summary>Shows the tab with the given index (0 = General).</summary>
-    public int TabCount => tabs.Count;
+    /// <summary>Number of pages that can be shown (every sub-page of every tab counts once; used by the snapshot test).</summary>
+    public int TabCount => leaves.Count;
 
+    /// <summary>Shows the page with the given index (0 = Settings / General).</summary>
     public void SelectTab(int index)
     {
-        if (index >= 0 && index < tabs.Count) tabs.SelectedIndex = index;
+        if (index < 0 || index >= leaves.Count) return;
+        var (top, strip, sub) = leaves[index];
+        tabs.SelectedIndex = top;
+        strip.SelectedIndex = sub;
     }
 
     public void LoadFromConfig()
@@ -1138,6 +1433,8 @@ public sealed class SettingsPanel : UserControl
             pauseOther.Checked = c.PauseOnOtherWindow;
             hideRead.Checked = c.HideRead;
             barsEnabled.Checked = c.BarsEnabled;
+            startWithWindows.Checked = StartupRegistration.IsEnabled();
+            toggleHotkey.Checked = c.ToggleHotkey;
             autoUpdate.Checked = c.CheckForUpdates;
             workCities = c.WeatherCities.ToList();
             ShowCities();
@@ -1145,15 +1442,16 @@ public sealed class SettingsPanel : UserControl
             LoadMiniBounds();
             miniOnTop.Checked = c.MiniWeatherOnTop;
 
-            mainContent.SelectSilently((int)c.MainContent);
-            stocksLeft.Checked = c.SplitStocksOnLeft;
+            mainPicker.Set(c.MainSlots());
+            miniPicker.Set(c.MiniSlots());
+            foreach (var (id, check) in weatherFieldChecks) check.Checked = c.WeatherFields.Contains(id);
             secondEnabled.Checked = c.SecondBarEnabled;
-            secondContent.SelectSilently(c.SecondContent switch { BarContent.News => 0, BarContent.Weather => 2, _ => 1 });
-            foreach (var (screen, check, content) in monitorRows)
+            secondPicker.Set(c.SecondSlots());
+            foreach (var (screen, check, picker) in monitorRows)
             {
                 var saved = c.MonitorBars.FirstOrDefault(m => string.Equals(m.Device, screen.DeviceName, StringComparison.OrdinalIgnoreCase));
                 check.Checked = saved?.Enabled ?? false;
-                content.SelectSilently(saved is null ? 0 : (int)saved.Content);
+                picker.Set(saved?.Slots() ?? new BarSlots(new BarSlot(SlotKind.News), null));
             }
 
             position.SelectSilently(Math.Clamp((int)c.Position, 0, 4));
@@ -1184,6 +1482,10 @@ public sealed class SettingsPanel : UserControl
             barBackdrop.SelectSilently(c.BarBackdrop switch { "blur" => 1, "gradient" => 2, _ => 0 });
             taskbarBackdrop.SelectSilently(c.TaskbarBarBackdrop switch { "acrylic" => 0, "gradient" => 2, _ => 1 });
             breakingEnabled.Checked = c.BreakingEnabled;
+            breakingSound.Checked = c.BreakingSound;
+            weatherMapOnClick.Checked = c.WeatherMapOnClick;
+            weatherAlerts.Checked = c.WeatherAlertsEnabled;
+            alertCity.SelectSilently(string.IsNullOrEmpty(c.AlertCityId) ? 0 : Math.Max(0, GreekCities.All.ToList().FindIndex(x => x.Id == c.AlertCityId) + 1));
             keywords.Value = string.Join("; ", c.BreakingKeywords);
             maxAge.SetValueSilently(c.BreakingMaxAgeMinutes);
             duration.SetValueSilently(c.BreakingDurationMinutes);
@@ -1192,9 +1494,17 @@ public sealed class SettingsPanel : UserControl
             themeMode.Enabled = !HostThemeLocked;
             themeNote.Text = HostThemeLocked ? L("note.hostTheme") : "";
 
+            newsMaxAge.SetValueSilently(c.NewsMaxAgeHours);
+            newsNewestFirst.Checked = c.NewsSortNewestFirst;
+            stockNewsOnly.Checked = c.StockNewsOnly;
+            mutedNewsKeywords.Value = string.Join("; ", c.MutedNewsKeywords);
             workCategories = c.Categories.Select(Clone).ToList();
             RebuildCategoryLists(c.ActiveCategory);
-            workWatch = c.Watchlist.Select(w => new QuoteInstrument(w.Source, w.Code, w.Symbol, w.NameEl, w.NameEn, w.Unit, w.Enabled)).ToList();
+            workWatch = c.Watchlist.Select(w => w.Clone()).ToList();
+            workAlerts = c.PriceAlerts.Select(a => a.Clone()).ToList();
+            alertChoicesSignature = "";
+            RefreshAlertChoices();
+            ShowAlerts();
             RebuildWatchLists();
             UpdatePositionGroups();
             UpdateBarsUi();
@@ -1205,6 +1515,90 @@ public sealed class SettingsPanel : UserControl
             loading = was;
         }
         moveWithMouse.Text = host.IsPositionEditMode ? L("btn.moveMouseDone") : L("btn.moveMouse");
+        hasUnsavedChanges = false;
+        if (status is not null && !status.IsDisposed) status.Text = "";
+    }
+
+    private void AttachDirtyTracking()
+    {
+        if (dirtyTrackingAttached || tabs is null) return;
+        dirtyTrackingAttached = true;
+        foreach (var control in Descendants(tabs))
+        {
+            switch (control)
+            {
+                case FlatCheck check:
+                    check.CheckedChanged += (_, _) => MarkDirty();
+                    break;
+                case FlatCombo combo:
+                    combo.SelectedIndexChanged += (_, _) => MarkDirty();
+                    break;
+                case FlatNumber number:
+                    number.ValueChanged += (_, _) => MarkDirty();
+                    break;
+                case FlatText text:
+                    text.TextValueChanged += (_, _) => MarkDirty();
+                    break;
+                case FlatSlider slider:
+                    slider.ValueChanged += (_, _) => MarkDirty();
+                    break;
+                case FlatList list:
+                    list.ItemChecked += (_, _) => MarkDirty();
+                    break;
+                case FlatButton button when !button.IsNavigation:
+                    button.Click += (_, _) =>
+                    {
+                        // Actions that only open dialogs, refresh data, or perform maintenance do not
+                        // make the editable settings dirty by themselves.
+                        var nonEditingActions = new[]
+                        {
+                            L("btn.resetRead"), L("btn.openLog"), L("btn.checkNow"),
+                            L("btn.installUpdate"), L("btn.openPage"), L("btn.refreshList"),
+                            L("btn.testBreaking"), L("btn.open"), L("settings.exportOpml")
+                        };
+                        if (!nonEditingActions.Contains(button.Text, StringComparer.CurrentCultureIgnoreCase)
+                            && !button.Text.Contains("Export OPML", StringComparison.OrdinalIgnoreCase)
+                            && !button.Text.Contains("Εξαγωγή OPML", StringComparison.OrdinalIgnoreCase))
+                            MarkDirty();
+                    };
+                    break;
+            }
+        }
+    }
+
+    private static IEnumerable<Control> Descendants(Control root)
+    {
+        foreach (Control child in root.Controls)
+        {
+            yield return child;
+            foreach (var nested in Descendants(child)) yield return nested;
+        }
+    }
+
+    private void MarkDirty()
+    {
+        if (loading || !built) return;
+        hasUnsavedChanges = true;
+        if (status is not null && !status.IsDisposed) status.Text = L("settings.unsavedChanges");
+    }
+
+    /// <summary>Prompts before closing when the user has edits that have not been saved.</summary>
+    public bool ConfirmCloseIfNeeded()
+    {
+        if (!hasUnsavedChanges) return true;
+        var result = MessageBox.Show(FindForm(), L("settings.unsavedPrompt"), L("window.settings"),
+            MessageBoxButtons.YesNoCancel, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1);
+        if (result == DialogResult.Yes)
+        {
+            ApplySettings();
+            return !hasUnsavedChanges;
+        }
+        if (result == DialogResult.No)
+        {
+            LoadFromConfig();
+            return true;
+        }
+        return false;
     }
 
     private static FeedCategory Clone(FeedCategory c) => new()
@@ -1212,6 +1606,14 @@ public sealed class SettingsPanel : UserControl
         Id = c.Id, NameEl = c.NameEl, NameEn = c.NameEn, BuiltIn = c.BuiltIn,
         Feeds = c.Feeds.Select(f => new FeedSource(f.Name, f.Url) { Enabled = f.Enabled }).ToList()
     };
+
+    private IEnumerable<SlotPicker> AllPickers()
+    {
+        if (mainPicker is not null) yield return mainPicker;
+        if (secondPicker is not null) yield return secondPicker;
+        if (miniPicker is not null) yield return miniPicker;
+        foreach (var row in monitorRows) yield return row.Picker;
+    }
 
     private void RebuildCategoryLists(string? activeId)
     {
@@ -1221,6 +1623,7 @@ public sealed class SettingsPanel : UserControl
         var index = Math.Max(0, workCategories.FindIndex(c => string.Equals(c.Id, activeId, StringComparison.OrdinalIgnoreCase)));
         category.SelectSilently(index);
         if (categoryList.Items.Count > 0) categoryList.SelectedIndex = index;
+        foreach (var picker in AllPickers()) picker.SetChoices(workCategories);
     }
 
     private void RebuildWatchLists()
@@ -1237,6 +1640,8 @@ public sealed class SettingsPanel : UserControl
     private void ApplySettings()
     {
         var c = host.Config;
+        var mutedKeywords = mutedNewsKeywords.Value.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct(StringComparer.OrdinalIgnoreCase).Take(100).ToList();
+        var newsSettingsChanged = c.NewsMaxAgeHours != newsMaxAge.Value || c.NewsSortNewestFirst != newsNewestFirst.Checked || c.StockNewsOnly != stockNewsOnly.Checked || !c.MutedNewsKeywords.SequenceEqual(mutedKeywords, StringComparer.OrdinalIgnoreCase);
         c.Language = Loc.Available().ElementAtOrDefault(Math.Max(0, language.SelectedIndex)).Code ?? c.Language;
         c.NewsRefreshSeconds = refresh.Value;
         c.ScrollSpeed = speed.Value;
@@ -1245,7 +1650,12 @@ public sealed class SettingsPanel : UserControl
         c.ShowPreview = preview.Checked;
         c.PauseOnOtherWindow = pauseOther.Checked;
         c.HideRead = hideRead.Checked;
+        c.NewsMaxAgeHours = newsMaxAge.Value;
+        c.NewsSortNewestFirst = newsNewestFirst.Checked;
+        c.StockNewsOnly = stockNewsOnly.Checked;
+        c.MutedNewsKeywords = mutedKeywords;
         c.CheckForUpdates = autoUpdate.Checked;
+        c.ToggleHotkey = toggleHotkey.Checked;
         c.WeatherCities = workCities.ToList();
         c.MiniWeatherEnabled = miniWeather.Checked;
         c.MiniWeatherWidth = miniW.Value;
@@ -1259,14 +1669,23 @@ public sealed class SettingsPanel : UserControl
         else { c.MiniWeatherX = miniX.Value; c.MiniWeatherY = miniY.Value; }
         c.MiniWeatherOnTop = miniOnTop.Checked;
 
-        c.MainContent = (BarContent)Math.Max(0, mainContent.SelectedIndex);
-        c.SplitStocksOnLeft = stocksLeft.Checked;
+        var mainSlots = mainPicker.Get();
+        c.MainSlotA = mainSlots.A.ToSpec();
+        c.MainSlotB = mainSlots.B?.ToSpec() ?? "";
+        c.MainContent = mainSlots.ToLegacy();
+        var miniSlots = miniPicker.Get();
+        c.MiniSlotA = miniSlots.A.ToSpec();
+        c.MiniSlotB = miniSlots.B?.ToSpec() ?? "";
+        c.WeatherFields = weatherFieldChecks.Where(kv => kv.Value.Checked).Select(kv => kv.Key).ToList();
         c.SecondBarEnabled = secondEnabled.Checked && position.SelectedIndex != (int)TickerPosition.TaskbarIntegrated;
-        c.SecondContent = SecondContentOf(secondContent.SelectedIndex);
+        var secondSlots = secondPicker.Get();
+        c.SecondSlotA = secondSlots.A.ToSpec();
+        c.SecondSlotB = secondSlots.B?.ToSpec() ?? "";
+        c.SecondContent = secondSlots.ToLegacy() == BarContent.Both ? BarContent.Stocks : secondSlots.ToLegacy();
         // Extra bars of the monitors shown here; entries of monitors that are not connected right now are kept.
         var shown = monitorRows.Select(r => r.Screen.DeviceName).ToHashSet(StringComparer.OrdinalIgnoreCase);
         c.MonitorBars = c.MonitorBars.Where(m => !shown.Contains(m.Device)).Concat(monitorRows.Select(r =>
-            new MonitorBar { Device = r.Screen.DeviceName, Enabled = r.Check.Checked, Content = (BarContent)Math.Max(0, r.Content.SelectedIndex) })).ToList();
+            new MonitorBar { Device = r.Screen.DeviceName, Enabled = r.Check.Checked, Content = r.Picker.Get().ToLegacy(), SlotA = r.Picker.Get().A.ToSpec(), SlotB = r.Picker.Get().B?.ToSpec() ?? "" })).ToList();
 
         c.Position = (TickerPosition)Math.Max(0, position.SelectedIndex);
         c.FollowTaskbar = followTaskbar.Checked;
@@ -1289,6 +1708,10 @@ public sealed class SettingsPanel : UserControl
         c.TaskbarBarColorMode = taskbarColor.SelectedIndex switch { 1 => "lightblue", 2 => "accent", 3 => "custom", _ => "taskbar" };
         c.TaskbarBarCustomColor = taskbarSwatch.Rgb;
         c.BreakingEnabled = breakingEnabled.Checked;
+        c.BreakingSound = breakingSound.Checked;
+        c.WeatherMapOnClick = weatherMapOnClick.Checked;
+        c.WeatherAlertsEnabled = weatherAlerts.Checked;
+        c.AlertCityId = alertCity.SelectedIndex > 0 && alertCity.SelectedIndex <= GreekCities.All.Count ? GreekCities.All[alertCity.SelectedIndex - 1].Id : "";
         c.BreakingKeywords = keywords.Value.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
         c.BreakingMaxAgeMinutes = maxAge.Value;
         c.BreakingDurationMinutes = duration.Value;
@@ -1300,16 +1723,107 @@ public sealed class SettingsPanel : UserControl
         c.Categories = workCategories.Select(Clone).ToList();
         var chosen = category.SelectedIndex >= 0 && category.SelectedIndex < c.Categories.Count ? c.Categories[category.SelectedIndex].Id : previousActive;
         var feedsChanged = before != FeedSignature(c.Categories);
-        c.Watchlist = workWatch.Select(w => new QuoteInstrument(w.Source, w.Code, w.Symbol, w.NameEl, w.NameEn, w.Unit, w.Enabled)).ToList();
+        c.Watchlist = workWatch.Select(w => w.Clone()).ToList();
+        c.PriceAlerts = workAlerts.Select(a => a.Clone()).ToList();
 
         host.ApplyConfig();
         host.SetBarsEnabled(barsEnabled.Checked);
+        if (!host.HostedByOpsis) StartupRegistration.Set(startWithWindows.Checked);
         host.SetCategory(chosen);
-        if (feedsChanged && string.Equals(chosen, previousActive, StringComparison.OrdinalIgnoreCase)) host.ReloadNews();
+        if ((feedsChanged || newsSettingsChanged) && string.Equals(chosen, previousActive, StringComparison.OrdinalIgnoreCase)) host.ReloadNews();
         host.SaveConfig();
+        hasUnsavedChanges = false;
 
         SetStatus(L("msg.saved"));
         Applied?.Invoke();
+    }
+
+    private void ExportSettings()
+    {
+        using var dialog = new SaveFileDialog
+        {
+            Title = L("settings.exportTitle"),
+            Filter = "JSON settings (*.json)|*.json|All files (*.*)|*.*",
+            FileName = "opsis-newscrawler-settings.json",
+            DefaultExt = "json",
+            AddExtension = true,
+            OverwritePrompt = true
+        };
+        if (dialog.ShowDialog(FindForm()) != DialogResult.OK) return;
+        var tempDirectory = Path.Combine(Path.GetTempPath(), "OpsisNewsCrawlerExport", Guid.NewGuid().ToString("N"));
+        try
+        {
+            Directory.CreateDirectory(tempDirectory);
+            var tempFile = Path.Combine(tempDirectory, "settings.json");
+            host.Config.Save(tempFile);
+            if (!File.Exists(tempFile) || new FileInfo(tempFile).Length == 0)
+                throw new IOException("The settings file could not be written.");
+            File.Copy(tempFile, dialog.FileName, overwrite: true);
+            SetStatus(L("settings.exported"));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            MessageBox.Show(FindForm(), ex.Message, L("settings.exportTitle"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+        finally
+        {
+            try { Directory.Delete(tempDirectory, recursive: true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+        }
+    }
+
+    private void ImportSettings()
+    {
+        using var dialog = new OpenFileDialog
+        {
+            Title = L("settings.importTitle"),
+            Filter = "JSON settings (*.json)|*.json|All files (*.*)|*.*",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        if (dialog.ShowDialog(FindForm()) != DialogResult.OK) return;
+        if (MessageBox.Show(FindForm(), L("settings.importConfirm"), L("settings.importTitle"),
+                MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
+
+        try
+        {
+            // Validate the JSON before AppConfig.Load applies defaults; malformed imports must never silently
+            // replace the user's current configuration with a fresh default profile.
+            using (var document = System.Text.Json.JsonDocument.Parse(File.ReadAllText(dialog.FileName)))
+            {
+                if (document.RootElement.ValueKind != System.Text.Json.JsonValueKind.Object)
+                    throw new System.Text.Json.JsonException("The settings file must contain a JSON object.");
+            }
+            var tempDirectory = Path.Combine(Path.GetTempPath(), "OpsisNewsCrawlerImport", Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDirectory);
+            AppConfig imported;
+            try
+            {
+                var tempConfig = Path.Combine(tempDirectory, "config.json");
+                File.Copy(dialog.FileName, tempConfig, overwrite: true);
+                imported = AppConfig.Load(tempConfig);
+            }
+            finally
+            {
+                try { Directory.Delete(tempDirectory, recursive: true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+            }
+            foreach (var property in typeof(AppConfig).GetProperties(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public))
+            {
+                if (!property.CanRead || property.SetMethod is null || !property.SetMethod.IsPublic || property.GetIndexParameters().Length != 0) continue;
+                property.SetValue(host.Config, property.GetValue(imported));
+            }
+            host.ApplyConfig();
+            host.SetBarsEnabled(host.Config.BarsEnabled);
+            host.SetCategory(host.Config.ActiveCategory);
+            host.ReloadNews();
+            host.SaveConfig();
+            LoadFromConfig();
+            SetStatus(L("settings.imported"));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or System.Reflection.TargetInvocationException or ArgumentException or InvalidOperationException or NotSupportedException)
+        {
+            MessageBox.Show(FindForm(), L("settings.importFailed") + Environment.NewLine + ex.Message,
+                L("settings.importTitle"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
     }
 
     private static string FeedSignature(IEnumerable<FeedCategory> cats) =>
@@ -1329,12 +1843,100 @@ public sealed class SettingsPanel : UserControl
 
     // ---- bars / position handlers ---------------------------------------------------------
 
+    private static string SplitNote() => Loc.Pick(
+        "Διαίρεση στη μέση: διάλεξε και δεύτερο μέρος και η μπάρα χωρίζεται σε δύο μισά. Κάθε μισό μπορεί να είναι ειδήσεις (οποιασδήποτε κατηγορίας, και δικής σου), αγορές ή καιρός.",
+        "Split in the middle: choose a second part and the bar is divided in two halves. Each half can be news (of any category, including your own), markets or weather.");
+
+    /// <summary>Two drop-downs that say what a bar shows: the first part (or the whole bar) and an optional second part (the bar is then split in the middle).</summary>
+    private sealed class SlotPicker
+    {
+        private readonly FlatCombo a = new() { Width = 380 };
+        private readonly FlatCombo b = new() { Width = 380 };
+        private List<BarSlot> choices = new();
+        private BarSlots current = new(new BarSlot(SlotKind.News), null);
+        private bool suppress;
+
+        public SlotPicker()
+        {
+            a.SelectedIndexChanged += (_, _) => Read();
+            b.SelectedIndexChanged += (_, _) => Read();
+        }
+
+        public BarSlots Get() => current;
+
+        public void Set(BarSlots value)
+        {
+            current = value;
+            Apply();
+        }
+
+        public void SetEnabled(bool on) => a.Enabled = b.Enabled = on;
+
+        public Control Build()
+        {
+            var box = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+            box.Controls.Add(Row(Loc.Pick("Περιεχόμενο (ή αριστερό μισό)", "Content (or left half)"), a, 260));
+            box.Controls.Add(Row(Loc.Pick("Δεξί μισό (διαίρεση στη μέση)", "Right half (split in the middle)"), b, 260));
+            return box;
+        }
+
+        public void SetChoices(IEnumerable<FeedCategory> categories)
+        {
+            choices = new List<BarSlot> { new(SlotKind.News) };
+            var labels = new List<string> { Loc.Pick("Ειδήσεις (ενεργή κατηγορία)", "News (active category)") };
+            foreach (var c in categories)
+            {
+                choices.Add(new BarSlot(SlotKind.News, c.Id));
+                labels.Add(Loc.Pick("Ειδήσεις: ", "News: ") + c.DisplayName);
+            }
+            choices.Add(new BarSlot(SlotKind.Stocks));
+            labels.Add(Loc.T("content.stocks"));
+            choices.Add(new BarSlot(SlotKind.Weather));
+            labels.Add(Loc.T("content.weather"));
+
+            suppress = true;
+            try
+            {
+                a.SetItems(labels, 0);
+                b.SetItems(new[] { Loc.Pick("— Κανένα (ολόκληρη η μπάρα) —", "— None (the whole bar) —") }.Concat(labels), 0);
+            }
+            finally { suppress = false; }
+            Apply();
+        }
+
+        private int IndexOf(BarSlot slot)
+        {
+            var i = choices.FindIndex(x => x.Kind == slot.Kind && (slot.Kind != SlotKind.News || string.Equals(x.Category ?? "", slot.Category ?? "", StringComparison.OrdinalIgnoreCase)));
+            return Math.Max(0, i);
+        }
+
+        private void Apply()
+        {
+            if (choices.Count == 0) return;
+            suppress = true;
+            try
+            {
+                a.SelectSilently(IndexOf(current.A));
+                b.SelectSilently(current.B is { } second ? IndexOf(second) + 1 : 0);
+            }
+            finally { suppress = false; }
+        }
+
+        private void Read()
+        {
+            if (suppress || choices.Count == 0 || a.SelectedIndex < 0) return;
+            var first = choices[Math.Clamp(a.SelectedIndex, 0, choices.Count - 1)];
+            BarSlot? second = b.SelectedIndex > 0 ? choices[Math.Clamp(b.SelectedIndex - 1, 0, choices.Count - 1)] : null;
+            if (second is { } s && s == first) second = null;
+            current = new BarSlots(first, second);
+        }
+    }
+
     private void UpdateBarsUi()
     {
-        stocksLeft.Enabled = mainContent.SelectedIndex == (int)BarContent.Both;
         var integratedMain = position.SelectedIndex == (int)TickerPosition.TaskbarIntegrated;
         secondEnabled.Enabled = !integratedMain;
-        secondContent.Enabled = secondEnabled.Checked && !integratedMain;
+        secondPicker.SetEnabled(secondEnabled.Checked && !integratedMain);
         secondNote.Text = integratedMain ? L("note.secondBarBlocked") : L("note.secondBar");
     }
 
@@ -1466,6 +2068,91 @@ public sealed class SettingsPanel : UserControl
         if (SelectedCategory() is not { } cat || feedList.SelectedIndex < 0 || feedList.SelectedIndex >= cat.Feeds.Count) return;
         cat.Feeds.RemoveAt(feedList.SelectedIndex);
         ShowFeedsOfSelectedCategory();
+        MarkDirty();
+    }
+
+    private void MoveFeed(int step)
+    {
+        if (SelectedCategory() is not { } cat) return;
+        var from = feedList.SelectedIndex;
+        var to = from + step;
+        if (from < 0 || from >= cat.Feeds.Count || to < 0 || to >= cat.Feeds.Count) return;
+        (cat.Feeds[from], cat.Feeds[to]) = (cat.Feeds[to], cat.Feeds[from]);
+        ShowFeedsOfSelectedCategory();
+        feedList.SelectedIndex = to;
+        MarkDirty();
+    }
+
+    /// <summary>Downloads the selected feed (or every feed of the category) and reports whether it works and how fresh it is.</summary>
+    private async void TestFeeds(bool selectedOnly)
+    {
+        if (SelectedCategory() is not { } cat) return;
+        var feeds = selectedOnly
+            ? (feedList.SelectedIndex >= 0 && feedList.SelectedIndex < cat.Feeds.Count ? new List<FeedSource> { cat.Feeds[feedList.SelectedIndex] } : new List<FeedSource>())
+            : cat.Feeds.ToList();
+        if (feeds.Count == 0) return;
+        discoverStatus.Text = Loc.Pick("Δοκιμή…", "Testing…");
+        try
+        {
+            using var provider = new RssNewsProvider();
+            var results = await Task.WhenAll(feeds.Select(f => provider.TestAsync(f.Url))).ConfigureAwait(true);
+            if (IsDisposed) return;
+            if (feeds.Count == 1)
+            {
+                var r = results[0];
+                discoverStatus.Text = r.Ok
+                    ? Loc.Pick($"✔ Λειτουργεί: {r.Count} άρθρα, νεότερο {r.Newest:dd/MM HH:mm}.", $"✔ Works: {r.Count} stories, newest {r.Newest:dd/MM HH:mm}.")
+                    : Loc.Pick($"✖ Δεν λειτουργεί: {r.Error}", $"✖ Not working: {r.Error}");
+                return;
+            }
+            var bad = feeds.Where((f, i) => !results[i].Ok).Select(f => f.Name).ToList();
+            discoverStatus.Text = bad.Count == 0
+                ? Loc.Pick($"✔ Και οι {feeds.Count} πηγές λειτουργούν.", $"✔ All {feeds.Count} feeds work.")
+                : Loc.Pick($"{feeds.Count - bad.Count}/{feeds.Count} λειτουργούν. Προβλήματα: {string.Join(", ", bad)}", $"{feeds.Count - bad.Count}/{feeds.Count} work. Problems: {string.Join(", ", bad)}");
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or InvalidOperationException)
+        {
+            if (!IsDisposed) discoverStatus.Text = ex.Message;
+        }
+    }
+
+    private void ImportOpml()
+    {
+        if (SelectedCategory() is not { } cat) return;
+        using var dialog = new OpenFileDialog { Filter = "OPML files (*.opml;*.xml)|*.opml;*.xml|All files (*.*)|*.*", Title = Loc.IsGreek ? "Εισαγωγή συνδρομών OPML" : "Import OPML subscriptions" };
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+        try
+        {
+            using var input = File.OpenRead(dialog.FileName);
+            var imported = OpmlExchange.Import(input);
+            var before = cat.Feeds.Count;
+            foreach (var feed in imported) AddFeed(cat, feed.Name, feed.Url);
+            ShowFeedsOfSelectedCategory();
+            discoverStatus.Text = Loc.IsGreek
+                ? $"Εισήχθησαν {cat.Feeds.Count - before} νέες πηγές από {imported.Count}."
+                : $"Imported {cat.Feeds.Count - before} new feeds from {imported.Count}.";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Xml.XmlException or InvalidDataException)
+        {
+            MessageBox.Show(this, ex.Message, Loc.IsGreek ? "Αποτυχία εισαγωγής OPML" : "OPML import failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+    }
+
+    private void ExportOpml()
+    {
+        if (SelectedCategory() is not { } cat) return;
+        using var dialog = new SaveFileDialog { Filter = "OPML files (*.opml)|*.opml|XML files (*.xml)|*.xml", DefaultExt = "opml", AddExtension = true, FileName = $"{cat.Id}.opml", Title = Loc.IsGreek ? "Εξαγωγή συνδρομών OPML" : "Export OPML subscriptions" };
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+        try
+        {
+            using var output = File.Create(dialog.FileName);
+            OpmlExchange.Export(cat.Feeds, output, cat.DisplayName);
+            discoverStatus.Text = Loc.IsGreek ? "Η εξαγωγή OPML ολοκληρώθηκε." : "OPML export completed.";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            MessageBox.Show(this, ex.Message, Loc.IsGreek ? "Αποτυχία εξαγωγής OPML" : "OPML export failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
     }
 
     private void AddPreset()

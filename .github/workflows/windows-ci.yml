@@ -1,0 +1,35 @@
+name: Windows build and tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore
+        run: dotnet restore OpsisNewsCrawler.sln
+      - name: Build solution
+        run: dotnet build OpsisNewsCrawler.sln --configuration Release --no-restore
+      - name: Run core tests
+        run: dotnet test tests/OpsisNewsCrawler.Core.Tests/OpsisNewsCrawler.Core.Tests.csproj --configuration Release
+      - name: Verify release versions
+        shell: pwsh
+        run: |
+          $files = @(
+            'src/OpsisNewsCrawler.App/OpsisNewsCrawler.App.csproj',
+            'src/OpsisNewsCrawler.Core/OpsisNewsCrawler.Core.csproj',
+            'src/OpsisNewsCrawler.Windows/OpsisNewsCrawler.Windows.csproj',
+            'src/OpsisNewsCrawler.MotionDeskPlugin/OpsisNewsCrawler.MotionDeskPlugin.csproj',
+            'src/OpsisNewsCrawler.Plugin.Abstractions/OpsisNewsCrawler.Plugin.Abstractions.csproj'
+          )
+          foreach ($file in $files) {
+            if ((Get-Content $file -Raw) -notmatch '<Version>0\.11\.5\.3</Version>') { throw "Version mismatch in $file" }
+          }
+          if ((Get-Content 'OpsisNewsCrawler.iss' -Raw) -notmatch '#define MyAppVersion "0\.11\.5\.3"') { throw 'Installer version mismatch' }

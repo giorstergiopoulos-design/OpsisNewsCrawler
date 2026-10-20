@@ -21,7 +21,7 @@ Run-OpsisNewsCrawler-Build.bat      menu: 1 build+run, 2 build+installer, 3 both
 dotnet build OpsisNewsCrawler.sln -c Release
 ```
 The bat publishes the app to `bin\` (framework-dependent), copies the plugin to `bin\plugins\Opsis - Desktop Customization\` (the installer registers that folder under `HKCU\Software\Opsis\PluginPaths`),
-and compiles `OpsisNewsCrawler.iss` with Inno Setup 6 (`ISCC`). Output: `Output\OpsisNewsCrawler-Setup.exe`.
+and compiles `OpsisNewsCrawler.iss` with Inno Setup 7/6/5 (`ISCC`, found automatically). Output: `Output\OpsisNewsCrawler-Setup.exe`.
 
 ## Solution layout (`src/`)
 | Project | Role |

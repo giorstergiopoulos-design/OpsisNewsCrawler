@@ -207,5 +207,18 @@
   "btn.centerDesktop": "Centrar no ambiente de trabalho",
   "note.miniWeather2": "Fica no centro do ambiente de trabalho, por baixo das outras janelas (a menos que escolha «acima das outras janelas»). Tem as mesmas cores, transparência, material de fundo e extremidades desvanecidas que a barra principal (separador Aspeto). Se couberem todas as cidades fica parada; caso contrário, desloca-se. As alterações aplicam-se com «Aplicar».",
   "msg.confirmUpdateOnExit": "Dentro do Opsis os ficheiros do crawler estão em uso. A atualização será instalada automaticamente assim que fechar o Opsis; depois inicie o Opsis novamente. Continuar?",
-  "msg.updateScheduled": "O ficheiro foi transferido e verificado. Feche o Opsis; a atualização será instalada e poderá abrir o Opsis novamente."
+  "msg.updateScheduled": "O ficheiro foi transferido e verificado. Feche o Opsis; a atualização será instalada e poderá abrir o Opsis novamente.",
+  "settings.search": "Pesquisar definições…",
+  "settings.noResults": "Nenhuma definição correspondente.",
+  "settings.export": "Exportar definições",
+  "settings.import": "Importar definições",
+  "settings.exportTitle": "Exportar definições",
+  "settings.importTitle": "Importar definições",
+  "settings.exported": "Definições exportadas com sucesso.",
+  "settings.imported": "Definições importadas e aplicadas.",
+  "settings.importConfirm": "A importação irá substituir as definições atuais. Continuar?",
+  "settings.importFailed": "Não foi possível importar as definições:",
+  "btn.saveSettings": "Guardar definições",
+  "settings.unsavedChanges": "Alterações não guardadas",
+  "settings.unsavedPrompt": "Existem alterações não guardadas. Escolha Sim para guardar, Não para descartar ou Cancelar para continuar a editar."
 }

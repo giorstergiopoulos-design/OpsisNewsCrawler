@@ -141,3 +141,33 @@ Not done / residual: the installers are not code-signed (SmartScreen warning, an
 - 🔎 Report "plugin in Opsis still 0.8.1": the machine's uninstall entry says **0.9.0** (installed 14/10 17:12) and its plugin DLLs are the 0.8.1 files of that faulty 0.9.0 setup (see round 11). The published v0.10.1 setup is byte-identical to the build whose payload `tools\release.ps1` verified. Nothing is wrong with the current releases; the machine just has not been re-installed since. Fix on the machine: close Opsis, run the current setup (integrated mode).
 - ✅ Updates inside Opsis: "Download and install" now works when hosted. After a confirmation it downloads the setup, checks the SHA-256, and a hidden helper starts the setup silently (`/MODE=integrated`) when Opsis has closed (Opsis files are locked while it runs). Opsis is not closed or restarted by the plugin. The helper was tested with a stand-in setup (waits for the process, then runs).
 - 🔎 Report "bar inside the taskbar looks taller than the taskbar": not reproduced here (taskbar 40 px at 100 %, the bar had exactly 40 px). Added a log line with taskbar rectangle/DPI and bar rectangle/DPI (`crawler.log`) to see what differs on the other PC. Need from the user: Windows version, display scale, a screenshot.
+
+## Round 15 — 0.11.0 follow-up (2026-10-15, written WITHOUT a compiler: nothing below was built or run)
+- 🟡 Oil and gas near-live: `Core/PythHermes.cs` + `FredEnergyProvider` (Pyth Hermes first, FRED/EIA fallback, newer value wins, >30 min old is labelled with its date, >4 days ignored). Feed ids are from the Hermes price list; NOT tested against a live answer. Check `crawler.log` ("Pyth Hermes: ...") after the first run.
+- 🟡 `QuoteRefreshPolicy`: Energy follows the configured interval (was 6 h). Tests updated (`QuoteRefreshPolicyTests`), new `PythHermesTests`.
+- 🟡 Settings → Markets: card "Price source status" (`QuoteService.Statuses()`, refreshed every 3 s).
+- 🟡 Settings pages merged 13 → 7: General+Read later, Bars+Position, Look+Breaking (bar preview on pages 1–2), Sources, Markets, Weather, Information (Help/Instructions/History/License behind four buttons). `--tab N`: 0–5 settings, 6 information.
+- ⏳ First thing to do on Windows: `dotnet build OpsisNewsCrawler.sln -c Release`, `dotnet test tests/OpsisNewsCrawler.Core.Tests`, then open every settings page (scrolling, spacing, preview position, Information buttons).
+- 🟡 Sources: **Test / Test all** buttons (`RssNewsProvider.TestAsync`: works?, number of stories, newest), **▲ ▼** to reorder feeds.
+- 🟡 General: **Start with Windows** (`Windows/StartupRegistration.cs`, same HKCU Run value as the installer, standalone only) and **Ctrl+Alt+N hot key** that shows/hides the bars (`Windows/GlobalHotkey.cs`, `AppConfig.ToggleHotkey`, standalone only, off by default).
+- 🟡 Markets: **Price alerts** (`Core/PriceAlerts.cs`, `AppConfig.PriceAlerts`): limit ≥ / ≤ per ticked instrument; when passed, the bar shows an alert like an urgent headline (`TickerHost.CheckPriceAlerts`), once until the price goes back. Tests in `PriceAlertTests`.
+- 🟡 First run: when `config.json` did not exist, the standalone app opens the settings once (`AppConfig.IsFirstRun`, `Program.cs`). It is not a multi-step wizard.
+- Still open: exchange holiday calendar / configurable market hours; clickable quotes and hover card with high/low/sparkline; related-news highlight; PerMonitorV2 validation on a mixed-DPI setup; WPF memory reduction.
+
+## Round 16 — version 0.11.5 (2026-10-17, written WITHOUT a compiler: nothing below was built or run)
+- 🟡 Bat/`release.ps1`: Inno Setup 7 (and 6/5) found via PATH, `Inno Setup*` folders (LocalAppData\Programs, Program Files) and the registry.
+- 🟡 Settings reorganised into 3 tabs with sub-buttons (see HANDOFF §7); General minus Updates + Bars + Position + Desktop bar + Look + Breaking under "Settings"; News/Markets/Weather flows under "Sources"; Help/Instructions/History/License/Updates under "Information".
+- 🟡 Desktop bar (ex mini weather bar): content choice, settings in Settings → Desktop bar, pointer snaps to the bar and shows the move cursor.
+- 🟡 Split in the middle: any two of news (any category), markets, weather, for main/second/monitor/desktop bars.
+- 🟡 Weather flow: choose the detail fields. 🟡 Offline/provider-down: stored data + message. 🟡 "15 min" label removed from the bar, explained in Help and the Markets flow. 🟡 Breaking intro "… · ΣΥΜΒΑΙΝΕΙ ΤΩΡΑ".
+- ⛔ Not possible / not done: FX more often than daily; yfinance.
+- ⏳ Check on Windows: compile; every sub-page layout; the move cursor; split with weather/custom category; offline message (unplug network); Open-Meteo accepted the extra `current=` fields.
+
+## Round 17 — version 0.11.5.2 (2026-10-19, written WITHOUT a compiler)
+- 🟡 Alert sound for urgent headlines, price alerts and weather warnings (Settings → Breaking).
+- 🟡 Severe weather for the user's area (computed from the Open-Meteo forecast, not the official bulletin).
+- 🟡 Fix: alert items survive a news refresh; sound for additional urgent headlines.
+- ⏳ Check on Windows: compile; hear the sound (also with Windows sounds set to "none"); "Test the weather warning" button; real warning on a stormy day; Open-Meteo accepts `forecast_hours=12`.
+
+## Round 18 — version 0.11.5.3 (2026-10-19, NO compiler)
+- 🟡 Click on a city of the weather line → window with weather and OpenStreetMap map (maximize, close, Esc). ⏳ Check: compile, map tiles load, maximize, works from the desktop bar, setting off = no window.

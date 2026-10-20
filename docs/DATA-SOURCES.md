@@ -57,3 +57,13 @@ AMS (Amsterdam), EPA (Paris), EBR (Brussels), ELI (Lisbon), BIT (Milan). Likely:
 ## Weather (added 2026-10-14)
 Open-Meteo (https://open-meteo.com, `api.open-meteo.com/v1/forecast`, `current=` variables): free for non-commercial use, no API key, data licensed CC BY 4.0 — the attribution is in the Weather tab note and here. One request carries up to 100 places (the 71 Greek cities take about half a second). Readings are cached 10 minutes, refreshed every 15. Terms: https://open-meteo.com/en/terms
 Other keyless prices added the same day: gold-api.com (BTC, ETH), Frankfurter/ECB (currency pairs; robots.txt allows everything).
+
+
+## Pyth Network Hermes (added 2026-10-15, not yet verified live)
+`GET https://hermes.pyth.network/v2/updates/price/latest?parsed=true&encoding=hex&ignore_invalid_price_ids=true&ids[]=<id>...` — public, no key, one request for all ids. Used for Brent (Commodities.Index.BRENT/USD), WTI (WTI1M, 23/5), natural gas (NATGAS, 24/7). Prices are `price * 10^expo`; entries with a confidence interval above 2 % are dropped. If the answer is older than 30 minutes the bar shows its date; FRED/EIA (daily, about a week late) is the fallback. Terms of use of the service were not reviewed in depth: review before any commercial distribution.
+
+
+## Update frequency of once-a-day sources (2026-10-17)
+- ECB reference rates (Frankfurter): published once per working day (~16:00 CET); polling more often returns the same numbers. No verified free, ToS-clean live FX feed was found; Pyth FX feed ids were not verified, so they are not used.
+- Euronext other markets: end-of-day files. EIA/FRED: daily, ~a week late (only a fallback now; Pyth is first).
+- yfinance: a Python library that scrapes Yahoo Finance (Yahoo ToS forbids it); it cannot be a .NET dependency and is not used.

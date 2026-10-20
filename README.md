@@ -24,3 +24,6 @@ Prices are delayed or daily and are not investment advice.
 ## License
 
 MIT, see `LICENSE`.
+
+
+Recent 0.11.x improvements include accent-insensitive muted news keywords and temporary tray snooze (15/60 minutes). See `docs/RELEASE-0.11.5.3.md` for details. Oil/gas now use near-live Pyth Hermes prices with a FRED fallback, the settings window has 7 pages and a price-source status card (unbuilt, see `docs/TASKS.md` round 15).

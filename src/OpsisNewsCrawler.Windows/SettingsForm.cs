@@ -14,9 +14,10 @@ public sealed class SettingsForm : Form
         Icon = AppIcon.Get();
         Text = Loc.T("app.name") + " — " + Loc.T("window.settings");
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(1080, 680);
-        MinimumSize = new Size(700, 560);
+        ClientSize = new Size(1180, 760);
+        MinimumSize = new Size(900, 620);
         FormBorderStyle = FormBorderStyle.Sizable;
+        KeyPreview = true;
         MaximizeBox = false;
         MinimizeBox = false;
 
@@ -24,6 +25,15 @@ public sealed class SettingsForm : Form
         panel.CloseRequested += Hide;
         panel.Applied += () => Opacity = Math.Clamp(this.host.Config.SettingsOpacityPercent, 60, 100) / 100.0;
         Controls.Add(panel);
+
+        KeyDown += (_, e) =>
+        {
+            if (e.KeyCode == Keys.Escape)
+            {
+                if (panel.ConfirmCloseIfNeeded()) Hide();
+                e.Handled = true;
+            }
+        };
 
         HandleCreated += (_, _) => Theme.ApplyTitleBar(this);
         Theme.Changed += OnThemeChanged;
@@ -34,7 +44,7 @@ public sealed class SettingsForm : Form
             if (e.CloseReason == CloseReason.UserClosing)
             {
                 e.Cancel = true;
-                Hide();
+                if (panel.ConfirmCloseIfNeeded()) Hide();
             }
         };
     }

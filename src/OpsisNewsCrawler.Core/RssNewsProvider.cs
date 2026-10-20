@@ -6,6 +6,9 @@ using System.Xml.Linq;
 
 namespace OpsisNewsCrawler.Core;
 
+/// <summary>The answer of <see cref="RssNewsProvider.TestAsync"/>.</summary>
+public sealed record FeedTestResult(bool Ok, int Count, DateTimeOffset? Newest, string Error);
+
 /// <summary>
 /// Downloads and parses RSS 2.0 / Atom feeds. A failing feed never breaks the others.
 /// </summary>
@@ -16,17 +19,32 @@ public sealed class RssNewsProvider : IDisposable
     private const int MaxSummaryLength = 400;
 
     private readonly HttpClient http;
+    private readonly object failLock = new();
+    private List<string> failedFeeds = new();
+
+    /// <summary>Names of the feeds that could not be downloaded in the last <see cref="FetchAsync"/> (network or server problem).</summary>
+    public IReadOnlyList<string> LastFailedFeeds
+    {
+        get { lock (failLock) return failedFeeds.ToList(); }
+    }
+
+    private void RecordFailure(string name)
+    {
+        lock (failLock) failedFeeds.Add(name);
+    }
 
     public RssNewsProvider()
     {
         http = new HttpClient { Timeout = TimeSpan.FromSeconds(15), MaxResponseContentBufferSize = MaxFeedBytes };
-        http.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible; OpsisNewsCrawler/0.6)");
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible; OpsisNewsCrawler/0.11.5.3)");
         http.DefaultRequestHeaders.Accept.ParseAdd("application/rss+xml, application/atom+xml, application/xml, text/xml, */*");
     }
 
     public async Task<IReadOnlyList<NewsItem>> FetchAsync(
-        IEnumerable<FeedSource> sources, int maxPerFeed, CancellationToken cancellationToken = default)
+        IEnumerable<FeedSource> sources, int maxPerFeed, CancellationToken cancellationToken = default,
+        int maxAgeHours = 168, bool newestFirst = false)
     {
+        lock (failLock) failedFeeds = new();
         var tasks = sources
             .Where(s => !string.IsNullOrWhiteSpace(s.Url))
             .Select(s => FetchOneAsync(s, maxPerFeed, cancellationToken))
@@ -36,17 +54,80 @@ public sealed class RssNewsProvider : IDisposable
 
         // Round-robin, so every source is visible in the ticker instead of the busiest one winning.
         var result = new List<NewsItem>();
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var seenUrls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var seenTitles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         for (var i = 0; i < maxPerFeed; i++)
         {
             foreach (var feed in perFeed)
             {
                 if (i >= feed.Count) continue;
                 var item = feed[i];
-                if (seen.Add(item.Url)) result.Add(item);
+                var titleKey = NormalizeTitle(item.Title);
+                if (!seenUrls.Add(CanonicalizeUrl(item.Url))) continue;
+                // Different publishers frequently syndicate the same story with different URLs.
+                if (titleKey.Length >= 18 && !seenTitles.Add(titleKey)) continue;
+                result.Add(item);
             }
         }
+        return FilterAndOrder(result, maxAgeHours, newestFirst, DateTimeOffset.UtcNow);
+    }
+
+    /// <summary>Applies the age limit and optional chronological ordering. Undated items are kept at the end.</summary>
+    public static IReadOnlyList<NewsItem> FilterAndOrder(IEnumerable<NewsItem> items, int maxAgeHours,
+        bool newestFirst, DateTimeOffset now)
+    {
+        var cutoff = now.AddHours(-Math.Clamp(maxAgeHours, 1, 720));
+        var result = items.Where(item => item.PublishedAt == DateTimeOffset.MinValue || item.PublishedAt >= cutoff).ToList();
+        if (newestFirst)
+            result = result.OrderByDescending(item => item.PublishedAt == DateTimeOffset.MinValue
+                ? DateTimeOffset.MinValue : item.PublishedAt).ToList();
         return result;
+    }
+
+    private static string NormalizeTitle(string? title)
+    {
+        if (string.IsNullOrWhiteSpace(title)) return string.Empty;
+        var decoded = WebUtility.HtmlDecode(title);
+        return Regex.Replace(decoded, @"[^\p{L}\p{N}]+", " ").Trim().ToLowerInvariant();
+    }
+
+    private static string CanonicalizeUrl(string? value)
+    {
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https"))
+            return value?.Trim() ?? string.Empty;
+        var builder = new UriBuilder(uri) { Fragment = string.Empty };
+        var query = System.Web.HttpUtility.ParseQueryString(builder.Query);
+        foreach (var key in query.AllKeys.Where(k => k is not null &&
+                     (k.StartsWith("utm_", StringComparison.OrdinalIgnoreCase) ||
+                      k.Equals("fbclid", StringComparison.OrdinalIgnoreCase) ||
+                      k.Equals("gclid", StringComparison.OrdinalIgnoreCase))).ToList()) query.Remove(key);
+        builder.Query = query.ToString() ?? string.Empty;
+        return builder.Uri.AbsoluteUri.TrimEnd('/');
+    }
+
+    /// <summary>Downloads one feed and says whether it works: number of stories and the newest one.</summary>
+    public async Task<FeedTestResult> TestAsync(string url, CancellationToken ct = default)
+    {
+        try
+        {
+            using var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+            if (response.Content.Headers.ContentLength is > MaxFeedBytes) return new FeedTestResult(false, 0, null, "feed too large");
+            var bytes = await response.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
+            if (bytes.LongLength > MaxFeedBytes) return new FeedTestResult(false, 0, null, "feed too large");
+            var items = Parse(bytes, "", 50);
+            return items.Count == 0
+                ? new FeedTestResult(false, 0, null, "no stories found")
+                : new FeedTestResult(true, items.Count, items.Max(i => i.PublishedAt), "");
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or XmlException or IOException or InvalidOperationException or UriFormatException)
+        {
+            return new FeedTestResult(false, 0, null, ex.Message);
+        }
     }
 
     private async Task<List<NewsItem>> FetchOneAsync(FeedSource source, int maxItems, CancellationToken ct)
@@ -71,6 +152,7 @@ public sealed class RssNewsProvider : IDisposable
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or XmlException or IOException)
         {
             System.Diagnostics.Debug.WriteLine($"OpsisNewsCrawler: feed '{source.Name}' failed: {ex.Message}");
+            RecordFailure(source.Name);
             return new List<NewsItem>();
         }
     }

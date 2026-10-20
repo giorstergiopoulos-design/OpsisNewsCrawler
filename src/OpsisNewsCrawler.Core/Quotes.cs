@@ -12,7 +12,7 @@ public enum QuoteSource
     Athens,
     /// <summary>gold-api.com spot prices: XAU, XAG, XPT, XPD, HG (key = symbol). Free, no API key.</summary>
     Metals,
-    /// <summary>FRED public CSV of EIA daily prices: Brent, WTI, Henry Hub gas (key = series id). Daily, not live.</summary>
+    /// <summary>Brent, WTI, Henry Hub gas (key = FRED series id): near-live Pyth Hermes price first, FRED/EIA daily CSV as the fallback.</summary>
     Energy,
     /// <summary>Shares of the other Euronext markets (Market = MIC, key = ISIN): the Euronext "Download" CSV, end-of-day prices.</summary>
     Euronext,
@@ -47,22 +47,25 @@ public sealed class QuoteInstrument
 
     public string DisplayName(bool greek) => greek ? NameEl : NameEn;
 
+    /// <summary>Copies all instrument fields, including the market identifier used by Euronext.</summary>
+    public QuoteInstrument Clone() => new(Source, Code, Symbol, NameEl, NameEn, Unit, Enabled) { Market = Market };
+
     public static List<QuoteInstrument> Defaults() => new()
     {
         // Athens — ISINs checked against the 2026-10-13 trade file and OpenFIGI (see docs/DATA-SOURCES.md).
         new(QuoteSource.Athens, "GRS003003035", "ETE", "Εθνική Τράπεζα", "National Bank", "€") { Market = "XATH" },
-        new(QuoteSource.Athens, "GRS829003003", "EUROB", "Eurobank", "Eurobank", "€"),
-        new(QuoteSource.Athens, "GRS830003000", "ALPHA", "Alpha Bank", "Alpha Bank", "€"),
-        new(QuoteSource.Athens, "GRS831003009", "TPEIR", "Πειραιώς", "Piraeus Bank", "€"),
-        new(QuoteSource.Athens, "GRS533003000", "OPTIMA", "Optima Bank", "Optima Bank", "€", enabled: false),
-        new(QuoteSource.Athens, "GRS260333000", "HTO", "ΟΤΕ", "OTE", "€"),
-        new(QuoteSource.Athens, "GRS434003000", "PPC", "ΔΕΗ", "PPC", "€"),
-        new(QuoteSource.Athens, "GRS298343005", "ELPE", "Helleniq Energy", "Helleniq Energy", "€"),
-        new(QuoteSource.Athens, "GRS426003000", "MOH", "Motor Oil", "Motor Oil", "€"),
-        new(QuoteSource.Athens, "GRS419003009", "ALWN", "Allwyn (ΟΠΑΠ)", "Allwyn (OPAP)", "€"),
-        new(QuoteSource.Athens, "GRS282183003", "BELA", "Jumbo", "Jumbo", "€"),
-        new(QuoteSource.Athens, "GRS495003006", "AEGN", "Aegean", "Aegean", "€"),
-        new(QuoteSource.Athens, "GRS395363005", "EXAE", "Euronext Athens", "Euronext Athens", "€", enabled: false),
+        new(QuoteSource.Athens, "GRS829003003", "EUROB", "Eurobank", "Eurobank", "€") { Market = "XATH" },
+        new(QuoteSource.Athens, "GRS830003000", "ALPHA", "Alpha Bank", "Alpha Bank", "€") { Market = "XATH" },
+        new(QuoteSource.Athens, "GRS831003009", "TPEIR", "Πειραιώς", "Piraeus Bank", "€") { Market = "XATH" },
+        new(QuoteSource.Athens, "GRS533003000", "OPTIMA", "Optima Bank", "Optima Bank", "€", enabled: false) { Market = "XATH" },
+        new(QuoteSource.Athens, "GRS260333000", "HTO", "ΟΤΕ", "OTE", "€") { Market = "XATH" },
+        new(QuoteSource.Athens, "GRS434003000", "PPC", "ΔΕΗ", "PPC", "€") { Market = "XATH" },
+        new(QuoteSource.Athens, "GRS298343005", "ELPE", "Helleniq Energy", "Helleniq Energy", "€") { Market = "XATH" },
+        new(QuoteSource.Athens, "GRS426003000", "MOH", "Motor Oil", "Motor Oil", "€") { Market = "XATH" },
+        new(QuoteSource.Athens, "GRS419003009", "ALWN", "Allwyn (ΟΠΑΠ)", "Allwyn (OPAP)", "€") { Market = "XATH" },
+        new(QuoteSource.Athens, "GRS282183003", "BELA", "Jumbo", "Jumbo", "€") { Market = "XATH" },
+        new(QuoteSource.Athens, "GRS495003006", "AEGN", "Aegean", "Aegean", "€") { Market = "XATH" },
+        new(QuoteSource.Athens, "GRS395363005", "EXAE", "Euronext Athens", "Euronext Athens", "€", enabled: false) { Market = "XATH" },
         // Metals (USD per troy ounce; copper per pound)
         new(QuoteSource.Metals, "XAU", "XAU", "Χρυσός", "Gold", "$/oz"),
         new(QuoteSource.Metals, "XAG", "XAG", "Άργυρος", "Silver", "$/oz"),
@@ -90,6 +93,7 @@ public sealed class QuoteStore
 {
     private readonly string path;
     private readonly Dictionary<string, SortedDictionary<string, decimal>> days = new(StringComparer.OrdinalIgnoreCase);
+    private readonly object gate = new();
 
     public static string DefaultPath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OpsisNewsCrawler", "quotes-cache.json");
@@ -112,17 +116,23 @@ public sealed class QuoteStore
     /// <summary>Last price seen on a given day (yyyyMMdd).</summary>
     public void Record(string code, string day, decimal price)
     {
-        if (!days.TryGetValue(code, out var perDay)) days[code] = perDay = new SortedDictionary<string, decimal>(StringComparer.Ordinal);
-        perDay[day] = price;
-        while (perDay.Count > 10) perDay.Remove(perDay.Keys.First());
+        lock (gate)
+        {
+            if (!days.TryGetValue(code, out var perDay)) days[code] = perDay = new SortedDictionary<string, decimal>(StringComparer.Ordinal);
+            perDay[day] = price;
+            while (perDay.Count > 10) perDay.Remove(perDay.Keys.First());
+        }
     }
 
     /// <summary>Last price of the latest day before <paramref name="day"/>, or null.</summary>
     public decimal? PreviousClose(string code, string day)
     {
-        if (!days.TryGetValue(code, out var perDay)) return null;
-        var before = perDay.Keys.Where(k => string.CompareOrdinal(k, day) < 0).LastOrDefault();
-        return before is null ? null : perDay[before];
+        lock (gate)
+        {
+            if (!days.TryGetValue(code, out var perDay)) return null;
+            var before = perDay.Keys.Where(k => string.CompareOrdinal(k, day) < 0).LastOrDefault();
+            return before is null ? null : perDay[before];
+        }
     }
 
     public void Save()
@@ -130,7 +140,9 @@ public sealed class QuoteStore
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            SafeFile.WriteAllText(path, JsonSerializer.Serialize(days));
+            string json;
+            lock (gate) json = JsonSerializer.Serialize(days);
+            SafeFile.WriteAllText(path, json);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -235,12 +247,19 @@ public sealed class AthensDelayedFileProvider : IQuoteProvider
             var html = await http.GetStringAsync(ListUrl, ct).ConfigureAwait(false);
             var newest = FileRx.Matches(html).Select(m => (Url: m.Value, Day: m.Groups[1].Value, Time: m.Groups[2].Value))
                 .OrderBy(f => f.Day + f.Time, StringComparer.Ordinal).LastOrDefault();
-            if (newest.Url is null) return lastResult;
+            if (newest.Url is null)
+            {
+                Log.Write("Athens prices: no trade file link found on the page");
+                return Array.Empty<MarketQuote>();
+            }
 
             var watchKey = string.Join(",", instruments.Select(i => i.Code));
             if (newest.Url == lastFile && watchKey == lastWatchKey) return lastResult;
 
-            var wanted = instruments.ToDictionary(i => i.Code, StringComparer.Ordinal);
+            // Settings from older versions may contain duplicate ISINs. Never let one duplicate
+            // abort the entire Athens feed; keep the first matching instrument.
+            var wanted = new Dictionary<string, QuoteInstrument>(StringComparer.Ordinal);
+            foreach (var instrument in instruments) wanted.TryAdd(instrument.Code, instrument);
             var last = new Dictionary<string, (string At, decimal Price)>(StringComparer.Ordinal);
             var first = new Dictionary<string, (string At, decimal Price)>(StringComparer.Ordinal);
 
@@ -286,7 +305,7 @@ public sealed class AthensDelayedFileProvider : IQuoteProvider
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException)
         {
             Log.Write($"Athens prices: {ex.GetType().Name}: {ex.Message}");
-            return lastResult;
+            return Array.Empty<MarketQuote>(); // the service shows its stored copy, labelled
         }
     }
 }
@@ -314,7 +333,7 @@ public sealed class GoldApiMetalsProvider : IQuoteProvider
         var tasks = instruments.Select(i => FetchOne(i, ct)).ToList();
         var done = await Task.WhenAll(tasks).ConfigureAwait(false);
         var results = done.Where(q => q is not null).Select(q => q!).ToList();
-        if (results.Count == 0) return lastResult;
+        if (results.Count == 0) return Array.Empty<MarketQuote>(); // the service shows its stored copy, labelled
         store.Save();
         lastResult = results;
         return results;
@@ -343,56 +362,135 @@ public sealed class GoldApiMetalsProvider : IQuoteProvider
     }
 }
 
-/// <summary>FRED public CSV (U.S. EIA data): Brent, WTI and Henry Hub gas, one value per day, a few days behind. No API key.</summary>
+/// <summary>
+/// Oil and gas: first the near-live Pyth Hermes price (Brent, WTI, natural gas), and the FRED public CSV (U.S. EIA daily data, a few
+/// days behind, no API key) for the instruments Pyth cannot give a recent price for. When both exist the newer one is shown.
+/// </summary>
 public sealed class FredEnergyProvider : IQuoteProvider
 {
+    /// <summary>A Pyth price older than this is shown with its date instead of as a live price.</summary>
+    private static readonly TimeSpan LiveAge = TimeSpan.FromMinutes(30);
+    /// <summary>A Pyth price older than this (closed market, stopped feed) is not used at all.</summary>
+    private static readonly TimeSpan MaxAge = TimeSpan.FromDays(4);
+
     private readonly HttpClient http = QuoteHttp.Create();
-    private IReadOnlyList<MarketQuote> lastResult = Array.Empty<MarketQuote>();
-    private DateTimeOffset lastFetch = DateTimeOffset.MinValue;
+    private readonly QuoteStore? store;
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, (MarketQuote Quote, DateTimeOffset At)> fredCache = new(StringComparer.Ordinal);
+
+    public FredEnergyProvider(QuoteStore? store = null) => this.store = store;
 
     public QuoteSource Source => QuoteSource.Energy;
 
     public async Task<IReadOnlyList<MarketQuote>> FetchAsync(IReadOnlyList<QuoteInstrument> instruments, CancellationToken ct)
     {
         if (instruments.Count == 0) return Array.Empty<MarketQuote>();
-        // The series change once a day: no reason to ask more often than hourly.
-        if (DateTimeOffset.UtcNow - lastFetch < TimeSpan.FromHours(1) && lastResult.Count > 0) return lastResult;
+
+        var live = await FetchPythAsync(instruments, ct).ConfigureAwait(false);
+        ct.ThrowIfCancellationRequested();
+        // FRED is also asked when a live price has no day change yet: the last official daily value is then the reference.
+        var needFred = instruments.Where(i => !live.TryGetValue(i.Code, out var q) || q.Delayed || q.ChangePercent is null).ToList();
+        var daily = needFred.Count == 0 ? new Dictionary<string, MarketQuote>(StringComparer.Ordinal) : await FetchFredAsync(needFred, ct).ConfigureAwait(false);
+        ct.ThrowIfCancellationRequested();
+
+        var results = new List<MarketQuote>();
+        foreach (var inst in instruments)
+        {
+            live.TryGetValue(inst.Code, out var p);
+            daily.TryGetValue(inst.Code, out var f);
+            var best = p is null ? f : f is null ? p : p.AsOf >= f.AsOf ? p : f;
+            if (ReferenceEquals(best, p) && p is not null && p.ChangePercent is null && f is not null && f.Price > 0 && f.AsOf.UtcDateTime.Date < p.AsOf.UtcDateTime.Date)
+                best = p with { ChangePercent = Math.Round((p.Price - f.Price) / f.Price * 100, 2) };
+            if (best is not null && results.All(r => r.Symbol != best.Symbol)) results.Add(best);
+        }
+        return results;
+    }
+
+    /// <summary>Pyth Hermes: one request for all instruments that have a feed. Keyed by instrument code; empty when it fails.</summary>
+    private async Task<Dictionary<string, MarketQuote>> FetchPythAsync(IReadOnlyList<QuoteInstrument> instruments, CancellationToken ct)
+    {
+        var result = new Dictionary<string, MarketQuote>(StringComparer.Ordinal);
+        var mapped = instruments.Where(i => PythHermes.FeedIds.ContainsKey(i.Code)).ToList();
+        if (mapped.Count == 0) return result;
+        try
+        {
+            using var limit = QuoteHttp.Limit(ct, 15);
+            var url = PythHermes.BuildUrl(mapped.Select(i => PythHermes.FeedIds[i.Code]).Distinct());
+            var prices = PythHermes.Parse(await http.GetStringAsync(url, limit.Token).ConfigureAwait(false));
+            foreach (var inst in mapped)
+            {
+                var id = PythHermes.FeedIds[inst.Code];
+                var price = prices.FirstOrDefault(p => p.Id == id);
+                if (price is null) continue;
+                var age = DateTimeOffset.UtcNow - price.PublishedAt;
+                if (age > MaxAge) continue;
+                var day = price.PublishedAt.UtcDateTime.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+                decimal? change = null;
+                if (store is not null)
+                {
+                    store.Record(inst.Code, day, price.Value);
+                    var prev = store.PreviousClose(inst.Code, day);
+                    if (prev is > 0) change = Math.Round((price.Value - prev.Value) / prev.Value * 100, 2);
+                }
+                result[inst.Code] = new MarketQuote(inst.Symbol, inst.NameEn, price.Value, change, price.PublishedAt, Delayed: age > LiveAge);
+            }
+            store?.Save();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or InvalidOperationException)
+        {
+            if (!ct.IsCancellationRequested) Log.Write($"Pyth Hermes: {ex.GetType().Name}: {ex.Message}");
+        }
+        return result;
+    }
+
+    /// <summary>FRED daily series. The series change once a day, so each one is asked for at most hourly.</summary>
+    private async Task<Dictionary<string, MarketQuote>> FetchFredAsync(IReadOnlyList<QuoteInstrument> wanted, CancellationToken ct)
+    {
+        var result = new Dictionary<string, MarketQuote>(StringComparer.Ordinal);
+        var todo = new List<QuoteInstrument>();
+        foreach (var inst in wanted)
+        {
+            if (fredCache.TryGetValue(inst.Code, out var cached) && DateTimeOffset.UtcNow - cached.At < TimeSpan.FromHours(1)) result[inst.Code] = cached.Quote;
+            else todo.Add(inst);
+        }
+        if (todo.Count == 0) return result;
 
         var since = DateTime.UtcNow.AddDays(-20).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-        var all = await Task.WhenAll(instruments.Select(inst => FetchOne(inst, since, ct))).ConfigureAwait(false);
-        var results = all.Where(q => q is not null).Select(q => q!).ToList();
-        if (results.Count > 0)
+        var fetched = await Task.WhenAll(todo.Select(inst => FetchOne(inst, since, ct))).ConfigureAwait(false);
+        for (var k = 0; k < todo.Count; k++)
         {
-            lastResult = results;
-            lastFetch = DateTimeOffset.UtcNow;
+            var code = todo[k].Code;
+            if (fetched[k] is { } quote)
+            {
+                fredCache[code] = (quote, DateTimeOffset.UtcNow);
+                result[code] = quote;
+            }
+            else if (fredCache.TryGetValue(code, out var old)) result[code] = old.Quote; // keep the last known value when the request failed
         }
-        return lastResult;
+        return result;
     }
 
     private async Task<MarketQuote?> FetchOne(QuoteInstrument inst, string since, CancellationToken ct)
     {
+        try
         {
-            try
+            using var limit = QuoteHttp.Limit(ct, 15);
+            var csv = await http.GetStringAsync($"https://fred.stlouisfed.org/graph/fredgraph.csv?id={Uri.EscapeDataString(inst.Code)}&cosd={since}", limit.Token).ConfigureAwait(false);
+            var points = new List<(DateTime Day, decimal Value)>();
+            foreach (var line in csv.Split('\n').Skip(1))
             {
-                using var limit = QuoteHttp.Limit(ct, 15);
-                var csv = await http.GetStringAsync($"https://fred.stlouisfed.org/graph/fredgraph.csv?id={Uri.EscapeDataString(inst.Code)}&cosd={since}", limit.Token).ConfigureAwait(false);
-                var points = new List<(DateTime Day, decimal Value)>();
-                foreach (var line in csv.Split('\n').Skip(1))
-                {
-                    var f = line.Trim().Split(',');
-                    if (f.Length < 2 || !DateTime.TryParse(f[0], CultureInfo.InvariantCulture, DateTimeStyles.None, out var day)) continue;
-                    if (decimal.TryParse(f[1], NumberStyles.Number, CultureInfo.InvariantCulture, out var v)) points.Add((day, v)); // holidays are "."
-                }
-                if (points.Count == 0) return null;
-                var last = points[^1];
-                decimal? change = points.Count > 1 && points[^2].Value > 0 ? Math.Round((last.Value - points[^2].Value) / points[^2].Value * 100, 2) : null;
-                return new MarketQuote(inst.Symbol, inst.NameEn, last.Value, change, new DateTimeOffset(last.Day, TimeSpan.Zero), Delayed: true);
+                var f = line.Trim().Split(',');
+                if (f.Length < 2 || !DateTime.TryParse(f[0], CultureInfo.InvariantCulture, DateTimeStyles.None, out var day)) continue;
+                if (decimal.TryParse(f[1], NumberStyles.Number, CultureInfo.InvariantCulture, out var v)) points.Add((day, v)); // holidays are "."
             }
-            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
-            {
-                if (!ct.IsCancellationRequested) Log.Write($"FRED {inst.Code}: {ex.GetType().Name}: {ex.Message}");
-                return null;
-            }
+            if (points.Count == 0) return null;
+            var last = points[^1];
+            decimal? change = points.Count > 1 && points[^2].Value > 0 ? Math.Round((last.Value - points[^2].Value) / points[^2].Value * 100, 2) : null;
+            return new MarketQuote(inst.Symbol, inst.NameEn, last.Value, change, new DateTimeOffset(last.Day, TimeSpan.Zero), Delayed: true);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            if (!ct.IsCancellationRequested) Log.Write($"FRED {inst.Code}: {ex.GetType().Name}: {ex.Message}");
+            return null;
         }
     }
 }
@@ -450,25 +548,58 @@ public sealed class FrankfurterFxProvider : IQuoteProvider
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or FormatException or KeyNotFoundException or InvalidOperationException)
         {
             if (!ct.IsCancellationRequested) Log.Write($"Currency rates: {ex.GetType().Name}: {ex.Message}");
-            return lastResult;
+            return Array.Empty<MarketQuote>();
         }
     }
 }
 
+/// <summary>What the last run of one price source gave (shown in the settings window).</summary>
+public sealed record SourceStatus(QuoteSource Source, DateTimeOffset CheckedAt, int Count, bool Failed, DateTimeOffset? Newest);
+
 /// <summary>Runs all providers for the enabled instruments and turns the prices into strip items.</summary>
 public sealed class QuoteService
 {
+    private readonly Dictionary<QuoteSource, Cached<List<MarketQuote>>> lastGood = new();
+
+    /// <summary>Sources that gave nothing in the last run and are shown from the stored copy: source → time of the stored data.</summary>
+    public IReadOnlyDictionary<QuoteSource, DateTimeOffset> StaleSources { get; private set; } = new Dictionary<QuoteSource, DateTimeOffset>();
+
+    private void LoadLastGood()
+    {
+        foreach (var source in Enum.GetValues<QuoteSource>())
+            if (DataCache.Load<List<MarketQuote>>("quotes-" + source) is { Data.Count: > 0 } saved) lastGood[source] = saved;
+    }
+
+    private static readonly object StatusLock = new();
+    private static readonly Dictionary<QuoteSource, SourceStatus> StatusBySource = new();
+
+    /// <summary>The result of the last run of every source that was wanted at least once, in source order.</summary>
+    public static IReadOnlyList<SourceStatus> Statuses()
+    {
+        lock (StatusLock) return StatusBySource.Values.OrderBy(s => s.Source).ToList();
+    }
+
+    private static void RecordStatus(QuoteSource source, IReadOnlyList<MarketQuote> quotes, bool failed)
+    {
+        var status = new SourceStatus(source, DateTimeOffset.Now, quotes.Count, failed, quotes.Count > 0 ? quotes.Max(q => q.AsOf) : null);
+        lock (StatusLock) StatusBySource[source] = status;
+    }
+
     private readonly List<IQuoteProvider> providers;
 
     public QuoteService(QuoteStore? store = null)
     {
         store ??= new QuoteStore();
+        LoadLastGood();
         providers = new()
         {
             new AthensDelayedFileProvider(store), new EuronextListProvider(store), new GoldApiMetalsProvider(store),
-            new GoldApiMetalsProvider(store, QuoteSource.Crypto), new FrankfurterFxProvider(), new FredEnergyProvider()
+            new GoldApiMetalsProvider(store, QuoteSource.Crypto), new FrankfurterFxProvider(), new FredEnergyProvider(store)
         };
     }
+
+    /// <summary>The prices of the last run with their instruments (for price alerts).</summary>
+    public IReadOnlyList<(QuoteInstrument Instrument, MarketQuote Quote)> LastQuotes { get; private set; } = Array.Empty<(QuoteInstrument, MarketQuote)>();
 
     /// <summary>Sources that gave no price in the last run although prices were wanted (for the message on the bar and the log).</summary>
     public IReadOnlyList<QuoteSource> LastFailed { get; private set; } = Array.Empty<QuoteSource>();
@@ -483,6 +614,7 @@ public sealed class QuoteService
         var enabled = watchlist.Where(i => i.Enabled).ToList();
         var answers = new Dictionary<QuoteSource, IReadOnlyList<MarketQuote>>();
         var failed = new List<QuoteSource>();
+        var stale = new Dictionary<QuoteSource, DateTimeOffset>();
 
         async Task<(QuoteSource Source, IReadOnlyList<MarketQuote> Quotes, bool Failed)> Run(IQuoteProvider p)
         {
@@ -525,12 +657,49 @@ public sealed class QuoteService
             pending.Remove(finished);
             var (source, quotes, didFail) = await finished.ConfigureAwait(false);
             answers[source] = quotes;
+            if (enabled.Any(i => i.Source == source))
+            {
+                RecordStatus(source, quotes, didFail);
+                if (quotes.Count > 0)
+                {
+                    var copy = new Cached<List<MarketQuote>>(DateTimeOffset.Now, quotes.ToList());
+                    lastGood[source] = copy;
+                    DataCache.Save("quotes-" + source, copy.Data);
+                }
+                else if (didFail && lastGood.TryGetValue(source, out var old))
+                {
+                    // No answer: show the last prices we had, marked as not current, and say so on the bar.
+                    answers[source] = old.Data.Select(x => x with { Delayed = true }).ToList();
+                    stale[source] = old.At;
+                    progress?.Invoke(Build());
+                }
+            }
             if (didFail) failed.Add(source);
             if (quotes.Count > 0) progress?.Invoke(Build());
         }
         LastFailed = failed;
+        StaleSources = stale;
+        var raw = new List<(QuoteInstrument, MarketQuote)>();
+        foreach (var inst in enabled)
+        {
+            if (stale.ContainsKey(inst.Source) || !answers.TryGetValue(inst.Source, out var list)) continue; // stored prices never raise price alerts
+            var found = list.FirstOrDefault(x => string.Equals(x.Symbol, inst.Symbol, StringComparison.OrdinalIgnoreCase));
+            if (found is not null) raw.Add((inst, found));
+        }
+        LastQuotes = raw;
         return Build();
     }
+
+    /// <summary>Short provider name for messages ("The connection to ... is not working").</summary>
+    public static string ProviderName(QuoteSource source) => source switch
+    {
+        QuoteSource.Athens => "Euronext Athens",
+        QuoteSource.Euronext => "Euronext",
+        QuoteSource.Metals or QuoteSource.Crypto => "gold-api.com",
+        QuoteSource.Currency => "ECB / Frankfurter",
+        QuoteSource.Energy => "Pyth / FRED",
+        _ => source.ToString()
+    };
 
     private static readonly CultureInfo Gr = CultureInfo.GetCultureInfo("el-GR");
 
@@ -546,14 +715,12 @@ public sealed class QuoteService
             text += $"  {arrow} {(c > 0 ? "+" : "")}{c.ToString("0.00", Gr)} %";
             if (q.ChangeFromOpen) text += " " + Loc.T("q.sinceOpen");
         }
-        if (q.Delayed)
+        // The 15-minute delay of the free Athens data is explained in the settings (Information), not on every price of the bar.
+        if (q.Delayed && inst.Source != QuoteSource.Athens)
         {
-            text += "  · " + (inst.Source switch
-            {
-                QuoteSource.Athens => Loc.T("q.delayed15"),
-                QuoteSource.Euronext => Loc.T("q.close", q.AsOf.ToString("dd/MM")),
-                _ => Loc.T("q.daily", q.AsOf.ToString("dd/MM"))
-            });
+            text += "  · " + (inst.Source == QuoteSource.Euronext
+                ? Loc.T("q.close", q.AsOf.ToString("dd/MM"))
+                : Loc.T("q.daily", q.AsOf.ToString("dd/MM")));
         }
         var title = inst.Symbol.Length > 0 && inst.Source is QuoteSource.Athens or QuoteSource.Euronext or QuoteSource.Currency ? inst.Symbol : inst.DisplayName(greek);
         return new NewsItem(text, "", title, q.AsOf, Summary: inst.DisplayName(greek), Kind: NewsItemKind.Quote, Trend: trend);

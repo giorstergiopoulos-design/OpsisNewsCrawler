@@ -207,5 +207,18 @@
   "btn.centerDesktop": "Centrar en el escritorio",
   "note.miniWeather2": "Se sitúa en el centro del escritorio, bajo las demás ventanas (salvo que elija «sobre las demás ventanas»). Tiene los mismos colores, transparencia, material de fondo y extremos desvanecidos que la barra principal (pestaña Aspecto). Si caben todas las ciudades se queda quieta; si no, se desplaza. Los cambios se aplican con «Aplicar».",
   "msg.confirmUpdateOnExit": "Dentro de Opsis los archivos del crawler están en uso. La actualización se instalará automáticamente en cuanto cierre Opsis; luego vuelva a abrir Opsis. ¿Continuar?",
-  "msg.updateScheduled": "El archivo se descargó y verificó. Cierre Opsis; la actualización se instalará y podrá volver a abrir Opsis."
+  "msg.updateScheduled": "El archivo se descargó y verificó. Cierre Opsis; la actualización se instalará y podrá volver a abrir Opsis.",
+  "settings.search": "Buscar ajustes…",
+  "settings.noResults": "No se encontraron ajustes coincidentes.",
+  "settings.export": "Exportar ajustes",
+  "settings.import": "Importar ajustes",
+  "settings.exportTitle": "Exportar ajustes",
+  "settings.importTitle": "Importar ajustes",
+  "settings.exported": "Ajustes exportados correctamente.",
+  "settings.imported": "Ajustes importados y aplicados.",
+  "settings.importConfirm": "La importación reemplazará los ajustes actuales. ¿Continuar?",
+  "settings.importFailed": "No se pudieron importar los ajustes:",
+  "btn.saveSettings": "Guardar configuración",
+  "settings.unsavedChanges": "Cambios sin guardar",
+  "settings.unsavedPrompt": "Hay cambios sin guardar. Elige Sí para guardarlos, No para descartarlos o Cancelar para seguir editando."
 }

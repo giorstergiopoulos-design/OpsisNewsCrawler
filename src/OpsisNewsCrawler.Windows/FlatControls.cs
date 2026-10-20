@@ -34,6 +34,9 @@ internal sealed class FlatButton : Button
     private bool hot;
     private bool primary;
 
+    /// <summary>True for buttons that only switch pages: clicking them never counts as an edit of the settings.</summary>
+    public bool IsNavigation { get; set; }
+
     public FlatButton()
     {
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer, true);
@@ -711,26 +714,68 @@ internal sealed class FlatCard : Panel
 }
 
 /// <summary>
-/// The tab buttons in ONE row. When they do not all fit they scroll sideways: with the mouse wheel, with the arrows at both
-/// ends, or by choosing a tab (it is brought into view).
+/// Settings navigation with a fixed left rail and a titled content pane. The navigation scrolls vertically,
+/// so every page remains discoverable even when the host window is narrow or translated into a longer language.
 /// </summary>
 internal sealed class FlatTabs : Control
 {
-    private const int HeaderHeight = 44;
-    private const int ArrowWidth = 28;
+    private const int SidebarWidth = 196;
+    private const int HeaderHeight = 58;
+    private const int NavTop = 116;
+    private const int NavItemHeight = 38;
+    private static readonly Font BrandFont = new("Segoe UI Semibold", 12f);
+    private static readonly Font PageTitleFont = new("Segoe UI Semibold", 12f);
     private readonly List<(string Title, Control Page)> pages = new();
     private readonly List<Rectangle> hitRects = new();
+    private readonly TextBox searchBox;
     private int selected = -1;
     private int hover = -1;
-    private int hoverArrow; // -1 left, 1 right
-    private int scrollX;
-    private int stripWidth;
+    private int scrollY;
+    private string searchText = string.Empty;
 
     public FlatTabs()
     {
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
         Font = new Font("Segoe UI", 9.5f);
+        Cursor = Cursors.Default;
+        searchBox = new TextBox
+        {
+            Location = new Point(12, 76), Size = new Size(SidebarWidth - 24, 27),
+            BorderStyle = BorderStyle.FixedSingle, PlaceholderText = Loc.T("settings.search"),
+            Font = new Font("Segoe UI", 9f), Tag = "surface"
+        };
+        searchBox.TextChanged += (_, _) =>
+        {
+            searchText = searchBox.Text.Trim();
+            scrollY = 0;
+            if (selected >= 0 && !Matches(selected) && FilteredIndices().Count > 0)
+                SelectedIndex = FilteredIndices()[0];
+            Measure();
+            Invalidate();
+        };
+        Controls.Add(searchBox);
     }
+
+    protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+    {
+        if (keyData == (Keys.Control | Keys.F))
+        {
+            searchBox.Focus();
+            searchBox.SelectAll();
+            return true;
+        }
+        if (keyData == Keys.Escape && searchBox.Focused && searchBox.TextLength > 0)
+        {
+            searchBox.Clear();
+            return true;
+        }
+        return base.ProcessCmdKey(ref msg, keyData);
+    }
+
+    private bool Matches(int index) => string.IsNullOrWhiteSpace(searchText)
+        || pages[index].Title.Contains(searchText, StringComparison.CurrentCultureIgnoreCase);
+
+    private List<int> FilteredIndices() => Enumerable.Range(0, pages.Count).Where(Matches).ToList();
 
     public int Count => pages.Count;
 
@@ -758,85 +803,68 @@ internal sealed class FlatTabs : Control
         Invalidate();
     }
 
-    private bool Overflows => stripWidth > Width;
-    private int ViewLeft => Overflows ? ArrowWidth : 0;
-    private int ViewWidth => Overflows ? Math.Max(1, Width - 2 * ArrowWidth) : Width;
-    private int MaxScroll => Math.Max(0, stripWidth - ViewWidth);
+    private int VisibleNavHeight => Math.Max(NavItemHeight, Height - NavTop - 12);
+    private int MaxScroll => Math.Max(0, FilteredIndices().Count * NavItemHeight - VisibleNavHeight);
 
-    /// <summary>Measures every tab button and puts its rectangle where it is drawn now (scrolled).</summary>
     private void Measure()
     {
+        scrollY = Math.Clamp(scrollY, 0, MaxScroll);
         hitRects.Clear();
-        var x = 0;
-        var widths = new List<int>();
-        foreach (var (title, _) in pages)
+        var visibleIndices = FilteredIndices();
+        for (var i = 0; i < pages.Count; i++) hitRects.Add(Rectangle.Empty);
+        for (var row = 0; row < visibleIndices.Count; row++)
         {
-            var w = TextRenderer.MeasureText(title, Font).Width + 30;
-            widths.Add(w);
-            x += w + 6;
-        }
-        stripWidth = Math.Max(0, x - 6);
-        scrollX = Math.Clamp(scrollX, 0, MaxScroll);
-        x = ViewLeft - scrollX;
-        foreach (var w in widths)
-        {
-            hitRects.Add(new Rectangle(x, 4, w, 34));
-            x += w + 6;
+            var index = visibleIndices[row];
+            hitRects[index] = new Rectangle(12, NavTop + row * NavItemHeight - scrollY, SidebarWidth - 24, NavItemHeight - 3);
         }
     }
 
     private void EnsureVisible(int index)
     {
+        if (index < 0 || index >= pages.Count) return;
+        var row = FilteredIndices().IndexOf(index);
+        if (row < 0) return;
+        var top = row * NavItemHeight;
+        if (top < scrollY) scrollY = top;
+        else if (top + NavItemHeight > scrollY + VisibleNavHeight)
+            scrollY = top + NavItemHeight - VisibleNavHeight;
+        scrollY = Math.Clamp(scrollY, 0, MaxScroll);
         Measure();
-        if (!Overflows || index < 0 || index >= hitRects.Count) return;
-        var r = hitRects[index];
-        if (r.Left < ViewLeft) scrollX -= ViewLeft - r.Left + 8;
-        else if (r.Right > ViewLeft + ViewWidth) scrollX += r.Right - (ViewLeft + ViewWidth) + 8;
-        scrollX = Math.Clamp(scrollX, 0, MaxScroll);
     }
 
     private void LayoutPages()
     {
-        Measure();
-        var top = HeaderHeight + 8;
-        foreach (var (_, page) in pages) page.SetBounds(0, top, Width, Math.Max(0, Height - top));
+        var x = Math.Min(SidebarWidth + 1, Math.Max(0, Width - 1));
+        var top = HeaderHeight;
+        foreach (var (_, page) in pages)
+            page.SetBounds(x, top, Math.Max(0, Width - x), Math.Max(0, Height - top));
     }
 
     protected override void OnResize(EventArgs e)
     {
         base.OnResize(e);
         LayoutPages();
+        Measure();
         if (selected >= 0) EnsureVisible(selected);
-    }
-
-    private Rectangle LeftArrow => new(0, 4, ArrowWidth, 34);
-    private Rectangle RightArrow => new(Width - ArrowWidth, 4, ArrowWidth, 34);
-
-    private void ScrollBy(int delta)
-    {
-        var before = scrollX;
-        scrollX = Math.Clamp(scrollX + delta, 0, MaxScroll);
-        if (scrollX != before) Invalidate();
     }
 
     protected override void OnMouseWheel(MouseEventArgs e)
     {
         base.OnMouseWheel(e);
-        if (!Overflows || e.Y > HeaderHeight) return;
-        ScrollBy(-Math.Sign(e.Delta) * 140);
+        if (e.X >= SidebarWidth) return;
+        scrollY = Math.Clamp(scrollY - Math.Sign(e.Delta) * NavItemHeight * 3, 0, MaxScroll);
+        Measure();
+        Invalidate();
     }
 
     protected override void OnMouseMove(MouseEventArgs e)
     {
         base.OnMouseMove(e);
-        var arrow = Overflows ? (LeftArrow.Contains(e.Location) ? -1 : RightArrow.Contains(e.Location) ? 1 : 0) : 0;
-        var inView = e.X >= ViewLeft && e.X < ViewLeft + ViewWidth;
-        var h = inView ? hitRects.FindIndex(r => r.Contains(e.Location)) : -1;
-        if (h != hover || arrow != hoverArrow)
+        var h = e.X < SidebarWidth ? hitRects.FindIndex(r => r.Contains(e.Location)) : -1;
+        if (h != hover)
         {
             hover = h;
-            hoverArrow = arrow;
-            Cursor = h >= 0 || arrow != 0 ? Cursors.Hand : Cursors.Default;
+            Cursor = h >= 0 ? Cursors.Hand : Cursors.Default;
             Invalidate();
         }
     }
@@ -845,17 +873,14 @@ internal sealed class FlatTabs : Control
     {
         base.OnMouseLeave(e);
         hover = -1;
-        hoverArrow = 0;
+        Cursor = Cursors.Default;
         Invalidate();
     }
 
     protected override void OnMouseUp(MouseEventArgs e)
     {
         base.OnMouseUp(e);
-        if (e.Button != MouseButtons.Left) return;
-        if (Overflows && LeftArrow.Contains(e.Location)) { ScrollBy(-220); return; }
-        if (Overflows && RightArrow.Contains(e.Location)) { ScrollBy(220); return; }
-        if (e.X < ViewLeft || e.X >= ViewLeft + ViewWidth) return;
+        if (e.Button != MouseButtons.Left || e.X >= SidebarWidth) return;
         var h = hitRects.FindIndex(r => r.Contains(e.Location));
         if (h >= 0) SelectedIndex = h;
     }
@@ -867,37 +892,60 @@ internal sealed class FlatTabs : Control
         g.Clear(Theme.Background);
         Measure();
 
-        var state = g.Save();
-        g.SetClip(new Rectangle(ViewLeft, 0, ViewWidth, HeaderHeight));
+        using (var rail = new SolidBrush(Theme.Surface)) g.FillRectangle(rail, 0, 0, SidebarWidth, Height);
+        using (var border = new Pen(Theme.Border)) g.DrawLine(border, SidebarWidth, 0, SidebarWidth, Height);
+
+        TextRenderer.DrawText(g, "OPSIS", BrandFont,
+            new Rectangle(18, 15, SidebarWidth - 32, 24), Theme.Accent,
+            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+        using (var line = new Pen(Theme.Border)) g.DrawLine(line, 14, 55, SidebarWidth - 14, 55);
+
+        var clip = g.Save();
+        g.SetClip(new Rectangle(0, NavTop, SidebarWidth, Math.Max(0, Height - NavTop)));
         for (var i = 0; i < pages.Count && i < hitRects.Count; i++)
         {
             var r = hitRects[i];
-            if (r.Right < ViewLeft || r.Left > ViewLeft + ViewWidth) continue;
+            if (r.IsEmpty || r.Bottom < NavTop || r.Top > Height) continue;
             var active = i == selected;
-            using var path = FlatDraw.Rounded(r, 8);
-            using (var brush = new SolidBrush(active ? FlatDraw.SurfaceHover : i == hover ? Theme.Surface : Theme.Background)) g.FillPath(brush, path);
-            using (var pen = new Pen(active ? Theme.Accent : Theme.Border, active ? 1.6f : 1f)) g.DrawPath(pen, path);
-            TextRenderer.DrawText(g, pages[i].Title, Font, r, active ? Theme.Text : Theme.TextMuted,
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
-        }
-        g.Restore(state);
+            if (active)
+            {
+                using var path = FlatDraw.Rounded(r, 8);
+                using var brush = new SolidBrush(FlatDraw.SurfaceHover);
+                g.FillPath(brush, path);
+                using var pen = new Pen(Theme.Accent, 2f);
+                g.DrawLine(pen, r.Left + 1, r.Top + 7, r.Left + 1, r.Bottom - 7);
+            }
+            else if (i == hover)
+            {
+                using var path = FlatDraw.Rounded(r, 8);
+                using var brush = new SolidBrush(FlatDraw.Blend(Theme.Surface, Theme.Text, Theme.IsDark ? .05 : .035));
+                g.FillPath(brush, path);
+            }
 
-        if (Overflows)
+            var textRect = new Rectangle(r.Left + 13, r.Top, r.Width - 22, r.Height);
+            TextRenderer.DrawText(g, pages[i].Title, Font, textRect, active ? Theme.Text : Theme.TextMuted,
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+        }
+        if (FilteredIndices().Count == 0)
         {
-            DrawArrow(g, LeftArrow, -1, scrollX > 0, hoverArrow == -1);
-            DrawArrow(g, RightArrow, 1, scrollX < MaxScroll, hoverArrow == 1);
+            TextRenderer.DrawText(g, Loc.T("settings.noResults"), Font,
+                new Rectangle(14, NavTop + 8, SidebarWidth - 28, 42), Theme.TextMuted,
+                TextFormatFlags.Left | TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix);
         }
-    }
+        g.Restore(clip);
+        searchBox.BackColor = Theme.Surface;
+        searchBox.ForeColor = Theme.Text;
 
-    private static void DrawArrow(Graphics g, Rectangle r, int direction, bool enabled, bool hot)
-    {
-        using var path = FlatDraw.Rounded(r, 8);
-        using (var brush = new SolidBrush(hot && enabled ? Theme.Surface : Theme.Background)) g.FillPath(brush, path);
-        using (var border = new Pen(Theme.Border)) g.DrawPath(border, path);
-        var cx = r.Left + r.Width / 2f;
-        var cy = r.Top + r.Height / 2f;
-        using var pen = new Pen(enabled ? Theme.Text : Theme.Border, 2f) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
-        g.DrawLines(pen, new[] { new PointF(cx - direction * 3, cy - 6), new PointF(cx + direction * 3, cy), new PointF(cx - direction * 3, cy + 6) });
+        // A clear title band separates navigation from the current page and provides context after scrolling.
+        using (var titleBrush = new SolidBrush(Theme.Background)) g.FillRectangle(titleBrush, SidebarWidth + 1, 0, Math.Max(0, Width - SidebarWidth - 1), HeaderHeight);
+        if (selected >= 0 && selected < pages.Count)
+        {
+            TextRenderer.DrawText(g, pages[selected].Title, PageTitleFont,
+                new Rectangle(SidebarWidth + 22, 12, Math.Max(0, Width - SidebarWidth - 40), 28), Theme.Text,
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+            using var line = new Pen(Theme.Border);
+            g.DrawLine(line, SidebarWidth + 20, HeaderHeight - 1, Width - 18, HeaderHeight - 1);
+        }
     }
 
     protected override void Dispose(bool disposing)
@@ -953,5 +1001,71 @@ internal sealed class FlatSwatch : Control
         using (var brush = new SolidBrush(Enabled ? color : Theme.Surface)) g.FillPath(brush, path);
         using var pen = new Pen(Theme.Border);
         g.DrawPath(pen, path);
+    }
+}
+
+/// <summary>
+/// A row of buttons with one page under it. Used twice by the settings: three big tabs on top (Settings, Sources, Information)
+/// and a smaller row of sub-pages inside each of them. Replaces the old side menu.
+/// </summary>
+internal sealed class FlatStrip : Panel
+{
+    private readonly FlowLayoutPanel strip;
+    private readonly Panel body = new() { Dock = DockStyle.Fill };
+    private readonly List<(FlatButton Button, Control Page)> items = new();
+    private readonly bool large;
+    private int selected = -1;
+
+    public event EventHandler? SelectedIndexChanged;
+
+    public FlatStrip(bool large)
+    {
+        this.large = large;
+        strip = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = true, Padding = large ? new Padding(10, 8, 10, 6) : new Padding(8, 6, 8, 4)
+        };
+        Controls.Add(body);   // Fill first, then Top (WinForms docking order)
+        Controls.Add(strip);
+    }
+
+    public int Count => items.Count;
+
+    public int SelectedIndex
+    {
+        get => selected;
+        set
+        {
+            if (value < 0 || value >= items.Count || value == selected) return;
+            selected = value;
+            for (var i = 0; i < items.Count; i++)
+            {
+                items[i].Page.Visible = i == value;
+                items[i].Button.SetPrimary(i == value);
+            }
+            SelectedIndexChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>The page shown now, or null when the strip is empty.</summary>
+    public Control? SelectedPage => selected >= 0 && selected < items.Count ? items[selected].Page : null;
+
+    public void AddPage(string title, Control page)
+    {
+        var button = new FlatButton { Text = title, IsNavigation = true };
+        if (large)
+        {
+            button.Font = new Font("Segoe UI Semibold", 10.5f);
+            button.Padding = new Padding(22, 8, 22, 8);
+        }
+        var index = items.Count;
+        button.Click += (_, _) => SelectedIndex = index;
+        page.Dock = DockStyle.Fill;
+        page.Visible = false;
+        body.Controls.Add(page);
+        strip.Controls.Add(button);
+        items.Add((button, page));
+        if (selected < 0) SelectedIndex = 0;
     }
 }

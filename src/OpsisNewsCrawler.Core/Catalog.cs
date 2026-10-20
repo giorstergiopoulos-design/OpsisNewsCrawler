@@ -254,6 +254,8 @@ public sealed class EuronextListProvider : IQuoteProvider
         var results = new List<MarketQuote>();
         foreach (var group in instruments.GroupBy(i => i.Market))
         {
+            // Empty MICs are invalid and can otherwise trigger a malformed catalogue request.
+            if (string.IsNullOrWhiteSpace(group.Key)) continue;
             var data = await GetMarketAsync(group.Key, ct).ConfigureAwait(false);
             if (data is null) continue;
             var byIsin = data.Rows.GroupBy(r => r.Isin).ToDictionary(g => g.Key, g => g.First());
