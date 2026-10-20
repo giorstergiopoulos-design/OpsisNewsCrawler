@@ -15,6 +15,7 @@ Detailed notes per release: `docs/RELEASE-*.md` and the GitHub releases.
 - Embedded bar slides with an auto-hiding taskbar.
 - Plugin renamed `OpsisNewsCrawler.OpsisPlugin.dll`; plugin contract assembly version frozen at 0.8.0.0; `tools\release.ps1` checks both.
 - Pyth Hermes needs an API key now (HTTP 401): paused for 12 h, daily EIA prices used.
+- While an auto-hiding taskbar is hidden (and the bar inside it with it) the desktop bar appears at the place and size the user chose (option in Bars; on by default).
 
 ## 0.10.2 — 2026-10-15
 - Update inside Opsis: download, SHA-256 check, silent install after Opsis closes. Log of the embedded bar's geometry.

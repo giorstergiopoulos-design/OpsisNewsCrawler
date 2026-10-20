@@ -115,7 +115,7 @@ internal sealed class PortfolioForm : Form
         }
         Col("symbol", Loc.T("col.symbol"), 80, left: true);
         Col("name", Loc.T("col.name"), 150, left: true);
-        grid.Columns["name"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+        grid.Columns["name"]!.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
         Col("qty", Loc.T("col.qty"), 95);
         Col("avg", Loc.T("col.avg"), 135);
         Col("price", Loc.T("col.price"), 90);

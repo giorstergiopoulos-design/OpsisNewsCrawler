@@ -85,6 +85,8 @@ public sealed class AppConfig
     public int MiniWeatherHeight { get; set; } = 56;
     /// <summary>False (default): the bar lies on the desktop and every other window covers it. True: it stays above other windows.</summary>
     public bool MiniWeatherOnTop { get; set; }
+    /// <summary>True (default): while an auto-hiding taskbar is hidden (and a bar inside it with it) the desktop bar appears, at the place and size the user chose, even if it is switched off otherwise.</summary>
+    public bool MiniWhenTaskbarHidden { get; set; } = true;
 
     /// <summary>What the desktop bar (the small free-floating one) shows; empty = weather (the old behaviour). Same spec strings as <see cref="MainSlotA"/>.</summary>
     public string MiniSlotA { get; set; } = "";

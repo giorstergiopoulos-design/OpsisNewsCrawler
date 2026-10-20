@@ -120,6 +120,7 @@
   "chk.miniWeather": "Small weather bar on the desktop",
   "lbl.miniCity": "City of the small bar",
   "chk.miniOnTop": "Keep it above other windows",
+  "chk.miniWhenHidden": "Show it while the auto-hiding taskbar is hidden (instead of the bar inside it)",
   "note.miniWeather": "Drag it to move it; click it to show the next city of the list.",
   "card.miniWeather": "Small weather bar",
   "ph.loadingWeather": "Loading weather…",

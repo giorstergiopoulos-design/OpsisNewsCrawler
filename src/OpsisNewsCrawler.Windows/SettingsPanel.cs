@@ -55,6 +55,7 @@ public sealed class SettingsPanel : UserControl
     private FlatNumber miniX = null!, miniY = null!, miniW = null!, miniH = null!;
     private FlatButton miniMove = null!;
     private FlatCheck miniOnTop = null!;
+    private FlatCheck miniWhenHidden = null!;
     private List<string> workCities = new();
     private List<GreekCity> shownCities = new();
     private FlatCheck barsEnabled = null!;
@@ -803,6 +804,8 @@ public sealed class SettingsPanel : UserControl
         };
         miniOnTop = new FlatCheck { Text = L("chk.miniOnTop") };
         miniFlow.Controls.Add(miniOnTop);
+        miniWhenHidden = new FlatCheck { Text = L("chk.miniWhenHidden") };
+        miniFlow.Controls.Add(miniWhenHidden);
         miniFlow.Controls.Add(Note(Loc.Pick("Μια ελεύθερη μπάρα πάνω στην επιφάνεια εργασίας: διάλεξε τι δείχνει (καιρός, αγορές ή ειδήσεις), πάτα «Μετακίνηση με το ποντίκι» και ο δείκτης πηγαίνει πάνω της για να τη σύρεις όπου θέλεις· από τις άκρες αλλάζει το πλάτος.", "A free bar on the desktop: choose what it shows (weather, markets or news), press \"Move with the mouse\" and the pointer jumps onto it so you can drag it anywhere; the ends change its width."), 600));
         mini.Controls.Add(miniFlow);
         flow.Controls.Add(mini);
@@ -1501,6 +1504,7 @@ public sealed class SettingsPanel : UserControl
             miniWeather.Checked = c.MiniWeatherEnabled;
             LoadMiniBounds();
             miniOnTop.Checked = c.MiniWeatherOnTop;
+            miniWhenHidden.Checked = c.MiniWhenTaskbarHidden;
 
             mainPicker.Set(c.MainSlots());
             miniPicker.Set(c.MiniSlots());
@@ -1728,6 +1732,7 @@ public sealed class SettingsPanel : UserControl
         if (miniX.Value == centredX && miniY.Value == centredY) { c.MiniWeatherX = int.MinValue; c.MiniWeatherY = int.MinValue; }
         else { c.MiniWeatherX = miniX.Value; c.MiniWeatherY = miniY.Value; }
         c.MiniWeatherOnTop = miniOnTop.Checked;
+        c.MiniWhenTaskbarHidden = miniWhenHidden.Checked;
 
         var mainSlots = mainPicker.Get();
         c.MainSlotA = mainSlots.A.ToSpec();

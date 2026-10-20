@@ -76,6 +76,10 @@ public sealed class TickerWindow : Form
     private bool autoHide;
     private int taskbarTick;
     private bool hiddenByTaskbar;      // the taskbar auto-hides and is hidden right now: a bar inside it hides with it
+    /// <summary>True while this bar is hidden because its (auto-hiding) taskbar is hidden.</summary>
+    public bool HiddenByTaskbar => hiddenByTaskbar;
+    /// <summary>Raised when <see cref="HiddenByTaskbar"/> changes.</summary>
+    public event Action? HiddenByTaskbarChanged;
     private bool hiddenByFullscreen;   // another app is fullscreen
     private int animToY = int.MinValue, animFromY;
     private long animStartMs;
@@ -816,6 +820,7 @@ public sealed class TickerWindow : Form
             if (cloaked != hiddenByTaskbar)
             {
                 hiddenByTaskbar = cloaked;
+                HiddenByTaskbarChanged?.Invoke();
                 var screenBottom = (Screen.PrimaryScreen ?? Screen.AllScreens[0]).Bounds.Bottom;
                 if (cloaked)
                 {
@@ -925,6 +930,7 @@ public sealed class TickerWindow : Form
     {
         if (hidden == hiddenByTaskbar) return;
         hiddenByTaskbar = hidden;
+        HiddenByTaskbarChanged?.Invoke();
         if (hidden)
         {
             if (Visible)

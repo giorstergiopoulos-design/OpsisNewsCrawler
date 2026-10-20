@@ -162,6 +162,13 @@ public sealed class TickerHost : IDisposable
 
     private void WireWindow(TickerWindow w)
     {
+        w.HiddenByTaskbarChanged += () =>
+        {
+            var hidden = Window.HiddenByTaskbar || SecondWindow?.HiddenByTaskbar == true;
+            if (hidden == taskbarHidden) return;
+            taskbarHidden = hidden;
+            UpdateMiniWeather();
+        };
         w.RefreshRequested += () =>
         {
             _ = RefreshAsync(force: false);
@@ -575,8 +582,11 @@ public sealed class TickerHost : IDisposable
         yield return Config.MainSlots();
         if (Config.SecondBarEnabled) yield return Config.SecondSlots();
         foreach (var (cfg, _) in WantedMonitors()) yield return cfg.Slots();
-        if (Config.MiniWeatherEnabled) yield return Config.MiniSlots();
+        if (Config.MiniWeatherEnabled || Config.MiniWhenTaskbarHidden) yield return Config.MiniSlots();
     }
+
+    private bool taskbarHidden;   // a bar inside the auto-hiding taskbar is hidden right now
+    private bool MiniWanted => Config.MiniWeatherEnabled || (Config.MiniWhenTaskbarHidden && taskbarHidden);
 
     private bool Needs(SlotKind kind) => AllBarSlots().Any(slots => slots.Has(kind));
     private bool NeedsNews => Needs(SlotKind.News);
@@ -1133,7 +1143,7 @@ public sealed class TickerHost : IDisposable
     private void UpdateMiniWeather()
     {
         if (disposed) return;
-        if (!(BarsOn && Config.MiniWeatherEnabled))
+        if (!(BarsOn && MiniWanted))
         {
             if (miniWeather is not null)
             {
