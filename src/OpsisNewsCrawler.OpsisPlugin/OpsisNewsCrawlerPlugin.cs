@@ -2,7 +2,7 @@ using OpsisNewsCrawler.Core;
 using OpsisNewsCrawler.Plugin.Abstractions;
 using OpsisNewsCrawler.Windows;
 
-namespace OpsisNewsCrawler.MotionDeskPlugin;
+namespace OpsisNewsCrawler.OpsisPlugin;
 
 /// <summary>
 /// Plugin entry point for Opsis - Desktop Customization. The host must create it and call it on its UI thread.

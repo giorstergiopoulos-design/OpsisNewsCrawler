@@ -1,0 +1,30 @@
+# Changelog
+
+The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
+Detailed notes per release: `docs/RELEASE-*.md` and the GitHub releases.
+
+## 0.12.5 — 2026-10-20
+- **Merged** the parallel 0.11.5.3 line (alert sound, severe-weather warnings, weather map, desktop bar, OPML, settings export/import,
+  tray snooze, 3-tab settings) with 0.8–0.10. Build 0/0, 56 unit tests.
+- New application icon + animated notification-area icon (news, sports, defence & diplomacy, economy passing right to left).
+- New news categories: Defence & Diplomacy, Sports (feeds verified live).
+- Portfolio window (stonks-cli idea): value, profit/loss in euro, today, RSI, SMA20/50 signal.
+- Dependencies page in the installer (`installer\dependencies.iss`) and in Information; `/DEPS=` for silent installs.
+- Position tab merged into Bars; all cards the same width.
+- Weather/map window at the far right edge, touching the top of the bar or taskbar.
+- Embedded bar slides with an auto-hiding taskbar.
+- Plugin renamed `OpsisNewsCrawler.OpsisPlugin.dll`; plugin contract assembly version frozen at 0.8.0.0; `tools\release.ps1` checks both.
+- Pyth Hermes needs an API key now (HTTP 401): paused for 12 h, daily EIA prices used.
+
+## 0.10.2 — 2026-10-15
+- Update inside Opsis: download, SHA-256 check, silent install after Opsis closes. Log of the embedded bar's geometry.
+
+## 0.10.1 / 0.10.0 — 2026-10-14
+- Weather for 71 Greek cities (bars and a small desktop bar), scrolling settings tabs, equal effects for the weather bar.
+
+## 0.9.x — 2026-10-14
+- A bar per monitor, "Read later" (Ctrl+click), right-to-left layout, optional update check, select-all for shares, independent price sources
+  with retry and log, bars on/off, crypto and currencies.
+
+## 0.8.x — 2026-10-13/14
+- 14 languages (app and installer), Euronext catalogue (all shares of an exchange), memory/security fixes, bar preview in settings.

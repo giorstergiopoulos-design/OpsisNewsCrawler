@@ -1191,9 +1191,61 @@ public sealed class TickerHost : IDisposable
         }
     }
 
+    // ---- portfolio window ---------------------------------------------------------------------------
+
+    public QuoteService QuoteService => quotes;
+    public EcbRates Ecb { get; } = new();
+    private PortfolioForm? portfolio;
+    private bool portfolioOpen;
+
+    /// <summary>Raised on the UI thread after a run of the price sources (the portfolio window shows the new prices).</summary>
+    public event Action? QuotesUpdated;
+
+    public void SetPortfolioOpen(bool open)
+    {
+        portfolioOpen = open;
+        if (!open) portfolio = null;
+        else _ = RefreshQuotesAsync(force: true);
+    }
+
+    /// <summary>Asks the price sources again now (also when no bar shows prices).</summary>
+    public void RefreshPortfolio() => _ = RefreshQuotesAsync(force: true);
+
+    /// <summary>Opens the portfolio window (one at a time) and brings it to the front.</summary>
+    public void ShowPortfolio()
+    {
+        if (disposed) return;
+        if (portfolio is { IsDisposed: false })
+        {
+            portfolio.Activate();
+            return;
+        }
+        portfolio = new PortfolioForm(this);
+        portfolio.Show();
+    }
+
+    /// <summary>Test aid (--snapshot-portfolio): opens the portfolio window out of sight, waits for the prices, saves it as a PNG.</summary>
+    public void SnapshotPortfolio(string pngPath, int waitSeconds)
+    {
+        var form = new PortfolioForm(this) { StartPosition = FormStartPosition.Manual, Location = new Point(-4000, 0) };
+        form.Show();
+        var until = DateTime.UtcNow.AddSeconds(waitSeconds);
+        while (DateTime.UtcNow < until)
+        {
+            Application.DoEvents();
+            Thread.Sleep(50);
+        }
+        using var bmp = new Bitmap(form.Width, form.Height);
+        form.DrawToBitmap(bmp, new Rectangle(0, 0, bmp.Width, bmp.Height));
+        bmp.Save(pngPath);
+        form.Close();
+    }
+
+    private IEnumerable<QuoteInstrument> PortfolioInstruments() => Config.Portfolio.Select(p => p.ToInstrument());
+
     private async Task RefreshQuotesAsync(bool force = false)
     {
-        if (disposed || !NeedsStocks || refreshingQuotes) return;
+        if (disposed || !(NeedsStocks || portfolioOpen && Config.Portfolio.Count > 0) || refreshingQuotes) return;
         refreshingQuotes = true;
         try
         {
@@ -1213,9 +1265,10 @@ public sealed class TickerHost : IDisposable
             }
 
             // Each source shows up as soon as it has answered; a slow one cannot keep the others waiting.
-            var items = await quotes.FetchItemsAsync(Config.Watchlist, Loc.IsGreek, cts.Token, Show);
+            var items = await quotes.FetchItemsAsync(Config.Watchlist, Loc.IsGreek, cts.Token, Show, PortfolioInstruments());
             quotesFailed = quotes.LastFailed.Count > 0 || items.Count == 0 && Config.Watchlist.Any(w => w.Enabled);
             Show(items);
+            QuotesUpdated?.Invoke();
             CheckPriceAlerts();
             if (quotesFailed) ScheduleQuoteRetry();
         }
@@ -1254,6 +1307,8 @@ public sealed class TickerHost : IDisposable
         CloseLivePreview();
         weatherMap?.Close();
         weatherMap = null;
+        portfolio?.Close();
+        portfolio = null;
         news.Dispose();
         SecondWindow?.Dispose();
         foreach (var extra in ExtraWindows) extra.Dispose();

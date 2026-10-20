@@ -810,8 +810,43 @@ public sealed class TickerWindow : Form
 
         if (position == TickerPosition.TaskbarIntegrated)
         {
-            // A bar inside the taskbar hides and shows together with it.
-            SetHiddenByTaskbar(autoHide && Native.IsTaskbarCloaked());
+            // A bar inside the taskbar hides and shows together with it - and slides out and in like the taskbar does,
+            // not a jump (the bar above the taskbar already does the same).
+            var cloaked = autoHide && Native.IsTaskbarCloaked();
+            if (cloaked != hiddenByTaskbar)
+            {
+                hiddenByTaskbar = cloaked;
+                var screenBottom = (Screen.PrimaryScreen ?? Screen.AllScreens[0]).Bounds.Bottom;
+                if (cloaked)
+                {
+                    if (Visible)
+                    {
+                        HidePreview();
+                        StartSlide(Top, screenBottom);
+                    }
+                }
+                else if (!hiddenByFullscreen)
+                {
+                    if (!Visible)
+                    {
+                        Reposition();
+                        Top = screenBottom;
+                        Show();
+                    }
+                    var tbTop = Native.GetTaskbarRect();
+                    StartSlide(Top, tbTop.IsEmpty ? Top : tbTop.Top);
+                }
+            }
+            if (slideActive)
+            {
+                StepSlide();
+                return;
+            }
+            if (hiddenByTaskbar)
+            {
+                if (Visible) Hide();
+                return;
+            }
             if (!Visible) return;
             // The taskbar steals the top of the z-order and its size/icons change: re-assert about once a second.
             if (taskbarTick % 30 == 0)
@@ -861,6 +896,30 @@ public sealed class TickerWindow : Form
     /// the edge for the taskbar to come back.
     /// </summary>
     private static int AutoHideGap(int visibleTaskbarHeight) => visibleTaskbarHeight == 0 ? 2 : 0;
+
+    private bool slideActive;
+    private long slideStartMs;
+    private int slideFrom, slideTo;
+
+    private void StartSlide(int from, int to)
+    {
+        slideFrom = from;
+        slideTo = to;
+        slideStartMs = clock.ElapsedMilliseconds;
+        slideActive = from != to;
+    }
+
+    /// <summary>One step of the slide of a bar inside an auto-hiding taskbar (170 ms, ease-out).</summary>
+    private void StepSlide()
+    {
+        var t = Math.Min(1.0, (clock.ElapsedMilliseconds - slideStartMs) / 170.0);
+        var eased = 1 - Math.Pow(1 - t, 3);
+        Top = slideFrom + (int)Math.Round((slideTo - slideFrom) * eased);
+        if (t < 1.0) return;
+        slideActive = false;
+        if (hiddenByTaskbar) Hide();
+        else Reposition();
+    }
 
     private void SetHiddenByTaskbar(bool hidden)
     {

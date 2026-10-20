@@ -9,7 +9,7 @@
 ; The wizard looks for Opsis (uninstall entry, default folders) and proposes the integrated install when it finds it.
 ; Test switches: /MODE=integrated | /MODE=separate (silent installs), /PLUGINROOT=<folder> (instead of %AppData%\Opsis\plugins).
 #define MyAppName "Opsis News Crawler"
-#define MyAppVersion "0.11.5.3"
+#define MyAppVersion "0.12.5"
 #define MyAppExe "OpsisNewsCrawler.exe"
 #define OpsisAppId "A9E8F765-1234-4567-89AB-CDEF01234567"
 #define PluginFolder "Opsis - Desktop Customization"
@@ -342,6 +342,10 @@ Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"; Check: IsSeparate
 Name: "{group}\{cm:UninstallShortcut}"; Filename: "{uninstallexe}"; Check: IsSeparate
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"; Tasks: desktopicon; Check: IsSeparate
 
+[InstallDelete]
+; The plugin DLL was renamed (MotionDesk -> Opsis) in 0.12.5: remove the old copy so Opsis does not find two plugin DLLs in one folder.
+Type: files; Name: "{app}\OpsisNewsCrawler.MotionDeskPlugin.*"
+
 [Registry]
 ; Start with Windows (removed again by the uninstaller)
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "{#MyAppName}"; ValueData: """{app}\{#MyAppExe}"""; Tasks: startup; Flags: uninsdeletevalue
@@ -352,6 +356,9 @@ Root: HKCU; Subkey: "Software\Opsis\PluginPaths"; ValueName: "OpsisNewsCrawler";
 
 [Run]
 Filename: "{app}\{#MyAppExe}"; Description: "{cm:LaunchApp}"; Flags: nowait postinstall skipifsilent; Check: IsSeparate
+
+; Dependencies page (.NET Desktop Runtime, WebView2 Runtime): see installerdependencies.iss
+#include "installer\dependencies.iss"
 
 [Code]
 var
@@ -435,6 +442,9 @@ begin
   BarPage.Add(CustomMessage('BarAbove'));
   BarPage.Add(CustomMessage('BarInside'));
   BarPage.SelectedValueIndex := 0;
+
+  // Which required components to download and install (.NET Desktop Runtime, WebView2).
+  DepsInit(BarPage.ID);
 end;
 
 // The bar chosen as the default: /BAR=above|taskbar for silent installs.
@@ -476,6 +486,11 @@ procedure CurStepChanged(CurStep: TSetupStep);
 var
   Dir: String;
 begin
+  if CurStep = ssInstall then
+  begin
+    if WizardSilent then DepsDownloadSelected();
+    DepsInstallSelected();
+  end;
   if CurStep = ssPostInstall then
   begin
     // read once by the app at its next start (AppConfig.ApplyFirstRun)
@@ -520,6 +535,7 @@ end;
 function NextButtonClick(CurPageID: Integer): Boolean;
 begin
   Result := True;
+  if (CurPageID = wpReady) and not WizardSilent then Result := DepsDownloadSelected();
   if (ModePage <> nil) and (CurPageID = ModePage.ID) and (not WizardSilent) then
   begin
     // The "installation folder" is the plugin folder of Opsis when integrating (a silent install keeps /DIR as given).

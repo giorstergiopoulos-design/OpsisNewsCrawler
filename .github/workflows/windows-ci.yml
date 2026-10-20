@@ -26,7 +26,7 @@ jobs:
             'src/OpsisNewsCrawler.App/OpsisNewsCrawler.App.csproj',
             'src/OpsisNewsCrawler.Core/OpsisNewsCrawler.Core.csproj',
             'src/OpsisNewsCrawler.Windows/OpsisNewsCrawler.Windows.csproj',
-            'src/OpsisNewsCrawler.MotionDeskPlugin/OpsisNewsCrawler.MotionDeskPlugin.csproj',
+            'src/OpsisNewsCrawler.OpsisPlugin/OpsisNewsCrawler.OpsisPlugin.csproj',
             'src/OpsisNewsCrawler.Plugin.Abstractions/OpsisNewsCrawler.Plugin.Abstractions.csproj'
           )
           foreach ($file in $files) {

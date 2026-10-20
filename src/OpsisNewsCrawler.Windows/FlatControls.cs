@@ -684,6 +684,9 @@ internal sealed class FlatCard : Panel
     private readonly Label heading = new() { AutoSize = true, Font = new Font("Segoe UI", 9f, FontStyle.Bold) };
     private readonly Panel body = new() { Dock = DockStyle.Fill, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, BackColor = Color.Transparent };
 
+    /// <summary>The common width of all cards (px). Content that is wider makes its card grow, so keep controls inside it.</summary>
+    public const int CardWidth = 780;
+
     public FlatCard(string title)
     {
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
@@ -691,6 +694,7 @@ internal sealed class FlatCard : Panel
         AutoSizeMode = AutoSizeMode.GrowAndShrink;
         Padding = new Padding(18, 34, 18, 14);
         Margin = new Padding(0, 8, 0, 8);
+        MinimumSize = new Size(CardWidth, 0); // every card of every page has the same width
         heading.Text = Loc.Upper(title);
         heading.Location = new Point(18, 12);
         base.Controls.Add(heading);

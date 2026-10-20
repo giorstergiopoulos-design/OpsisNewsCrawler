@@ -45,10 +45,12 @@ internal sealed class WeatherMapForm : Form
 
         var width = 560;
         var height = 380 + ToolbarHeight;
-        var screen = Screen.FromRectangle(anchorBar).WorkingArea;
-        var x = Math.Max(screen.Left, Math.Min(anchorBar.Left + (anchorBar.Width - width) / 2, screen.Right - width));
-        var y = anchorBar.Top - height - 10;
-        if (y < screen.Top) y = Math.Min(screen.Bottom - height, anchorBar.Bottom + 10); // a bar at the top: open below it
+        // At the far right edge of the screen, its lower edge touching the top of the bar: the bar above the taskbar, or - when the bar
+        // is inside the taskbar - the top of the taskbar itself (the bar fills the taskbar, so both are the same line).
+        var screen = Screen.FromRectangle(anchorBar).Bounds;
+        var x = screen.Right - width;
+        var y = anchorBar.Top - height;
+        if (y < screen.Top) y = Math.Min(screen.Bottom - height, anchorBar.Bottom); // a bar at the top: open right below it
         normalBounds = new Rectangle(x, Math.Max(screen.Top, y), width, height);
         Bounds = normalBounds;
 

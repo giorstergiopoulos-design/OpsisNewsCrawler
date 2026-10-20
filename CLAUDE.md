@@ -1,7 +1,7 @@
 # Opsis News Crawler — project guide for Claude Code
 
 A Windows desktop news/market ticker bar (.NET 10, WinForms). It runs standalone
-(`OpsisNewsCrawler.exe`) and as a plugin hosted by **Opsis / MotionDesk Studio**.
+(`OpsisNewsCrawler.exe`) and as a plugin hosted by **Opsis / Opsis**.
 Owner's language is Greek: reply to the user in Greek unless asked otherwise; code, identifiers and
 comments stay in English; UI strings are bilingual "Ελληνικά / English".
 
@@ -29,8 +29,8 @@ and compiles `OpsisNewsCrawler.iss` with Inno Setup 7/6/5 (`ISCC`, found automat
 | `OpsisNewsCrawler.Core` (net10.0) | models, `TickerState`, `AppConfig` (JSON in `%AppData%\OpsisNewsCrawler\config.json`), RSS parsing, other non-UI logic |
 | `OpsisNewsCrawler.Windows` (net10.0-windows) | all WinForms UI + Win32 interop: `TickerHost` (owns window, config, refresh loops), `TickerWindow`, `TickerCanvas` (custom painted strip), `ArticlePreviewForm`, `SettingsForm`, `FaviconCache`, `Native` |
 | `OpsisNewsCrawler.App` | standalone exe (tray icon, single instance mutex) |
-| `OpsisNewsCrawler.Plugin.Abstractions` | `IOpsisNewsCrawlerPlugin` contract that MotionDesk/Opsis implements against |
-| `OpsisNewsCrawler.MotionDeskPlugin` | the plugin DLL; wraps the same `TickerHost` |
+| `OpsisNewsCrawler.Plugin.Abstractions` | `IOpsisNewsCrawlerPlugin` contract that Opsis implements against |
+| `OpsisNewsCrawler.OpsisPlugin` | the plugin DLL; wraps the same `TickerHost` |
 
 Key rule: the ticker **state lives in Core (`TickerState`), never in the UI**, so a host can pause/resume/
 reposition/refresh without losing the scroll position.
@@ -65,3 +65,11 @@ Fourteen UI languages like Opsis: `Core/Locales/<code>.json` (el, en generated b
 - RTL: `Loc.IsRtl` (ar/he/fa/ur); `TickerCanvas` mirrors geometry (`ItemRect`, `DrawEntryRtl`), the settings panel sets `RightToLeft`.
 - Updates: `Core/UpdateChecker.cs` (GitHub releases API), `Windows/UpdateInstaller.cs` (download + mandatory SHA-256 + start), opt-in `CheckForUpdates`.
 - Test aids: `--snapshot <folder> [--config <file>]` (PNG of every settings tab), `--config <file>` for a normal start.
+
+## 0.12.5 additions
+- **Release only with `tools\release.ps1`** (publish, mirrors the plugin folder, checks that the plugin DLLs have the app version and that the plugin contract keeps the assembly version of the copy in Opsis\libs, compiles the installer, writes the .sha256). Never bump the `AssemblyVersion` of `Plugin.Abstractions` (frozen 0.8.0.0).
+- Icon: `Windows/AppIconArt.cs` (drawn in code; `--make-icon <file>` writes `Assets\app.ico`); animated tray icon in `App/Program.cs`.
+- Portfolio: `Core/Portfolio.cs` (positions, `PortfolioCalc`, `EcbRates`, `Technical`), `Windows/PortfolioForm.cs`; the quote service fetches portfolio instruments too (`alsoNeeded`) and keeps 130 daily closes in `QuoteStore`.
+- Dependencies: `installer\dependencies.iss` (shared with the Opsis installer) and `Windows/Dependencies.cs`.
+- Locales are edited DIRECTLY in `Core/Locales/*.json` now (the old generator script is gone); keep the same keys in all 14 files.
+- Test aids: `--snapshot <dir> [--config f]`, `--snapshot-portfolio <png> [--config f]`, `--portfolio`, `--make-icon <ico>`.

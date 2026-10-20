@@ -120,8 +120,14 @@ public sealed class QuoteStore
         {
             if (!days.TryGetValue(code, out var perDay)) days[code] = perDay = new SortedDictionary<string, decimal>(StringComparer.Ordinal);
             perDay[day] = price;
-            while (perDay.Count > 10) perDay.Remove(perDay.Keys.First());
+            while (perDay.Count > 130) perDay.Remove(perDay.Keys.First());
         }
+    }
+
+    /// <summary>The stored closing prices of an instrument, oldest first (up to about 130 days, kept as the program runs).</summary>
+    public IReadOnlyList<decimal> History(string code)
+    {
+        lock (gate) return days.TryGetValue(code, out var perDay) ? perDay.Values.ToList() : new List<decimal>();
     }
 
     /// <summary>Last price of the latest day before <paramref name="day"/>, or null.</summary>
@@ -406,11 +412,15 @@ public sealed class FredEnergyProvider : IQuoteProvider
     }
 
     /// <summary>Pyth Hermes: one request for all instruments that have a feed. Keyed by instrument code; empty when it fails.</summary>
+    // Since October 2026 the public Hermes price endpoints answer 401 (an API key is needed). Then it is not asked again for 12 hours
+    // (one log line instead of one per minute) and the daily FRED/EIA series is used.
+    private DateTimeOffset pythBlockedUntil = DateTimeOffset.MinValue;
+
     private async Task<Dictionary<string, MarketQuote>> FetchPythAsync(IReadOnlyList<QuoteInstrument> instruments, CancellationToken ct)
     {
         var result = new Dictionary<string, MarketQuote>(StringComparer.Ordinal);
         var mapped = instruments.Where(i => PythHermes.FeedIds.ContainsKey(i.Code)).ToList();
-        if (mapped.Count == 0) return result;
+        if (mapped.Count == 0 || DateTimeOffset.UtcNow < pythBlockedUntil) return result;
         try
         {
             using var limit = QuoteHttp.Limit(ct, 15);
@@ -434,6 +444,11 @@ public sealed class FredEnergyProvider : IQuoteProvider
                 result[inst.Code] = new MarketQuote(inst.Symbol, inst.NameEn, price.Value, change, price.PublishedAt, Delayed: age > LiveAge);
             }
             store?.Save();
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+        {
+            pythBlockedUntil = DateTimeOffset.UtcNow.AddHours(12);
+            Log.Write("Pyth Hermes now needs an API key (HTTP " + (int)ex.StatusCode! + "): oil and gas use the daily FRED/EIA prices; not asked again for 12 hours.");
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or InvalidOperationException)
         {
@@ -587,9 +602,13 @@ public sealed class QuoteService
 
     private readonly List<IQuoteProvider> providers;
 
+    /// <summary>Closing prices stored by the providers (for indicators).</summary>
+    public QuoteStore Store { get; }
+
     public QuoteService(QuoteStore? store = null)
     {
         store ??= new QuoteStore();
+        Store = store;
         LoadLastGood();
         providers = new()
         {
@@ -597,6 +616,11 @@ public sealed class QuoteService
             new GoldApiMetalsProvider(store, QuoteSource.Crypto), new FrankfurterFxProvider(), new FredEnergyProvider(store)
         };
     }
+
+    /// <summary>Every price of the last run, also of instruments that are only in the portfolio (key = <see cref="PortfolioPosition.Key"/> layout).</summary>
+    public IReadOnlyDictionary<string, MarketQuote> LatestByKey { get; private set; } = new Dictionary<string, MarketQuote>();
+
+    private static string KeyOf(QuoteInstrument i) => $"{i.Source}|{(i.Market ?? "").ToUpperInvariant()}|{i.Code.ToUpperInvariant()}";
 
     /// <summary>The prices of the last run with their instruments (for price alerts).</summary>
     public IReadOnlyList<(QuoteInstrument Instrument, MarketQuote Quote)> LastQuotes { get; private set; } = Array.Empty<(QuoteInstrument, MarketQuote)>();
@@ -609,16 +633,18 @@ public sealed class QuoteService
     /// <paramref name="progress"/> is called with the prices known so far each time a source has answered.
     /// </summary>
     public async Task<IReadOnlyList<NewsItem>> FetchItemsAsync(IEnumerable<QuoteInstrument> watchlist, bool greek, CancellationToken ct,
-        Action<IReadOnlyList<NewsItem>>? progress = null)
+        Action<IReadOnlyList<NewsItem>>? progress = null, IEnumerable<QuoteInstrument>? alsoNeeded = null)
     {
         var enabled = watchlist.Where(i => i.Enabled).ToList();
+        // What is fetched: what the bars show plus what only the portfolio needs (one download serves both, the providers cache by this list).
+        var fetchList = enabled.Concat(alsoNeeded ?? Enumerable.Empty<QuoteInstrument>()).GroupBy(KeyOf).Select(g => g.First()).ToList();
         var answers = new Dictionary<QuoteSource, IReadOnlyList<MarketQuote>>();
         var failed = new List<QuoteSource>();
         var stale = new Dictionary<QuoteSource, DateTimeOffset>();
 
         async Task<(QuoteSource Source, IReadOnlyList<MarketQuote> Quotes, bool Failed)> Run(IQuoteProvider p)
         {
-            var wanted = enabled.Where(i => i.Source == p.Source).ToList();
+            var wanted = fetchList.Where(i => i.Source == p.Source).ToList();
             if (wanted.Count == 0) return (p.Source, Array.Empty<MarketQuote>(), false);
             try
             {
@@ -687,6 +713,14 @@ public sealed class QuoteService
             if (found is not null) raw.Add((inst, found));
         }
         LastQuotes = raw;
+        var all = new Dictionary<string, MarketQuote>();
+        foreach (var inst in fetchList)
+        {
+            if (stale.ContainsKey(inst.Source) || !answers.TryGetValue(inst.Source, out var list2)) continue;
+            var found2 = list2.FirstOrDefault(x => string.Equals(x.Symbol, inst.Symbol, StringComparison.OrdinalIgnoreCase));
+            if (found2 is not null) all[KeyOf(inst)] = found2;
+        }
+        LatestByKey = all;
         return Build();
     }
 

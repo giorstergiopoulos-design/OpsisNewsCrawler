@@ -14,18 +14,29 @@ dotnet publish src\OpsisNewsCrawler.App\OpsisNewsCrawler.App.csproj -c Release -
 if ($LASTEXITCODE -ne 0) { throw "publish failed" }
 
 # The plugin folder is MIRRORED (stale files removed) from the build output; robocopy needs backslash paths.
-$pluginSrc = "$r\src\OpsisNewsCrawler.MotionDeskPlugin\bin\Release\net10.0-windows"
+$pluginSrc = "$r\src\OpsisNewsCrawler.OpsisPlugin\bin\Release\net10.0-windows"
 $pluginDst = "$r\bin\plugins\Opsis - Desktop Customization"
 robocopy $pluginSrc $pluginDst /MIR /NFL /NDL /NJH /NJS | Out-Null
 if ($LASTEXITCODE -ge 8) { throw "copying the plugin failed (robocopy $LASTEXITCODE)" }
 
 # Guard: the app and every DLL of the plugin must have the same version as the app (this once shipped an old plugin).
 $appVersion = (Get-Item "$r\bin\OpsisNewsCrawler.exe").VersionInfo.ProductVersion.Split('+')[0]
-foreach ($name in "OpsisNewsCrawler.MotionDeskPlugin.dll", "OpsisNewsCrawler.Windows.dll", "OpsisNewsCrawler.Core.dll") {
+foreach ($name in "OpsisNewsCrawler.OpsisPlugin.dll", "OpsisNewsCrawler.Windows.dll", "OpsisNewsCrawler.Core.dll") {
   $v = (Get-Item "$pluginDst\$name").VersionInfo.ProductVersion.Split('+')[0]
   if ($v -ne $appVersion) { throw "$name is $v but the app is $appVersion - stale plugin payload" }
 }
+if (Get-ChildItem $pluginDst -Filter "*MotionDesk*" -ErrorAction SilentlyContinue) { throw "old MotionDesk-named files in the plugin payload - delete them" }
 "payload version: $appVersion"
+
+# Guard: the plugin contract keeps the assembly version of the copy that Opsis has loaded (otherwise the plugin cannot bind to it).
+$contract = [Reflection.AssemblyName]::GetAssemblyName("$pluginDst\OpsisNewsCrawler.Plugin.Abstractions.dll").Version
+# The Opsis project folder is a sibling of this one (currently still named MotionDeskStudio on disk; "Opsis" is tried first).
+$opsisCopy = @("$r\..\Opsis\libs", "$r\..\MotionDeskStudio\libs") | ForEach-Object { Join-Path $_ "OpsisNewsCrawler.Plugin.Abstractions.dll" } | Where-Object { Test-Path $_ } | Select-Object -First 1
+if ($opsisCopy) {
+  $opsisVersion = [Reflection.AssemblyName]::GetAssemblyName($opsisCopy).Version
+  if ($contract -ne $opsisVersion) { throw "plugin contract is $contract but the copy in Opsis\libs is $opsisVersion" }
+}
+"contract version: $contract"
 
 # Any installed Inno Setup (5, 6, 7...): the newest folder name wins; an ISCC on the PATH is used first.
 $iscc = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source

@@ -67,6 +67,12 @@ public sealed class AppConfig
     /// <summary>Ctrl+Alt+N shows / hides all bars from anywhere (standalone app only).</summary>
     public bool ToggleHotkey { get; set; }
 
+    /// <summary>The icon in the notification area shows a little bar with the four kinds of news passing by (newspaper, ball, shield, chart and coins).</summary>
+    public bool TrayIconAnimated { get; set; } = true;
+
+    /// <summary>The holdings shown in the portfolio window (quantity and average price; profit and loss are computed).</summary>
+    public List<PortfolioPosition> Portfolio { get; set; } = new();
+
     /// <summary>Cities (ids of <see cref="GreekCities"/>) shown by a bar whose content is "Weather", in this order.</summary>
     public List<string> WeatherCities { get; set; } = GreekCities.DefaultSelection.ToList();
 
@@ -241,6 +247,23 @@ public sealed class AppConfig
             new("in.gr", "https://www.in.gr/feed/"),
             new("iefimerida", "https://www.iefimerida.gr/rss.xml"),
         },
+        // Defence and diplomacy: Greek defence sites, the two big English defence desks and Politico Europe for diplomacy.
+        [nameof(TickerMode.Defence)] = new()
+        {
+            new("Defence Point", "https://www.defence-point.gr/news/feed/"),
+            new("Defence Review", "https://www.defencereview.gr/feed/"),
+            new("Militaire.gr", "https://www.militaire.gr/feed/"),
+            new("Breaking Defense", "https://breakingdefense.com/feed/"),
+            new("Defense News", "https://www.defensenews.com/arc/outboundfeeds/rss/?outputType=xml"),
+            new("POLITICO Europe", "https://www.politico.eu/feed/"),
+        },
+        [nameof(TickerMode.Sports)] = new()
+        {
+            new("Gazzetta", "https://www.gazzetta.gr/rss"),
+            new("in.gr – Αθλητικά", "https://www.in.gr/sports/feed/"),
+            new("BBC Sport", "https://feeds.bbci.co.uk/sport/rss.xml") { Enabled = false },
+            new("ESPN", "https://www.espn.com/espn/rss/news") { Enabled = false },
+        },
     };
 
     private static readonly (TickerMode Mode, string El, string En)[] BuiltInNames =
@@ -249,6 +272,8 @@ public sealed class AppConfig
         (TickerMode.Market, "Αγορές", "Markets"),
         (TickerMode.International, "Διεθνή", "International"),
         (TickerMode.Greece, "Ελλάδα", "Greece"),
+        (TickerMode.Defence, "Άμυνα & Διπλωματία", "Defence & Diplomacy"),
+        (TickerMode.Sports, "Αθλητικά", "Sports"),
     };
 
     /// <summary>Suggested sites the user can add to any category with one click.</summary>
@@ -263,6 +288,11 @@ public sealed class AppConfig
         new("Καθημερινή", "https://www.kathimerini.gr/feed/"),
         new("Ναυτεμπορική", "https://www.naftemporiki.gr/feed/"),
         new("CNBC – Top News", "https://www.cnbc.com/id/100003114/device/rss/rss.html"),
+        new("Euronews", "https://www.euronews.com/rss?format=mrss&level=theme&name=news"),
+        new("Defence Point", "https://www.defence-point.gr/news/feed/"),
+        new("Breaking Defense", "https://breakingdefense.com/feed/"),
+        new("Gazzetta", "https://www.gazzetta.gr/rss"),
+        new("BBC Sport", "https://feeds.bbci.co.uk/sport/rss.xml"),
     };
 
     public IReadOnlyList<FeedSource> GetFeeds(TickerMode mode) => GetFeeds(mode.ToString());
@@ -396,7 +426,7 @@ public sealed class AppConfig
             Categories.Add(new FeedCategory
             {
                 Id = id, NameEl = el, NameEn = en, BuiltIn = true,
-                Feeds = feeds.Select(f => new FeedSource(f.Name, f.Url)).ToList()
+                Feeds = feeds.Select(f => new FeedSource(f.Name, f.Url) { Enabled = f.Enabled }).ToList()
             });
         }
 
@@ -420,6 +450,8 @@ public sealed class AppConfig
             .Select(g => { var first = g.First(); first.Enabled = g.Any(i => i.Enabled); return first; })
             .ToList();
         QuoteRefreshSeconds = Math.Clamp(QuoteRefreshSeconds, 30, 3600);
+        Portfolio = (Portfolio ?? new()).Where(p => p is not null && !string.IsNullOrWhiteSpace(p.Code) && p.Quantity > 0 && p.AvgCost >= 0)
+            .Select(p => { p.Currency = string.IsNullOrWhiteSpace(p.Currency) ? "EUR" : p.Currency.Trim().ToUpperInvariant(); p.Market ??= ""; return p; }).Take(500).ToList();
         PriceAlerts = (PriceAlerts ?? new()).Where(x => x is not null && !string.IsNullOrWhiteSpace(x.Code) && x.Threshold > 0).ToList();
         BreakingKeywords = (BreakingKeywords ?? new()).Where(k => !string.IsNullOrWhiteSpace(k)).Select(k => k.Trim()).Distinct().ToList();
         if (BreakingKeywords.Count == 0) BreakingKeywords = new(Breaking.DefaultKeywords);

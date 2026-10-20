@@ -67,3 +67,8 @@ Other keyless prices added the same day: gold-api.com (BTC, ETH), Frankfurter/EC
 - ECB reference rates (Frankfurter): published once per working day (~16:00 CET); polling more often returns the same numbers. No verified free, ToS-clean live FX feed was found; Pyth FX feed ids were not verified, so they are not used.
 - Euronext other markets: end-of-day files. EIA/FRED: daily, ~a week late (only a fallback now; Pyth is first).
 - yfinance: a Python library that scrapes Yahoo Finance (Yahoo ToS forbids it); it cannot be a .NET dependency and is not used.
+
+## Added 2026-10-20
+- News feeds checked live (HTTP 200, valid RSS, items parsed by the real provider): Defence Point `defence-point.gr/news/feed/`, Defence Review `defencereview.gr/feed/`, Militaire.gr `militaire.gr/feed/`, Breaking Defense `breakingdefense.com/feed/`, Defense News (arc outbound feed), POLITICO Europe `politico.eu/feed/`, Gazzetta `gazzetta.gr/rss`, in.gr Sports `in.gr/sports/feed/`, BBC Sport, ESPN. Not usable: sport24.gr (403), Kathimerini diplomacy (410), pentapostagma.gr (404).
+- Pyth Hermes `/v2/updates/price/latest` returns 401 (API key needed) as of 2026-10-20; the program stops asking for 12 h and uses FRED/EIA.
+- Ideas (no code copied): stonks-cli (MIT) — portfolio/P&L dashboard; greek-stocks-ai (MIT badge, no licence file) — RSI and SMA crosses. Microsoft download links used by the dependency installer: `aka.ms/dotnet/10.0/windowsdesktop-runtime-win-x64.exe`, `go.microsoft.com/fwlink/p/?LinkId=2124703` (WebView2 bootstrapper); run only with a valid Microsoft Authenticode signature.

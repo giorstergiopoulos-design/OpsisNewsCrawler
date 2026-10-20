@@ -38,7 +38,7 @@ internal static class Native
 
     /// <summary>
     /// True when the desktop (or one of our own / host windows) is in the foreground.
-    /// Windows of the current process (ticker, settings, MotionDesk when hosted as a plugin) count as desktop.
+    /// Windows of the current process (ticker, settings, Opsis when hosted as a plugin) count as desktop.
     /// </summary>
     internal static bool IsDesktopForeground(IntPtr ownHandle, Func<IntPtr, bool>? isHostWindow = null)
     {
@@ -247,7 +247,7 @@ internal static class Native
         SetAccent(hwnd, BackdropState(style), (Math.Clamp(alpha, 0, 255) << 24) | (tint.B << 16) | (tint.G << 8) | tint.R); // ABGR
 
     /// <summary>
-    /// Opsis' "glass" tint (copied from MotionDesk.UI.GlassBlur.Apply): the base colour mixed 16 % with the accent, and its alpha
+    /// Opsis' "glass" tint (copied from Opsis GlassBlur.Apply): the base colour mixed 16 % with the accent, and its alpha
     /// 0x99 x opacity (never below <paramref name="minAlpha"/>).
     /// </summary>
     internal static (Color Tint, int Alpha) GlassTint(Color baseColor, Color accent, double opacityFraction, int minAlpha = 18)

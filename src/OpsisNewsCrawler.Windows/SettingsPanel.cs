@@ -33,6 +33,7 @@ public sealed class SettingsPanel : UserControl
     private FlatNumber speed = null!;
     private FlatCheck hoverPause = null!;
     private FlatCheck startWithWindows = null!;
+    private FlatCheck trayAnimated = null!;
     private FlatCheck toggleHotkey = null!;
     private FlatCheck icons = null!;
     private FlatCheck preview = null!;
@@ -209,7 +210,7 @@ public sealed class SettingsPanel : UserControl
     // ---- preview of the bars ----------------------------------------------------------------
 
     /// <summary>Sub-pages of the Settings tab whose choices change how a bar looks: Bars, Position, Look, Breaking.</summary>
-    private static readonly int[] PreviewSubs = { 1, 2, 4, 5 };
+    private static readonly int[] PreviewSubs = { 1, 3, 4 };
 
     private void UpdatePreview()
     {
@@ -253,8 +254,8 @@ public sealed class SettingsPanel : UserControl
         // Three tabs: Settings, Sources, Information. Each has a row of sub-buttons (no side menu any more).
         settingsStrip = AddGroup(Loc.Pick("Ρυθμίσεις", "Settings"),
             (Loc.Pick("Γενικά", "General"), BuildGeneral()),
-            (L("tab.bars"), BuildBars()),
-            (L("tab.position"), BuildPosition()),
+            // Bars and Position are one page now: the bars first, where they sit below.
+            (L("tab.bars"), Combine((null, BuildBars()), (L("tab.position"), BuildPosition()))),
             (Loc.Pick("Μπάρα επιφάνειας εργασίας", "Desktop bar"), BuildDesktopBar()),
             (L("tab.look"), BuildLook()),
             (L("tab.breaking"), BuildBreaking()));
@@ -271,6 +272,7 @@ public sealed class SettingsPanel : UserControl
             info.Add((L("tab.license"), BuildInfoPage(() => AboutTexts.License)));
         }
         info.Add((L("card.updates"), BuildUpdates()));
+        info.Add((L("tab.dependencies"), BuildDependencies()));
         AddGroup(Loc.Pick("Πληροφορίες", "Information"), info.ToArray());
 
         var apply = new FlatButton { Text = L("btn.apply") };
@@ -388,6 +390,8 @@ public sealed class SettingsPanel : UserControl
         flow.Controls.Add(barsEnabled);
         startWithWindows = new FlatCheck { Text = Loc.Pick("Εκκίνηση με τα Windows", "Start with Windows"), Visible = !host.HostedByOpsis };
         flow.Controls.Add(startWithWindows);
+        trayAnimated = new FlatCheck { Text = L("chk.trayAnimated"), Visible = !host.HostedByOpsis };
+        flow.Controls.Add(trayAnimated);
         toggleHotkey = new FlatCheck { Text = Loc.Pick("Συντόμευση Ctrl+Alt+N: εμφάνιση / απόκρυψη των μπαρών", "Hot key Ctrl+Alt+N: show / hide the bars"), Visible = !host.HostedByOpsis };
         flow.Controls.Add(toggleHotkey);
         var languageRow = Row(L("lbl.language"), language);
@@ -427,6 +431,57 @@ public sealed class SettingsPanel : UserControl
     }
 
     /// <summary>The update frame (Information tab).</summary>
+    // ---- dependencies ----------------------------------------------------------------------------
+
+    private Label webViewStatus = null!;
+    private FlatCheck webViewCheck = null!;
+    private FlatButton webViewInstall = null!;
+
+    private Control BuildDependencies()
+    {
+        var page = NewPage(out var flow);
+        flow.Controls.Add(Note(L("note.dependencies"), 700));
+        var card = new FlatCard(L("tab.dependencies"));
+        var inner = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+
+        // .NET: the program is running, so it is there (shown ticked, nothing to choose).
+        var dotNet = new FlatCheck { Text = L("dep.dotnet") + "  —  " + Dependencies.DotNetVersion + "  (" + L("dep.installed") + ")", Checked = true, Enabled = false };
+        inner.Controls.Add(dotNet);
+
+        // Present: ticked and locked, like .NET. Missing: unticked, with an install button.
+        webViewCheck = new FlatCheck { Enabled = false };
+        webViewStatus = new Label { AutoSize = true, Margin = new Padding(0, 4, 0, 0), Tag = "muted" };
+        inner.Controls.Add(webViewCheck);
+        webViewInstall = new FlatButton { Text = L("btn.installDep"), Margin = new Padding(0, 4, 0, 0) };
+        inner.Controls.Add(webViewStatus);
+        inner.Controls.Add(webViewInstall);
+        webViewInstall.Click += async (_, _) =>
+        {
+            webViewInstall.Enabled = false;
+            webViewStatus.Text = L("msg.depInstalling");
+            var result = await Dependencies.InstallWebView2Async();
+            if (IsDisposed) return;
+            webViewInstall.Enabled = true;
+            RefreshDependencies();
+            if (result != Dependencies.InstallResult.Installed)
+                webViewStatus.Text += "  —  " + L(result == Dependencies.InstallResult.NotSignedByMicrosoft ? "msg.depNotSigned" : "msg.depFailed");
+        };
+        card.Controls.Add(inner);
+        flow.Controls.Add(card);
+        RefreshDependencies();
+        return page;
+    }
+
+    private void RefreshDependencies()
+    {
+        if (webViewStatus is null || webViewStatus.IsDisposed) return;
+        var version = Dependencies.WebView2Version();
+        webViewCheck.Text = L("dep.webview2") + "  —  " + (version is null ? L("dep.missing") : version + "  (" + L("dep.installed") + ")");
+        webViewCheck.Checked = version is not null;
+        webViewStatus.Text = "";
+        webViewInstall.Visible = version is null; // installed: shown, nothing to choose
+    }
+
     private Control BuildUpdates()
     {
         var page = NewPage(out var flow);
@@ -770,7 +825,7 @@ public sealed class SettingsPanel : UserControl
         searchRow.Controls.Add(all);
         searchRow.Controls.Add(none);
         inner.Controls.Add(Row(L("lbl.search"), searchRow, 150));
-        cityList = new FlatList { Width = 680, Height = 300 };
+        cityList = new FlatList { Width = 740, Height = 300 };
         cityList.SetShowChecks(true);
         inner.Controls.Add(cityList);
         card.Controls.Add(inner);
@@ -877,7 +932,7 @@ public sealed class SettingsPanel : UserControl
         flow.Controls.Add(Note(L("note.readLater"), 700));
         var card = new FlatCard(L("tab.readLater"));
         var inner = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-        laterList = new FlatList { Width = 800, Height = 320 };
+        laterList = new FlatList { Width = 740, Height = 320 };
         laterList.SetShowChecks(true);
         inner.Controls.Add(laterList);
         var open = new FlatButton { Text = L("btn.open") };
@@ -942,6 +997,10 @@ public sealed class SettingsPanel : UserControl
     private Control BuildMarkets()
     {
         var page = NewPage(out var flow);
+        var openPortfolio = new FlatButton { Text = L("btn.openPortfolio") };
+        openPortfolio.SetPrimary(true);
+        openPortfolio.Click += (_, _) => host.ShowPortfolio();
+        flow.Controls.Add(openPortfolio);
         flow.Controls.Add(Note(L("note.markets"), 700));
         flow.Controls.Add(Note(Loc.Pick(
             "Περιορισμοί δεδομένων: οι τιμές Αθήνας έχουν καθυστέρηση 15 λεπτών (επίσημα αρχεία Euronext Athens)· οι μετοχές άλλων αγορών Euronext είναι τιμές κλεισίματος· οι ισοτιμίες ΕΚΤ ανανεώνονται μία φορά κάθε εργάσιμη. Μέταλλα, κρυπτονομίσματα και πετρέλαιο/φυσικό αέριο (Pyth) είναι σχεδόν ζωντανά· αν το Pyth δεν απαντά, εμφανίζονται οι ημερήσιες τιμές EIA με ένδειξη ημερομηνίας.",
@@ -967,7 +1026,7 @@ public sealed class SettingsPanel : UserControl
         selectAll.Click += (_, _) => SetAllVisibleStocks(true);
         selectNone.Click += (_, _) => SetAllVisibleStocks(false);
         inner.Controls.Add(Row(L("lbl.search"), searchRow, 150));
-        stockList = new FlatList { Width = 680, Height = 340 };
+        stockList = new FlatList { Width = 740, Height = 340 };
         stockList.SetShowChecks(true);
         inner.Controls.Add(stockList);
         stockStatus = new Label { AutoSize = true, Tag = "muted", MaximumSize = new Size(680, 0), Margin = new Padding(0, 6, 0, 0) };
@@ -1434,6 +1493,7 @@ public sealed class SettingsPanel : UserControl
             hideRead.Checked = c.HideRead;
             barsEnabled.Checked = c.BarsEnabled;
             startWithWindows.Checked = StartupRegistration.IsEnabled();
+            trayAnimated.Checked = c.TrayIconAnimated;
             toggleHotkey.Checked = c.ToggleHotkey;
             autoUpdate.Checked = c.CheckForUpdates;
             workCities = c.WeatherCities.ToList();
@@ -1729,6 +1789,7 @@ public sealed class SettingsPanel : UserControl
         host.ApplyConfig();
         host.SetBarsEnabled(barsEnabled.Checked);
         if (!host.HostedByOpsis) StartupRegistration.Set(startWithWindows.Checked);
+        c.TrayIconAnimated = trayAnimated.Checked;
         host.SetCategory(chosen);
         if ((feedsChanged || newsSettingsChanged) && string.Equals(chosen, previousActive, StringComparison.OrdinalIgnoreCase)) host.ReloadNews();
         host.SaveConfig();

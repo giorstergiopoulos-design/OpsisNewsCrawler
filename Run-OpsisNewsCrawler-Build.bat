@@ -45,8 +45,8 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-if exist "%~dp0src\OpsisNewsCrawler.MotionDeskPlugin\bin\Release\net10.0-windows" (
-  xcopy "%~dp0src\OpsisNewsCrawler.MotionDeskPlugin\bin\Release\net10.0-windows\*" "%BINDIR%\plugins\Opsis - Desktop Customization\" /E /Y /I /Q >nul
+if exist "%~dp0src\OpsisNewsCrawler.OpsisPlugin\bin\Release\net10.0-windows" (
+  xcopy "%~dp0src\OpsisNewsCrawler.OpsisPlugin\bin\Release\net10.0-windows\*" "%BINDIR%\plugins\Opsis - Desktop Customization\" /E /Y /I /Q >nul
 )
 echo [OK] Application is in: "%BINDIR%"
 

@@ -1,6 +1,6 @@
 namespace OpsisNewsCrawler.Core;
 
-public enum TickerMode { Economy, Market, International, Greece }
+public enum TickerMode { Economy, Market, International, Greece, Defence, Sports }
 public enum TickerPosition { BottomTaskbar, Top, Center, Custom, TaskbarIntegrated }
 public readonly record struct TickerScrollState(double Offset);
 public enum NewsItemKind { News, Quote, Weather }
@@ -51,6 +51,8 @@ public static class TickerParsing
         if (t.Contains("market") || t.Contains("αγορ")) return TickerMode.Market;
         if (t.Contains("international") || t.Contains("διεθν")) return TickerMode.International;
         if (t.Contains("greece") || t.Contains("ελλάδ") || t.Contains("ελλαδ")) return TickerMode.Greece;
+        if (t.Contains("defen") || t.Contains("diplom") || t.Contains("άμυν") || t.Contains("αμυν") || t.Contains("διπλωμ")) return TickerMode.Defence;
+        if (t.Contains("sport") || t.Contains("αθλητ")) return TickerMode.Sports;
         return TickerMode.Economy;
     }
 
