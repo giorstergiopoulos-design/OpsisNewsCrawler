@@ -188,6 +188,7 @@
   "chk.miniWeather": "Barra pequeña del tiempo en el escritorio",
   "lbl.miniCity": "Ciudad de la barra pequeña",
   "chk.miniOnTop": "Mantenerla sobre las demás ventanas",
+  "chk.miniWhenHidden": "Mostrarla mientras la barra de tareas oculta automáticamente está oculta (en lugar de la barra interior)",
   "note.miniWeather": "Arrástrela para moverla; un clic muestra la siguiente ciudad de la lista.",
   "card.miniWeather": "Barra pequeña del tiempo",
   "ph.loadingWeather": "Cargando el tiempo…",

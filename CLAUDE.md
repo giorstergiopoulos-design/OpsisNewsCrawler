@@ -53,7 +53,7 @@ reposition/refresh without losing the scroll position.
 - **Taskbar integration**: free span measured by `TaskbarMetrics` (Win32 child windows + MSAA for the classic task list + UI Automation for the XAML taskbar). The Windows project therefore has `UseWPF=true` and global usings for `System.IO`/`System.Net.Http`.
 - **STA**: `App/Program.cs` must keep `[STAThread]` (WebView2 live preview fails with RPC_E_CHANGED_MODE otherwise).
 - **Breaking news / live preview**: `Core/Breaking.cs`, `TickerWindow.StartBreaking`, `LivePreviewForm` (WebView2, rectangular, opened only by the user from the pulsing button).
-- **Opsis plugin**: contract `Plugin.Abstractions/PluginContract.cs` (copy the built DLL to `MotionDeskStudio\libs\` when it changes); Opsis side `src/Services/PluginHost.cs`. Hosted: `HostedByOpsis`, `LanguageFollowsHost`, colours pushed by Opsis, about texts shown in Opsis' About page.
+- **Opsis plugin**: contract `Plugin.Abstractions/PluginContract.cs` (copy the built DLL to the Opsis project's `libs\` (that folder is still called `MotionDeskStudio` on disk) when it changes); Opsis side `src/Services/PluginHost.cs`. Hosted: `HostedByOpsis`, `LanguageFollowsHost`, colours pushed by Opsis, about texts shown in Opsis' About page.
 - **Test switches**: `OpsisNewsCrawler.exe --settings --tab N`, `--test-breaking`; `Opsis.exe --page plugin:OpsisNewsCrawler`.
 
 ## Languages (2026-10-14)

@@ -188,6 +188,7 @@
   "chk.miniWeather": "Kleine Wetterleiste auf dem Desktop",
   "lbl.miniCity": "Stadt der kleinen Leiste",
   "chk.miniOnTop": "Über anderen Fenstern halten",
+  "chk.miniWhenHidden": "Anzeigen, solange die automatisch ausgeblendete Taskleiste verborgen ist (statt der Leiste darin)",
   "note.miniWeather": "Zum Verschieben ziehen; ein Klick zeigt die nächste Stadt der Liste.",
   "card.miniWeather": "Kleine Wetterleiste",
   "ph.loadingWeather": "Wetter wird geladen…",

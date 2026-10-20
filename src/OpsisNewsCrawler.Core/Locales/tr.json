@@ -188,6 +188,7 @@
   "chk.miniWeather": "Masaüstünde küçük hava durumu çubuğu",
   "lbl.miniCity": "Küçük çubuğun şehri",
   "chk.miniOnTop": "Diğer pencerelerin üstünde tut",
+  "chk.miniWhenHidden": "Otomatik gizlenen görev çubuğu gizliyken göster (içindeki çubuğun yerine)",
   "note.miniWeather": "Taşımak için sürükleyin; tıklamak listedeki sonraki şehri gösterir.",
   "card.miniWeather": "Küçük hava durumu çubuğu",
   "ph.loadingWeather": "Hava durumu yükleniyor…",

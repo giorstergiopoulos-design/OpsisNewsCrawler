@@ -188,6 +188,7 @@
   "chk.miniWeather": "Piccola barra meteo sul desktop",
   "lbl.miniCity": "Città della piccola barra",
   "chk.miniOnTop": "Tienila sopra le altre finestre",
+  "chk.miniWhenHidden": "Mostrala mentre la barra delle applicazioni a scomparsa è nascosta (al posto della barra interna)",
   "note.miniWeather": "Trascinala per spostarla; un clic mostra la città successiva dell'elenco.",
   "card.miniWeather": "Piccola barra meteo",
   "ph.loadingWeather": "Caricamento del meteo…",

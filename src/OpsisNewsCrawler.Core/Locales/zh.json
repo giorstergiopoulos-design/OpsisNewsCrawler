@@ -188,6 +188,7 @@
   "chk.miniWeather": "在桌面显示小天气栏",
   "lbl.miniCity": "小栏的城市",
   "chk.miniOnTop": "保持在其他窗口之上",
+  "chk.miniWhenHidden": "自动隐藏的任务栏隐藏时显示（代替其内部的栏）",
   "note.miniWeather": "拖动可移动；点击显示列表中的下一个城市。",
   "card.miniWeather": "小天气栏",
   "ph.loadingWeather": "正在加载天气…",

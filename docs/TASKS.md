@@ -189,3 +189,7 @@ Build 0 errors / 0 warnings; `dotnet test` 56 passed (test project added to the 
 - ✅ New categories "Defence & Diplomacy" and "Sports" (`TickerMode.Defence/Sports`, defaults, migration adds them to old configs, `Enabled` of default feeds now kept). Feeds checked live through the real RSS provider: 6 + 4. 5 unit tests.
 - ℹ️ Pyth Hermes (oil/gas near-live, from the parallel line) answers HTTP 401 without a key now: paused 12 h, FRED/EIA used.
 - Release: `tools\release.ps1`; README (bilingual, screenshots), CHANGELOG, `docs/RELEASE-0.12.5.md`, `docs/screenshots/{el,en}`.
+
+## Round 20 — version 0.12.8 (2026-10-20)
+- ✅ Desktop bar appears while the auto-hiding taskbar (and the bar inside it) is hidden: `TickerWindow.HiddenByTaskbarChanged` → `TickerHost.MiniWanted`; option `MiniWhenTaskbarHidden`. Verified by switching the Windows auto-hide on/off (bar at the configured 300,200 700x60 while hidden, gone when shown).
+- ✅ 4/5 re-checked: no MotionDesk-named file or folder left in the crawler (only compat clean-up code and history text); Opsis confirmed its loader scans `*Plugin.dll` and needs no rename.

@@ -3,6 +3,11 @@
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
 Detailed notes per release: `docs/RELEASE-*.md` and the GitHub releases.
 
+## 0.12.8 — 2026-10-20
+- While an auto-hiding taskbar (and the bar inside it) is hidden, the desktop bar appears at the place and size the user chose (option in Bars, on by default, 14 languages). Tested with the Windows auto-hide switched on and off again.
+- MotionDesk → Opsis rename finished in the plugin folder: the installer removes old `OpsisNewsCrawler.MotionDeskPlugin.*` files and the release script refuses any MotionDesk-named file in the payload.
+- Opsis (1.9.8) adopted `installer\dependencies.iss` and added a plugin Uninstall action; no change needed here.
+
 ## 0.12.5 — 2026-10-20
 - **Merged** the parallel 0.11.5.3 line (alert sound, severe-weather warnings, weather map, desktop bar, OPML, settings export/import,
   tray snooze, 3-tab settings) with 0.8–0.10. Build 0/0, 56 unit tests.

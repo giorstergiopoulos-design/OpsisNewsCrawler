@@ -188,6 +188,7 @@
   "chk.miniWeather": "바탕 화면에 작은 날씨 바 표시",
   "lbl.miniCity": "작은 바의 도시",
   "chk.miniOnTop": "다른 창 위에 유지",
+  "chk.miniWhenHidden": "자동 숨김 작업 표시줄이 숨겨져 있는 동안 표시(내부 막대 대신)",
   "note.miniWeather": "끌어서 이동하고, 클릭하면 목록의 다음 도시를 보여줍니다.",
   "card.miniWeather": "작은 날씨 바",
   "ph.loadingWeather": "날씨를 불러오는 중…",

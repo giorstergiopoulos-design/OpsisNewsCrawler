@@ -5,7 +5,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>0.12.5</Version>
+    <Version>0.12.8</Version>
     <!-- The assembly version of the CONTRACT is frozen: Opsis has the contract DLL loaded in its default context and a plugin that asks for a
          NEWER assembly version than the loaded one cannot be bound. Change it only together with a new contract DLL in Opsislibs. -->
     <AssemblyVersion>0.8.0.0</AssemblyVersion>

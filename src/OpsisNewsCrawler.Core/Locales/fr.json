@@ -188,6 +188,7 @@
   "chk.miniWeather": "Petite barre météo sur le Bureau",
   "lbl.miniCity": "Ville de la petite barre",
   "chk.miniOnTop": "La garder au-dessus des autres fenêtres",
+  "chk.miniWhenHidden": "L’afficher quand la barre des tâches masquée automatiquement est cachée (à la place de la barre intégrée)",
   "note.miniWeather": "Faites-la glisser pour la déplacer ; un clic affiche la ville suivante de la liste.",
   "card.miniWeather": "Petite barre météo",
   "ph.loadingWeather": "Chargement de la météo…",

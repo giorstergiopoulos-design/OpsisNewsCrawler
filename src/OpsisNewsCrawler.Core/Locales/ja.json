@@ -188,6 +188,7 @@
   "chk.miniWeather": "デスクトップに小さな天気バーを表示",
   "lbl.miniCity": "小さなバーの都市",
   "chk.miniOnTop": "他のウィンドウより手前に表示",
+  "chk.miniWhenHidden": "自動的に隠れるタスクバーが隠れている間に表示する（内側のバーの代わり）",
   "note.miniWeather": "ドラッグで移動、クリックでリストの次の都市を表示します。",
   "card.miniWeather": "小さな天気バー",
   "ph.loadingWeather": "天気を読み込み中…",
