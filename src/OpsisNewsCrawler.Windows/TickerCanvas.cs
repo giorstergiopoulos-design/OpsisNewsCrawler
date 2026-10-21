@@ -34,6 +34,9 @@ internal sealed class TickerCanvas : Control
     private bool passThrough;
     private bool editHint;
     private bool edgeFade;
+
+    /// <summary>When above 0 a thin outline follows the rounded shape of the window (so a transparent bar still shows its shape).</summary>
+    public int OutlineRadius { get; set; }
     private bool uppercase;
     private bool darkSurface = true;
     private bool divider;
@@ -447,6 +450,15 @@ internal sealed class TickerCanvas : Control
         }
 
         if (edgeFade && !editHint && IsScrollable() && solidFill is null) ApplyEdgeFade(buffer);
+
+        if (OutlineRadius > 0)
+        {
+            using var g3 = Graphics.FromImage(buffer);
+            g3.SmoothingMode = SmoothingMode.AntiAlias;
+            using var outline = RoundedRect(new Rectangle(0, 0, Width - 1, Height - 1), OutlineRadius);
+            using var outlinePen = new Pen(Color.FromArgb(120, titleColor), 1.2f);
+            g3.DrawPath(outlinePen, outline);
+        }
 
         if (divider)
         {

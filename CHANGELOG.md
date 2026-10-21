@@ -3,7 +3,8 @@
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
 Detailed notes per release: `docs/RELEASE-*.md` and the GitHub releases.
 
-## Unreleased (after 0.13.2)
+## 0.13.5 — 2026-10-21
+- **Bar styles are now visible on the full-width bars**: a rounded or pill main bar (and the second and monitor bars) floats with a 28 px margin and a thin outline instead of reaching both screen edges, where the curves were invisible.
 - **Yahoo Finance catalogue** (opt-in with the same switch as the price history, off by default, unofficial): search any share, index, currency, commodity, ETF or crypto that Yahoo offers (one request per search, only when you press Search) or add ready-made groups (indices incl. the Athens General Index, commodities, currencies, crypto); they show on the bars like the other prices. Safety limits: at most 30 instruments, at most one request per instrument every 15 minutes (a cached answer in between), requests one after the other with a pause, a 6-hour stop at the first 401/403/429, nothing is bypassed.
 - The Yahoo settings text no longer mentions other services.
 - StoreKey is no longer written to the settings file.

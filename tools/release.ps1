@@ -10,17 +10,20 @@ Start-Sleep -Seconds 1
 
 dotnet build OpsisNewsCrawler.sln -c Release --nologo -v q
 if ($LASTEXITCODE -ne 0) { throw "build failed" }
-dotnet publish src\OpsisNewsCrawler.App\OpsisNewsCrawler.App.csproj -c Release --no-build -o "$r\bin" --nologo -v q
+# The payload is staged in Output\stage: a copy of the program that is running from bin\ (even an elevated one that cannot be stopped) never blocks a release.
+$stage = "$r\Output\stage"
+if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
+dotnet publish src\OpsisNewsCrawler.App\OpsisNewsCrawler.App.csproj -c Release --no-build -o $stage --nologo -v q
 if ($LASTEXITCODE -ne 0) { throw "publish failed" }
 
 # The plugin folder is MIRRORED (stale files removed) from the build output; robocopy needs backslash paths.
 $pluginSrc = "$r\src\OpsisNewsCrawler.OpsisPlugin\bin\Release\net10.0-windows"
-$pluginDst = "$r\bin\plugins\Opsis - Desktop Customization"
+$pluginDst = "$stage\plugins\Opsis - Desktop Customization"
 robocopy $pluginSrc $pluginDst /MIR /NFL /NDL /NJH /NJS | Out-Null
 if ($LASTEXITCODE -ge 8) { throw "copying the plugin failed (robocopy $LASTEXITCODE)" }
 
 # Guard: the app and every DLL of the plugin must have the same version as the app (this once shipped an old plugin).
-$appVersion = (Get-Item "$r\bin\OpsisNewsCrawler.exe").VersionInfo.ProductVersion.Split('+')[0]
+$appVersion = (Get-Item "$stage\OpsisNewsCrawler.exe").VersionInfo.ProductVersion.Split('+')[0]
 foreach ($name in "OpsisNewsCrawler.OpsisPlugin.dll", "OpsisNewsCrawler.Windows.dll", "OpsisNewsCrawler.Core.dll") {
   $v = (Get-Item "$pluginDst\$name").VersionInfo.ProductVersion.Split('+')[0]
   if ($v -ne $appVersion) { throw "$name is $v but the app is $appVersion - stale plugin payload" }
@@ -51,9 +54,14 @@ if (-not $iscc) {
 }
 if (-not $iscc) { throw "Inno Setup (ISCC.exe) not found - install it from https://jrsoftware.org/isdl.php" }
 "Inno Setup: $iscc"
-& $iscc "$r\OpsisNewsCrawler.iss" | Select-String "Error|Successful"
+& $iscc "/DBinDir=Output\stage" "$r\OpsisNewsCrawler.iss" | Select-String "Error|Successful"
 if ($LASTEXITCODE -ne 0) { throw "installer compile failed" }
 
 $h = (Get-FileHash "$r\Output\OpsisNewsCrawler-Setup.exe" -Algorithm SHA256).Hash.ToLower()
 [IO.File]::WriteAllText("$r\Output\OpsisNewsCrawler-Setup.exe.sha256", "$h  OpsisNewsCrawler-Setup.exe`n")
 "setup: $r\Output\OpsisNewsCrawler-Setup.exe  sha256 $h"
+
+# Best effort: bring bin\ (what the Run-...bat starts) up to date too; files in use are skipped.
+robocopy $stage "$r\bin" /MIR /NFL /NDL /NJH /NJS /R:1 /W:1 | Out-Null
+if ($LASTEXITCODE -ge 8) { "note: bin\ could not be refreshed completely (program running?) - the installer is fine" }
+$global:LASTEXITCODE = 0

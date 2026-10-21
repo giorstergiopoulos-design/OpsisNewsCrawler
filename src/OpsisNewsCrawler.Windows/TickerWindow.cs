@@ -202,13 +202,17 @@ public sealed class TickerWindow : Form
     /// <summary>The outline of the bar: "rect", "rounded" or "pill" (the window is clipped to the shape).</summary>
     public void SetShape(string value)
     {
+        var changed = shape != (value is "rounded" or "pill" ? value : "rect");
         shape = value is "rounded" or "pill" ? value : "rect";
         ApplyEdgeFadeToCanvases();
         ApplyShapeRegion();
+        if (changed && IsHandleCreated && Visible) Reposition();   // the margin of a full-width bar changes with the shape
     }
 
     private void ApplyShapeRegion()
     {
+        var outline = shape == "rect" || split ? 0 : shape == "pill" ? Height / 2 : Math.Min(14, Height / 2);
+        if (canvas.OutlineRadius != outline) { canvas.OutlineRadius = outline; canvas.Invalidate(); }
         if (!IsHandleCreated) return;
         var old = Region;
         if (shape == "rect" || Width < 20 || Height < 10)
@@ -848,8 +852,15 @@ public sealed class TickerWindow : Form
                 break;
         }
 
+        // A rounded or pill bar that spans the whole screen would show its curves outside the screen: it floats with a margin instead.
+        if (ShapeInset > 0 && (position is TickerPosition.Top or TickerPosition.BottomTaskbar || TargetScreen is not null) && target.Width > 2 * ShapeInset + 200)
+            target = new Rectangle(target.Left + ShapeInset, target.Top, target.Width - 2 * ShapeInset, target.Height);
+
         if (Bounds != target) Bounds = target;
     }
+
+    /// <summary>Horizontal margin of a full-width bar that has a rounded or pill shape (0 for the plain rectangle).</summary>
+    private int ShapeInset => shape == "rect" ? 0 : 28;
 
     private void FollowTaskbarTick()
     {
@@ -924,8 +935,9 @@ public sealed class TickerWindow : Form
         var b = screen.Bounds;
         var visibleHeight = Native.GetVisibleBottomTaskbarHeight(b);
         var targetY = b.Bottom - visibleHeight - TickerHeight - AutoHideGap(visibleHeight);
-        if (Left != b.Left || Width != b.Width || Height != TickerHeight)
-            Bounds = new Rectangle(b.Left, Top, b.Width, TickerHeight);
+        var inset = ShapeInset;
+        if (Left != b.Left + inset || Width != b.Width - 2 * inset || Height != TickerHeight)
+            Bounds = new Rectangle(b.Left + inset, Top, b.Width - 2 * inset, TickerHeight);
 
         if (animToY != targetY)
         {

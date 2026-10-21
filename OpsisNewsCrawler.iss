@@ -9,7 +9,10 @@
 ; The wizard looks for Opsis (uninstall entry, default folders) and proposes the integrated install when it finds it.
 ; Test switches: /MODE=integrated | /MODE=separate (silent installs), /PLUGINROOT=<folder> (instead of %AppData%\Opsis\plugins).
 #define MyAppName "Opsis News Crawler"
-#define MyAppVersion "0.13.2"
+#define MyAppVersion "0.13.5"
+#ifndef BinDir
+#define BinDir "bin"
+#endif
 #define MyAppExe "OpsisNewsCrawler.exe"
 #define OpsisAppId "A9E8F765-1234-4567-89AB-CDEF01234567"
 #define PluginFolder "Opsis - Desktop Customization"
@@ -333,9 +336,9 @@ Name: "desktopicon"; Description: "{cm:DesktopShortcut}"; Flags: unchecked; Chec
 
 [Files]
 ; Separate install: the program (the plugin copy stays out, Opsis must not load a second crawler next to the stand-alone one)
-Source: "bin\*"; DestDir: "{app}"; Excludes: "plugins";Flags: recursesubdirs createallsubdirs ignoreversion; Check: IsSeparate
+Source: "{#BinDir}\*"; DestDir: "{app}"; Excludes: "plugins";Flags: recursesubdirs createallsubdirs ignoreversion; Check: IsSeparate
 ; Integrated install: only the plugin folder, into the folder Opsis scans ({app} is set to it on the wizard page)
-Source: "bin\plugins\{#PluginFolder}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion; Check: IsIntegrated
+Source: "{#BinDir}\plugins\{#PluginFolder}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion; Check: IsIntegrated
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"; Check: IsSeparate
