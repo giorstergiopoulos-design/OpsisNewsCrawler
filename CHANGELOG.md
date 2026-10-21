@@ -4,6 +4,9 @@ The complete history (all versions, in Greek and English) is also inside the pro
 Detailed notes per release: `docs/RELEASE-*.md` and the GitHub releases.
 
 ## Unreleased (after 0.13.5)
+- **MACD**: a panel under the chart (lines and histogram) and a third back-test strategy (MACD crossover).
+- **News mood** page in the market analysis: simple Greek/English word lists on the loaded headlines (negation aware), overall mood, per watched share and a list of the strongest headlines. A rough guide, not investment advice. 14 languages.
+- **The animated program icon** is shown in the header of the settings (own window and the page inside Opsis) and the title-bar icon of the settings window moves too, under the same condition as the tray icon.
 - **Updates follow the logic of GearWin's self-update**: a card with the current version, "Check now", "Download & install", "What's new" and a progress bar; a check at every start and every 12 hours (on by default, also for existing settings once; waits for the network), a tray notification once per version, a confirmation before anything is installed, only this repository's GitHub releases (https, exact path, exact file name), the SHA-256 that GitHub publishes for the setup (fallback: the .sha256 file; without either nothing runs automatically and the release page opens), a mismatch deletes the file, the hash is checked again right before the setup starts, the setup runs silently after the program has ended and the program opens again.
 - 8 new unit tests (85).
 
