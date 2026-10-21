@@ -3,7 +3,7 @@
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
 Detailed notes per release: `docs/RELEASE-*.md` and the GitHub releases.
 
-## Unreleased (after 0.13.1)
+## 0.13.2 — 2026-10-21
 - Bar styles (rectangle, rounded, pill) now really apply: the window shape was not set when the window was created later; the main, second and monitor bars have a style too (Bars → Placement). Desktop bar style as before.
 - Settings → Bars: the monitors card sits right under the main bar.
 - Energy prices work again: FRED now serves a bot-check page, so the EIA public history pages are the fallback.
