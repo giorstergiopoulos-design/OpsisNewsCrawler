@@ -251,6 +251,7 @@ public sealed class TickerHost : IDisposable
 
     public void ApplyConfig()
     {
+        YahooAccess.Enabled = Config.HistoryFromYahoo;
         if (!LanguageFollowsHost) Loc.SetLanguage(Config.Language);
         Theme.SetMode(Config.ThemeMode, Config.OpacityPercent / 100.0);
         UpdateHotkey();

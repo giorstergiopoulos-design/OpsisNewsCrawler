@@ -200,3 +200,5 @@ Build 0 errors / 0 warnings; `dotnet test` 56 passed (test project added to the 
 - ✅ Bollinger bands. ❌ Stooq (bot protection, not bypassed). ❌ Not built: MACD, news sentiment (greek-stocks-ai).
 
 - ✅ Round 22: all Loc.Pick / Loc.IsGreek strings moved into the language files (keys pk.*, weather.kind.*, menu.*, feed.*, alert.*) and translated into the 12 other languages; Help, Instructions and the newest history entries translated too. Left in English on purpose: older history entries, MIT licence, instrument/city/category names (data).
+
+- ✅ Round 23: Yahoo Finance catalogue (search + presets, 30 instruments, 15 min, 6 h stop). 5 new unit tests (77). Live test: 5 instruments in 5.7 s, the second call served from the cache. ❌ VPN/ESET not used (it would be a way around a possible block).

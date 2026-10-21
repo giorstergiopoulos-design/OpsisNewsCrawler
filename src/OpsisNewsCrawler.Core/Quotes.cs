@@ -19,7 +19,9 @@ public enum QuoteSource
     /// <summary>gold-api.com crypto spot prices: BTC, ETH (key = symbol). Free, no API key, real time.</summary>
     Crypto,
     /// <summary>Frankfurter (ECB reference rates): currency pairs, key = "EURUSD" (base+quote). Once a working day.</summary>
-    Currency
+    Currency,
+    /// <summary>Yahoo Finance (unofficial, opt-in): any share, index, currency, future or crypto it offers; key = Yahoo symbol. At most one request per instrument every 15 minutes.</summary>
+    Yahoo
 }
 
 /// <summary>One line of the watch list.</summary>
@@ -48,6 +50,7 @@ public sealed class QuoteInstrument
     public string DisplayName(bool greek) => greek ? NameEl : NameEn;
 
     /// <summary>The key under which the prices of this instrument are stored (Euronext shares of other markets: "MIC:ISIN").</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
     public string StoreKey => Source == QuoteSource.Euronext ? (Market ?? "") + ":" + Code : Code;
 
     /// <summary>Copies all instrument fields, including the market identifier used by Euronext.</summary>
@@ -763,7 +766,8 @@ public sealed class QuoteService
         providers = new()
         {
             new AthensDelayedFileProvider(store), new EuronextListProvider(store), new GoldApiMetalsProvider(store),
-            new GoldApiMetalsProvider(store, QuoteSource.Crypto), new FrankfurterFxProvider(), new FredEnergyProvider(store)
+            new GoldApiMetalsProvider(store, QuoteSource.Crypto), new FrankfurterFxProvider(), new FredEnergyProvider(store),
+            new YahooQuoteProvider(store)
         };
     }
 
@@ -787,7 +791,8 @@ public sealed class QuoteService
     {
         var enabled = watchlist.Where(i => i.Enabled).ToList();
         // What is fetched: what the bars show plus what only the portfolio needs (one download serves both, the providers cache by this list).
-        var fetchList = enabled.Concat(alsoNeeded ?? Enumerable.Empty<QuoteInstrument>()).GroupBy(KeyOf).Select(g => g.First()).ToList();
+        var fetchList = enabled.Concat(alsoNeeded ?? Enumerable.Empty<QuoteInstrument>()).GroupBy(KeyOf).Select(g => g.First())
+            .Where(i => i.Source != QuoteSource.Yahoo || YahooAccess.Enabled).ToList();   // Yahoo only when the user switched it on
         var answers = new Dictionary<QuoteSource, IReadOnlyList<MarketQuote>>();
         var failed = new List<QuoteSource>();
         var stale = new Dictionary<QuoteSource, DateTimeOffset>();
@@ -881,7 +886,8 @@ public sealed class QuoteService
         QuoteSource.Euronext => "Euronext",
         QuoteSource.Metals or QuoteSource.Crypto => "gold-api.com",
         QuoteSource.Currency => "ECB / Frankfurter",
-        QuoteSource.Energy => "Pyth / FRED",
+        QuoteSource.Energy => "EIA / FRED",
+        QuoteSource.Yahoo => "Yahoo Finance",
         _ => source.ToString()
     };
 
@@ -900,13 +906,15 @@ public sealed class QuoteService
             if (q.ChangeFromOpen) text += " " + Loc.T("q.sinceOpen");
         }
         // The 15-minute delay of the free Athens data is explained in the settings (Information), not on every price of the bar.
-        if (q.Delayed && inst.Source != QuoteSource.Athens)
+        if (inst.Source == QuoteSource.Yahoo)
+            text += "  · " + q.AsOf.ToLocalTime().ToString("dd/MM HH:mm", CultureInfo.InvariantCulture);
+        else if (q.Delayed && inst.Source != QuoteSource.Athens)
         {
             text += "  · " + (inst.Source == QuoteSource.Euronext
                 ? Loc.T("q.close", q.AsOf.ToString("dd/MM"))
                 : Loc.T("q.daily", q.AsOf.ToString("dd/MM")));
         }
-        var title = inst.Symbol.Length > 0 && inst.Source is QuoteSource.Athens or QuoteSource.Euronext or QuoteSource.Currency ? inst.Symbol : inst.DisplayName(greek);
+        var title = inst.Symbol.Length > 0 && inst.Source is QuoteSource.Athens or QuoteSource.Euronext or QuoteSource.Currency or QuoteSource.Yahoo ? inst.Symbol : inst.DisplayName(greek);
         return new NewsItem(text, "", title, q.AsOf, Summary: inst.DisplayName(greek), Kind: NewsItemKind.Quote, Trend: trend);
     }
 }

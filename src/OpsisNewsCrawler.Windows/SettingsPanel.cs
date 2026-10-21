@@ -55,6 +55,13 @@ public sealed class SettingsPanel : UserControl
     private FlatCheck miniOnTop = null!;
     private FlatCheck miniWhenHidden = null!;
     private FlatCheck yahooHistory = null!;
+    private FlatText yahooSearch = null!;
+    private FlatButton yahooSearchButton = null!, yahooAddButton = null!, yahooRemoveButton = null!;
+    private FlatList yahooHitList = null!;
+    private Label yahooStatus = null!;
+    private readonly List<FlatButton> yahooPresetButtons = new();
+    private List<YahooHit> yahooHits = new();
+    private Control yahooCatalog = null!;
     private FlatCombo miniShape = null!;
     private FlatCombo barShape = null!;
     private List<string> workCities = new();
@@ -1038,6 +1045,46 @@ public sealed class SettingsPanel : UserControl
         historyFlow.Controls.Add(Note(L("note.yahooHistory"), 700));
         historyCard.Controls.Add(historyFlow);
         flow.Controls.Add(historyCard);
+
+        // The Yahoo Finance catalogue: search any share, index, currency or commodity it offers, or add a ready-made group.
+        var catalog = new FlatCard(L("card.yahooCatalog"));
+        var catalogFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        catalogFlow.Controls.Add(Note(L("yahoo.note"), 700));
+        yahooSearch = new FlatText { Width = 380 };
+        yahooSearchButton = new FlatButton { Text = L("btn.yahooSearch") };
+        yahooSearchButton.SetPrimary(true);
+        var searchRow2 = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
+        searchRow2.Controls.Add(yahooSearch);
+        searchRow2.Controls.Add(yahooSearchButton);
+        catalogFlow.Controls.Add(searchRow2);
+        yahooHitList = new FlatList { Width = 740, Height = 30 * 6 + 4 };
+        yahooHitList.SetShowChecks(true);
+        catalogFlow.Controls.Add(yahooHitList);
+        yahooAddButton = new FlatButton { Text = L("btn.yahooAdd") };
+        yahooRemoveButton = new FlatButton { Text = L("btn.yahooRemove") };
+        var buttonRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = true, MaximumSize = new Size(740, 0) };
+        buttonRow.Controls.Add(yahooAddButton);
+        foreach (var group in YahooPresets.All)
+        {
+            var presetButton = new FlatButton { Text = L("yahoo.preset." + group.Key) };
+            var g = group;
+            presetButton.Click += (_, _) => AddYahoo(g.Items.Select(i => (i.Symbol, i.NameEl, i.NameEn)));
+            yahooPresetButtons.Add(presetButton);
+            buttonRow.Controls.Add(presetButton);
+        }
+        buttonRow.Controls.Add(yahooRemoveButton);
+        catalogFlow.Controls.Add(buttonRow);
+        yahooStatus = new Label { AutoSize = true, Tag = "muted", MaximumSize = new Size(700, 0), Margin = new Padding(0, 6, 0, 0), UseMnemonic = false };
+        catalogFlow.Controls.Add(yahooStatus);
+        catalog.Controls.Add(catalogFlow);
+        flow.Controls.Add(catalog);
+        yahooCatalog = catalog;
+        yahooSearchButton.Click += async (_, _) => await RunYahooSearchAsync();
+        yahooAddButton.Click += (_, _) =>
+            AddYahoo(Enumerable.Range(0, yahooHits.Count).Where(i => yahooHitList.GetChecked(i)).Select(i => (yahooHits[i].Symbol, yahooHits[i].Name, yahooHits[i].Name)));
+        yahooRemoveButton.Click += (_, _) => RemoveSelectedYahoo();
+        yahooHistory.CheckedChanged += (_, _) => UpdateYahooUi();
+        UpdateYahooUi();
         flow.Controls.Add(Note(L("note.markets"), 700));
         flow.Controls.Add(Note(Loc.T("pk.data.limits.athens.prices"), 700));
 
@@ -1078,7 +1125,7 @@ public sealed class SettingsPanel : UserControl
         stockSearch.TextValueChanged += (_, _) => ShowStocks();
         stockList.ItemChecked += (index, isChecked) => ToggleStock(index, isChecked);
 
-        foreach (var (source, titleKey) in new[] { (QuoteSource.Metals, "card.metals"), (QuoteSource.Crypto, "card.crypto"), (QuoteSource.Currency, "card.currency"), (QuoteSource.Energy, "card.energy") })
+        foreach (var (source, titleKey) in new[] { (QuoteSource.Metals, "card.metals"), (QuoteSource.Crypto, "card.crypto"), (QuoteSource.Currency, "card.currency"), (QuoteSource.Energy, "card.energy"), (QuoteSource.Yahoo, "card.yahoo") })
         {
             var small = new FlatCard(L(titleKey));
             var list = new FlatList { Width = 640, Height = 30 * 5 + 4 };
@@ -1191,6 +1238,7 @@ public sealed class SettingsPanel : UserControl
         QuoteSource.Crypto => Loc.T("pk.crypto.gold.api.com"),
         QuoteSource.Currency => Loc.T("pk.currencies.ecb.once.a"),
         QuoteSource.Energy => Loc.T("pk.energy.pyth.fred.fallback"),
+        QuoteSource.Yahoo => "Yahoo Finance",
         _ => source.ToString()
     };
 
@@ -1526,6 +1574,7 @@ public sealed class SettingsPanel : UserControl
             toggleHotkey.Checked = c.ToggleHotkey;
             autoUpdate.Checked = c.CheckForUpdates;
             yahooHistory.Checked = c.HistoryFromYahoo;
+            UpdateYahooUi();
             workCities = c.WeatherCities.ToList();
             ShowCities();
             miniWeather.Checked = c.MiniWeatherEnabled;
@@ -1717,6 +1766,72 @@ public sealed class SettingsPanel : UserControl
         category.SelectSilently(index);
         if (categoryList.Items.Count > 0) categoryList.SelectedIndex = index;
         foreach (var picker in AllPickers()) picker.SetChoices(workCategories);
+    }
+
+    private void UpdateYahooUi()
+    {
+        var on = yahooHistory.Checked;
+        foreach (var c in new Control[] { yahooSearch, yahooSearchButton, yahooAddButton, yahooRemoveButton, yahooHitList }.Concat(yahooPresetButtons)) c.Enabled = on;
+        if (!on) yahooStatus.Text = L("yahoo.off");
+        else if (yahooStatus.Text == L("yahoo.off")) yahooStatus.Text = "";
+    }
+
+    private async Task RunYahooSearchAsync()
+    {
+        var query = yahooSearch.Value.Trim();
+        if (query.Length < 2 || !yahooHistory.Checked) return;
+        // the switch is applied with the other settings; a search needs it now
+        YahooAccess.Enabled = true;
+        yahooSearchButton.Enabled = false;
+        yahooStatus.Text = Loc.T("pk.testing");
+        try
+        {
+            yahooHits = (await YahooSearch.SearchAsync(query, CancellationToken.None)).ToList();
+            yahooHitList.ClearRows();
+            foreach (var h in yahooHits) yahooHitList.AddRow($"{h.Symbol}  —  {h.Name}   ({h.Type}, {h.Exchange})", false);
+            yahooStatus.Text = yahooHits.Count == 0 ? L("yahoo.none") : Loc.T("yahoo.found", yahooHits.Count);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            yahooStatus.Text = Loc.T("yahoo.error", ex.Message);
+        }
+        finally
+        {
+            if (!IsDisposed) { yahooSearchButton.Enabled = yahooHistory.Checked; YahooAccess.Enabled = host.Config.HistoryFromYahoo; }
+        }
+    }
+
+    /// <summary>Adds Yahoo instruments to the watch list (shown on the bars); at most <see cref="YahooAccess.MaxInstruments"/> of them.</summary>
+    private void AddYahoo(IEnumerable<(string Symbol, string NameEl, string NameEn)> items)
+    {
+        var added = 0;
+        foreach (var (symbol, el, en) in items)
+        {
+            if (workWatch.Any(w => w.Source == QuoteSource.Yahoo && string.Equals(w.Code, symbol, StringComparison.OrdinalIgnoreCase))) continue;
+            if (workWatch.Count(w => w.Source == QuoteSource.Yahoo) >= YahooAccess.MaxInstruments)
+            {
+                yahooStatus.Text = Loc.T("yahoo.limit", YahooAccess.MaxInstruments);
+                break;
+            }
+            workWatch.Add(new QuoteInstrument(QuoteSource.Yahoo, symbol, symbol, el, en, ""));
+            added++;
+        }
+        if (added > 0)
+        {
+            RebuildWatchLists();
+            MarkDirty();
+            yahooStatus.Text = Loc.T("yahoo.added", added);
+        }
+    }
+
+    private void RemoveSelectedYahoo()
+    {
+        if (!watchLists.TryGetValue(QuoteSource.Yahoo, out var list) || list.SelectedIndex < 0) return;
+        var items = workWatch.Where(i => i.Source == QuoteSource.Yahoo).ToList();
+        if (list.SelectedIndex >= items.Count) return;
+        workWatch.Remove(items[list.SelectedIndex]);
+        RebuildWatchLists();
+        MarkDirty();
     }
 
     private void RebuildWatchLists()

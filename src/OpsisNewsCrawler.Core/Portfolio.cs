@@ -32,6 +32,7 @@ public sealed class PortfolioPosition
     };
 
     /// <summary>The key under which the stored prices of this holding are kept (same as <see cref="QuoteInstrument.StoreKey"/>).</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
     public string StoreKey => Source == QuoteSource.Euronext ? (Market ?? "") + ":" + Code : Code;
 
     public string Key => $"{Source}|{(Market ?? "").ToUpperInvariant()}|{Code.ToUpperInvariant()}";

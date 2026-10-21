@@ -18,6 +18,7 @@ public static class YahooSymbols
         if (symbol.Length == 0) return null;
         switch (i.Source)
         {
+            case QuoteSource.Yahoo: return i.Code;
             case QuoteSource.Athens: return symbol + ".AT";
             case QuoteSource.Euronext:
                 var suffix = (i.Market ?? "").ToUpperInvariant() switch
@@ -38,17 +39,46 @@ public static class YahooSymbols
     }
 }
 
+internal sealed record YahooSnapshot(decimal Price, decimal? PreviousClose, DateTimeOffset At, string Currency, string Type, string? Name, List<Candle> Candles);
+
 public static class YahooHistory
 {
     private const string Url = "https://query1.finance.yahoo.com/v8/finance/chart/{0}?range=6mo&interval=1d";
+    internal const string ChartUrl = Url;
 
-    private static readonly HttpClient Http = Create();
+    internal static readonly HttpClient Http = Create();
 
     private static HttpClient Create()
     {
         var c = new HttpClient { Timeout = TimeSpan.FromSeconds(30), MaxResponseContentBufferSize = 4 * 1024 * 1024 };
         c.DefaultRequestHeaders.UserAgent.ParseAdd("OpsisNewsCrawler/0.13 (+https://github.com/giorstergiopoulos-design/OpsisNewsCrawler)");
         return c;
+    }
+
+    /// <summary>The latest price, previous close, time, currency and type of a chart answer, with its daily candles; null when there is no price.</summary>
+    internal static YahooSnapshot? ParseSnapshot(string json)
+    {
+        try
+        {
+            var candles = Parse(json);
+            using var doc = JsonDocument.Parse(json);
+            var meta = doc.RootElement.GetProperty("chart").GetProperty("result")[0].GetProperty("meta");
+            decimal? Num(string name) => meta.TryGetProperty(name, out var e) && e.ValueKind == JsonValueKind.Number && e.TryGetDecimal(out var d) && d > 0 ? Math.Round(d, 4) : null;
+            var price = Num("regularMarketPrice") ?? (candles.Count > 0 ? candles[^1].Close : null);
+            if (price is null) return null;
+            var at = meta.TryGetProperty("regularMarketTime", out var t) && t.TryGetInt64(out var secs) ? DateTimeOffset.FromUnixTimeSeconds(secs) : DateTimeOffset.UtcNow;
+            var offset = meta.TryGetProperty("gmtoffset", out var g) && g.TryGetInt32(out var o) ? o : 0;
+            var quoteDay = at.AddSeconds(offset).UtcDateTime.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+            var earlier = candles.LastOrDefault(c => string.CompareOrdinal(c.Day, quoteDay) < 0);
+            decimal? previous = earlier.Day is not null ? earlier.Close : Num("chartPreviousClose") ?? Num("previousClose");
+            string Text(string name) => meta.TryGetProperty(name, out var e) && e.ValueKind == JsonValueKind.String ? e.GetString() ?? "" : "";
+            var name = Text("longName").Length > 0 ? Text("longName") : Text("shortName");
+            return new YahooSnapshot(price.Value, previous, at, Text("currency"), Text("instrumentType"), name.Length > 0 ? name : null, candles);
+        }
+        catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException or IndexOutOfRangeException)
+        {
+            return null;
+        }
     }
 
     /// <summary>Parses the chart JSON into daily candles (days without a full set of prices are skipped).</summary>

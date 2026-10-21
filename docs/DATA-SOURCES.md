@@ -75,3 +75,7 @@ Other keyless prices added the same day: gold-api.com (BTC, ETH), Frankfurter/EC
 
 ## Added 2026-10-21 (after 0.13.1)
 - FRED `fredgraph.csv` now answers with an HTML bot-check page (seen 2026-10-21): the energy prices (Brent, WTI, Henry Hub) were empty. Fallback: the U.S. EIA public history pages `eia.gov/dnav/pet/hist/RBRTED.htm`, `RWTCD.htm`, `eia.gov/dnav/ng/hist/rngwhhdD.htm` (US government data; robots.txt allows `/dnav`; one row per week, newest prices a few days old). Parsed by `EiaDaily`; live check: Brent 126.55, WTI 101.91, gas 3.22 (as of 2026-10-14). FRED is still tried first.
+
+## Yahoo Finance catalogue (after 0.13.2)
+- `YahooQuoteProvider` (`QuoteSource.Yahoo`, code = Yahoo symbol) uses the same chart address as the history (`v8/finance/chart/{symbol}?range=6mo&interval=1d`: one answer gives price, previous close, name, currency and 6 months of candles) and `YahooSearch` uses `v1/finance/search` (one request per button press). Tested 2026-10-21: GD.AT (Athens General Index), ^GSPC, ^GDAXI, EURUSD=X, BZ=F, AAPL; search "hellenic telecom" gives HTO.AT. All answer without key, cookie or crumb.
+- Opt-in only (`AppConfig.HistoryFromYahoo`, off by default), unofficial, at the user's own risk (Yahoo's terms do not allow automated use). Limits in `YahooAccess`: 30 instruments, 15 minutes per instrument (cache), 0.9-1.6 s between requests, honest User-Agent, no cookies, 6-hour stop at 401/403/429. A VPN or any other way around a block is NOT part of the program.

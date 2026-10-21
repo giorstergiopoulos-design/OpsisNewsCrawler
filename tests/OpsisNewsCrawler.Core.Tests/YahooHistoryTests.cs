@@ -77,3 +77,54 @@ public class YahooHistoryTests
         }
     }
 }
+
+public class YahooCatalogTests
+{
+    private const string Chart = """
+    {"chart":{"result":[{"meta":{"currency":"USD","instrumentType":"INDEX","regularMarketPrice":7761.15,"regularMarketTime":1792587600,"chartPreviousClose":7718.94,"gmtoffset":-14400,"longName":"S&P 500"},
+    "timestamp":[1792400000,1792486400,1792572800],
+    "indicators":{"quote":[{"open":[7700,7710,7740],"high":[7730,7750,7770],"low":[7690,7700,7730],"close":[7710,7718.94,7761.15],"volume":[1,2,3]}]}}]}}
+    """;
+
+    [Fact]
+    public void ParseSnapshot_ReadsPriceNameTypeAndPreviousClose()
+    {
+        var s = YahooHistory.ParseSnapshot(Chart)!;
+        Assert.Equal(7761.15m, s.Price);
+        Assert.Equal("INDEX", s.Type);
+        Assert.Equal("USD", s.Currency);
+        Assert.Equal("S&P 500", s.Name);
+        Assert.Equal(3, s.Candles.Count);
+        Assert.Equal(7718.94m, s.PreviousClose);
+    }
+
+    [Fact]
+    public void ParseSnapshot_Garbage_IsNull() => Assert.Null(YahooHistory.ParseSnapshot("<html/>"));
+
+    [Fact]
+    public void ParseHits_KeepsOnlyUsableInstrumentTypes()
+    {
+        var json = """{"quotes":[{"symbol":"AAPL","longname":"Apple Inc.","quoteType":"EQUITY","exchDisp":"NASDAQ"},{"symbol":"^GSPC","shortname":"S&P 500","quoteType":"INDEX","exchange":"SNP"},{"symbol":"X","quoteType":"OPTION"}]}""";
+        var hits = YahooSearch.ParseHits(json);
+        Assert.Equal(2, hits.Count);
+        Assert.Equal("Apple Inc.", hits[0].Name);
+        Assert.Equal("S&P 500", hits[1].Name);
+    }
+
+    [Fact]
+    public async Task Provider_DoesNothingWhileTheSwitchIsOff()
+    {
+        YahooAccess.Enabled = false;
+        var path = Path.Combine(Path.GetTempPath(), "yq-" + Guid.NewGuid().ToString("N") + ".json");
+        var provider = new YahooQuoteProvider(new QuoteStore(path));
+        var inst = new QuoteInstrument(QuoteSource.Yahoo, "^GSPC", "^GSPC", "", "", "");
+        Assert.Empty(await provider.FetchAsync(new[] { inst }, CancellationToken.None));
+    }
+
+    [Fact]
+    public void Presets_HaveFourGroupsWithinTheLimit()
+    {
+        Assert.Equal(4, YahooPresets.All.Count);
+        Assert.True(YahooPresets.All.Sum(g => g.Items.Count) <= YahooAccess.MaxInstruments);
+    }
+}
