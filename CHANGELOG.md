@@ -3,7 +3,7 @@
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
 Detailed notes per release: `docs/RELEASE-*.md` and the GitHub releases.
 
-## Unreleased (after 0.13.5)
+## 0.13.8 — 2026-10-21
 - **MACD**: a panel under the chart (lines and histogram) and a third back-test strategy (MACD crossover).
 - **News mood** page in the market analysis: simple Greek/English word lists on the loaded headlines (negation aware), overall mood, per watched share and a list of the strongest headlines. A rough guide, not investment advice. 14 languages.
 - **The animated program icon** is shown in the header of the settings (own window and the page inside Opsis) and the title-bar icon of the settings window moves too, under the same condition as the tray icon.
