@@ -1186,6 +1186,7 @@ public sealed class TickerHost : IDisposable
         w.SetBarColor(Config.BarColorMode, Config.BarCustomColor);
         w.SetBarHeight(Config.MiniWeatherHeight);
         w.SetDesktopLayer(!Config.MiniWeatherOnTop);
+        w.SetShape(Config.DesktopBarShape);
         w.SetCustomBounds(GetMiniWeatherBounds());
         w.SetPosition(TickerPosition.Custom);
         PushTo(w, miniState, Config.MiniSlots());

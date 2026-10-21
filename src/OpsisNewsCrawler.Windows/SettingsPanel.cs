@@ -54,6 +54,7 @@ public sealed class SettingsPanel : UserControl
     private FlatButton miniMove = null!;
     private FlatCheck miniOnTop = null!;
     private FlatCheck miniWhenHidden = null!;
+    private FlatCombo miniShape = null!;
     private List<string> workCities = new();
     private List<GreekCity> shownCities = new();
     private FlatCheck barsEnabled = null!;
@@ -209,7 +210,14 @@ public sealed class SettingsPanel : UserControl
     // ---- preview of the bars ----------------------------------------------------------------
 
     /// <summary>Sub-pages of the Settings tab whose choices change how a bar looks: Bars, Position, Look, Breaking.</summary>
-    private static readonly int[] PreviewSubs = { 1, 3, 4 };
+    private static readonly int[] PreviewSubs = { 1, 2, 3 };
+
+    /// <summary>The desktop bar's place and size as fractions of the primary screen (for the preview).</summary>
+    private RectangleF DesktopRelative()
+    {
+        var b = (Screen.PrimaryScreen ?? Screen.AllScreens[0]).Bounds;
+        return new RectangleF((miniX.Value - b.Left) / (float)b.Width, (miniY.Value - b.Top) / (float)b.Height, miniW.Value / (float)b.Width, miniH.Value / (float)b.Height);
+    }
 
     private void UpdatePreview()
     {
@@ -225,7 +233,8 @@ public sealed class SettingsPanel : UserControl
             barColor.SelectedIndex switch { 1 => "lightblue", 2 => "accent", 3 => "custom", _ => "theme" }, barSwatch.Rgb,
             taskbarColor.SelectedIndex switch { 1 => "lightblue", 2 => "accent", 3 => "custom", _ => "taskbar" }, taskbarSwatch.Rgb,
             barBackdrop.SelectedIndex switch { 1 => "blur", 2 => "gradient", _ => "acrylic" },
-            taskbarBackdrop.SelectedIndex switch { 0 => "acrylic", 2 => "gradient", _ => "blur" }));
+            taskbarBackdrop.SelectedIndex switch { 0 => "acrylic", 2 => "gradient", _ => "blur" },
+            miniWeather.Checked, miniPicker.Get(), DesktopRelative(), miniShape.SelectedIndex switch { 1 => "rounded", 2 => "pill", _ => "rect" }));
     }
 
     // ---- building ------------------------------------------------------------------------
@@ -252,11 +261,11 @@ public sealed class SettingsPanel : UserControl
         // One navigation rail: three groups (Settings, Sources, Information), every page under its group.
         AddGroup(Loc.Pick("Ρυθμίσεις", "Settings"),
             (Loc.Pick("Γενικά", "General"), BuildGeneral()),
-            // Bars and Position are one page now: the bars first, where they sit below.
+            // Every bar setting is on one page: placement, what each bar shows, the desktop bar.
             (L("tab.bars"), Combine(
                 (Loc.Pick("Θέση και συμπεριφορά|Πού εμφανίζεται η μπάρα και πώς ακολουθεί τη γραμμή εργασιών.", "Placement and behaviour|Where the bar appears and how it follows the taskbar."), BuildPosition()),
-                (Loc.Pick("Τι δείχνει κάθε μπάρα|Περιεχόμενο της κύριας μπάρας, της δεύτερης και των άλλων οθονών.", "What each bar shows|The content of the main bar, the second bar and the bars of the other monitors."), BuildBars()))),
-            (Loc.Pick("Μπάρα επιφάνειας εργασίας", "Desktop bar"), BuildDesktopBar()),
+                (Loc.Pick("Τι δείχνει κάθε μπάρα|Περιεχόμενο της κύριας μπάρας, της δεύτερης και των άλλων οθονών.", "What each bar shows|The content of the main bar, the second bar and the bars of the other monitors."), BuildBars()),
+                (Loc.Pick("Μπάρα επιφάνειας εργασίας|Μια ελεύθερη μπάρα στην επιφάνεια: περιεχόμενο, θέση και μέγεθος.", "Desktop bar|A free bar on the desktop: content, position and size."), BuildDesktopBar()))),
             (L("tab.look"), BuildLook()),
             (L("tab.breaking"), BuildBreaking()));
         AddGroup(L("tab.sources"),
@@ -803,6 +812,9 @@ public sealed class SettingsPanel : UserControl
         };
         miniOnTop = new FlatCheck { Text = L("chk.miniOnTop") };
         miniFlow.Controls.Add(miniOnTop);
+        miniShape = new FlatCombo { Width = 300 };
+        miniShape.SetItems(new[] { L("shape.rect"), L("shape.rounded"), L("shape.pill") }, 0);
+        miniFlow.Controls.Add(Row(L("lbl.miniShape"), miniShape, 200));
         miniWhenHidden = new FlatCheck { Text = L("chk.miniWhenHidden") };
         miniFlow.Controls.Add(miniWhenHidden);
         miniFlow.Controls.Add(Note(Loc.Pick("Μια ελεύθερη μπάρα πάνω στην επιφάνεια εργασίας: διάλεξε τι δείχνει (καιρός, αγορές ή ειδήσεις), πάτα «Μετακίνηση με το ποντίκι» και ο δείκτης πηγαίνει πάνω της για να τη σύρεις όπου θέλεις· από τις άκρες αλλάζει το πλάτος.", "A free bar on the desktop: choose what it shows (weather, markets or news), press \"Move with the mouse\" and the pointer jumps onto it so you can drag it anywhere; the ends change its width."), 600));
@@ -1505,6 +1517,7 @@ public sealed class SettingsPanel : UserControl
             LoadMiniBounds();
             miniOnTop.Checked = c.MiniWeatherOnTop;
             miniWhenHidden.Checked = c.MiniWhenTaskbarHidden;
+            miniShape.SelectSilently(c.DesktopBarShape switch { "rounded" => 1, "pill" => 2, _ => 0 });
 
             mainPicker.Set(c.MainSlots());
             miniPicker.Set(c.MiniSlots());
@@ -1733,6 +1746,7 @@ public sealed class SettingsPanel : UserControl
         else { c.MiniWeatherX = miniX.Value; c.MiniWeatherY = miniY.Value; }
         c.MiniWeatherOnTop = miniOnTop.Checked;
         c.MiniWhenTaskbarHidden = miniWhenHidden.Checked;
+        c.DesktopBarShape = miniShape.SelectedIndex switch { 1 => "rounded", 2 => "pill", _ => "rect" };
 
         var mainSlots = mainPicker.Get();
         c.MainSlotA = mainSlots.A.ToSpec();

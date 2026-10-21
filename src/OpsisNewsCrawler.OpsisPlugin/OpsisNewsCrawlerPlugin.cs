@@ -91,8 +91,10 @@ public sealed class OpsisNewsCrawlerPlugin : IOpsisNewsCrawlerPlugin
         new PluginMenuItem("news.separator", "", "", () => { }, IsSeparator: true),
         new PluginMenuItem("news.settings", "News Crawler — Ρυθμίσεις", "News Crawler — Settings", () => NavigationRequested?.Invoke(NavigationKey)),
         new PluginMenuItem("news.refresh", "News Crawler — Ανανέωση", "News Crawler — Refresh", Refresh),
-        new PluginMenuItem("news.pause", "News Crawler — Παύση", "News Crawler — Pause", Pause),
-        new PluginMenuItem("news.resume", "News Crawler — Συνέχεια", "News Crawler — Resume", Resume),
+        new PluginMenuItem("news.pause", "News Crawler — Παύση / Συνέχεια", "News Crawler — Pause / Resume", () =>
+        {
+            if (_controller.Host.Paused) Resume(); else Pause();
+        }),
         new PluginMenuItem("news.close", "News Crawler — Κλείσιμο", "News Crawler — Close", CloseCrawler),
         new PluginMenuItem("news.open", "News Crawler — Άνοιγμα", "News Crawler — Open", OpenCrawler),
     };

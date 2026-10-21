@@ -29,6 +29,11 @@
 | 🧩 Plugin | Ενσωματωμένη εγκατάσταση στο Opsis (δική του σελίδα, χρώματα και γλώσσα του Opsis) ή αυτόνομη εφαρμογή |
 | 🌍 14 γλώσσες | Ελληνικά, English, Deutsch, Français, Español, Italiano, Português, Русский, Türkçe, 日本語, 한국어, 简体中文, العربية (με δεξιά-προς-αριστερά διάταξη), हिन्दी |
 
+**Νέο στην 0.13.0:** παράθυρο **Ανάλυσης αγορών** (γράφημα κεριών με SMA20/50, δοκιμή στρατηγικής SMA/RSI,
+δείκτης φόβου και απληστίας από τις αποθηκευμένες τιμές, προαιρετικός βοηθός με το δικό σας κλειδί Anthropic), νέο παράθυρο
+ρυθμίσεων με πλευρική πλοήγηση και όλες τις ρυθμίσεις μπαρών στη σελίδα «Μπάρες», στυλ μπάρας επιφάνειας (ορθογώνιο, στρογγυλεμένο,
+**pill**), νέα προεπισκόπηση, ένα στοιχείο Παύση/Συνέχεια στο tray (και Κλείσιμο/Άνοιγμα στο μενού του Opsis).
+
 Επίσης: κινούμενο εικονίδιο στην περιοχή ειδοποιήσεων (εφημερίδα, μπάλα, ασπίδα, γράφημα με νομίσματα να περνούν από
 δεξιά προς αριστερά), «Για αργότερα» με Ctrl+κλικ, αυτόματος έλεγχος ενημερώσεων (προαιρετικός, με επαλήθευση SHA-256),
 σελίδα **Εξαρτήσεων** (.NET 10 Desktop Runtime, WebView2) και στον installer, εξαγωγή/εισαγωγή ρυθμίσεων.
@@ -47,6 +52,14 @@
 <tr>
 <td><img src="docs/screenshots/el/08-weather.png" width="400"/><br/><sub>Καιρός</sub></td>
 <td><img src="docs/screenshots/el/14-dependencies.png" width="400"/><br/><sub>Εξαρτήσεις</sub></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/el/15-analysis-candles.png" width="400"/><br/><sub>Ανάλυση: κεριά (παραδειγματικά δεδομένα)</sub></td>
+<td><img src="docs/screenshots/el/16-analysis-backtest.png" width="400"/><br/><sub>Ανάλυση: δοκιμή στρατηγικής</sub></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/el/17-analysis-fear-greed.png" width="400"/><br/><sub>Ανάλυση: φόβος και απληστία</sub></td>
+<td></td>
 </tr>
 </table>
 
@@ -118,6 +131,11 @@ Frankfurter/ΕΚΤ, FRED/EIA. Καιρός: [Open-Meteo.com](https://open-meteo.
 | 🧩 Plugin | Integrated into Opsis (its own page, Opsis colours and language) or a stand-alone app |
 | 🌍 14 languages | Greek, English, German, French, Spanish, Italian, Portuguese, Russian, Turkish, Japanese, Korean, Simplified Chinese, Arabic (with right-to-left layout), Hindi |
 
+**New in 0.13.0:** a **Market analysis** window (candlestick chart with SMA20/50, SMA/RSI back-test, a fear & greed gauge from the
+stored prices, an optional assistant with your own Anthropic key), a new settings window with side navigation and every bar setting on
+the "Bars" page, desktop-bar styles (rectangle, rounded, **pill**), a new preview, a single Pause/Resume item in the tray (and
+Close/Open in the Opsis menu).
+
 Also: an animated notification-area icon (newspaper, ball, shield, chart with coins passing from right to left), "Read later"
 with Ctrl+click, an optional update check (SHA-256 verified), a **Dependencies** page (.NET 10 Desktop Runtime, WebView2) in the
 settings and in the installer, settings export/import.
@@ -136,6 +154,14 @@ settings and in the installer, settings export/import.
 <tr>
 <td><img src="docs/screenshots/en/08-weather.png" width="400"/><br/><sub>Weather</sub></td>
 <td><img src="docs/screenshots/en/14-dependencies.png" width="400"/><br/><sub>Dependencies</sub></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/en/15-analysis-candles.png" width="400"/><br/><sub>Analysis: candles (example data)</sub></td>
+<td><img src="docs/screenshots/en/16-analysis-backtest.png" width="400"/><br/><sub>Analysis: back-test</sub></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/en/17-analysis-fear-greed.png" width="400"/><br/><sub>Analysis: fear &amp; greed</sub></td>
+<td></td>
 </tr>
 </table>
 

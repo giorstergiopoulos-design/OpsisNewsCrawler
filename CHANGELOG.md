@@ -3,6 +3,13 @@
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
 Detailed notes per release: `docs/RELEASE-*.md` and the GitHub releases.
 
+## 0.13.0 — 2026-10-21
+- **Market analysis window**: candlestick chart (SMA20/50, hover figures; exact open/high/low/close for Athens shares from the trade file), back-test (SMA crossover, RSI), fear & greed gauge computed from the stored prices, and an optional assistant using the user's own Anthropic key (encrypted for the Windows account, not exported, nothing sent until Send).
+- **Settings window**: one left navigation rail instead of two rows of buttons; the Bars page now holds every bar setting in clear sections (placement, what each bar shows, desktop bar).
+- Desktop bar styles (rectangle, rounded, pill); the bar preview is now a miniature screen plus readable close-ups of every bar.
+- Tray icon: one Pause/Resume item; the Opsis tray menu gets Close and Open for the crawler.
+- Prices are stored as daily candles (`quotes-cache-ohlc.json`); 8 new unit tests (64 in all).
+
 ## 0.12.8 — 2026-10-20
 - While an auto-hiding taskbar (and the bar inside it) is hidden, the desktop bar appears at the place and size the user chose (option in Bars, on by default, 14 languages). Tested with the Windows auto-hide switched on and off again.
 - MotionDesk → Opsis rename finished in the plugin folder: the installer removes old `OpsisNewsCrawler.MotionDeskPlugin.*` files and the release script refuses any MotionDesk-named file in the payload.

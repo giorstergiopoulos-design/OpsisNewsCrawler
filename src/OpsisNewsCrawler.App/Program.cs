@@ -130,11 +130,10 @@ internal static class Program
         var menuAnalysis = menu.Items.Add(Loc.T("tray.analysis"), null, (_, _) => host.ShowAnalysis());
         var menuSettings = menu.Items.Add(Loc.T("tray.settings"), null, (_, _) => settings.ShowSettings());
         var menuRefresh = menu.Items.Add(Loc.T("tray.refresh"), null, (_, _) => host.Refresh());
-        var menuPause = menu.Items.Add(Loc.T("tray.pause"), null, (_, _) => host.Pause());
-        var menuResume = menu.Items.Add(Loc.T("tray.resume"), null, (_, _) => host.Resume());
-        void UpdatePauseItems() { menuPause.Enabled = !host.Paused; menuResume.Enabled = host.Paused; }
-        host.PausedChanged += UpdatePauseItems;
-        UpdatePauseItems();
+        // One item that switches between Pause and Resume.
+        var menuPause = menu.Items.Add(Loc.T("tray.pause"), null, (_, _) => { if (host.Paused) host.Resume(); else host.Pause(); });
+        void UpdatePauseItem() => menuPause.Text = Loc.T(host.Paused ? "tray.resume" : "tray.pause");
+        host.PausedChanged += UpdatePauseItem;
         menu.Items.Add(new ToolStripSeparator());
         var menuExit = menu.Items.Add(Loc.T("tray.exit"), null, (_, _) =>
         {
@@ -150,8 +149,7 @@ internal static class Program
             menuAnalysis.Text = Loc.T("tray.analysis");
             menuSettings.Text = Loc.T("tray.settings");
             menuRefresh.Text = Loc.T("tray.refresh");
-            menuPause.Text = Loc.T("tray.pause");
-            menuResume.Text = Loc.T("tray.resume");
+            UpdatePauseItem();
             snoozeMenu.Text = Loc.IsGreek ? "Απόκρυψη προσωρινά" : "Snooze bars";
             snooze15.Text = Loc.IsGreek ? "Για 15 λεπτά" : "For 15 minutes";
             snooze60.Text = Loc.IsGreek ? "Για 60 λεπτά" : "For 60 minutes";

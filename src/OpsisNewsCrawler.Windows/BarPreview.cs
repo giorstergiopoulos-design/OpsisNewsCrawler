@@ -9,7 +9,8 @@ internal sealed record BarPreviewState(
     TickerPosition Position, BarSlots Main, bool SecondEnabled, BarSlots Second,
     bool Dark, int OpacityPercent, bool EdgeFade,
     string BarColorMode, int BarCustom, string TaskbarColorMode, int TaskbarCustom,
-    string BarBackdrop, string TaskbarBackdrop);
+    string BarBackdrop, string TaskbarBackdrop,
+    bool DesktopEnabled = false, BarSlots? Desktop = null, RectangleF DesktopRect = default, string DesktopShape = "rect");
 
 /// <summary>
 /// A small mock desktop (wallpaper, taskbar with a few apps and the tray) with the bars drawn on it the way the choices
@@ -18,14 +19,17 @@ internal sealed record BarPreviewState(
 /// </summary>
 internal sealed class BarPreview : Control
 {
-    private const int TaskbarHeight = 30;
-    private const int StripHeight = 24;
+    // The miniature desktop is drawn small: its taskbar and bars are exaggerated so they stay visible and the text is only dashes;
+    // the close-ups next to it show the real look of every bar at a readable size.
+    private int taskbarHeight = 30;
+    private int stripHeight = 24;
+    private bool compact;
     private BarPreviewState? state;
 
     public BarPreview()
     {
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
-        Height = 128;
+        Height = 184;
     }
 
     public void SetState(BarPreviewState next)
@@ -43,22 +47,74 @@ internal sealed class BarPreview : Control
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
 
-        var title = Loc.T("preview.title");
         using (var titleFont = new Font("Segoe UI Semibold", 8.5f))
-        using (var muted = new SolidBrush(Theme.Accent))
-            g.DrawString(Loc.Upper(title), titleFont, muted, 4, 2);
+        using (var accent = new SolidBrush(Theme.Accent))
+            g.DrawString(Loc.Upper(Loc.T("preview.title")), titleFont, accent, 14, 4);
 
-        var desk = new Rectangle(0, 20, Width - 1, Height - 21);
-        using (var path = Round(desk, 10))
+        // Left: the whole screen, 16:9, with every bar where it would be.
+        var monitorHeight = Height - 40;
+        var screen = new Rectangle(14, 24, monitorHeight * 16 / 9, monitorHeight);
+        taskbarHeight = 14; stripHeight = 11; compact = true;
+        using (var path = Round(screen, 6))
         {
             g.SetClip(path);
-            DrawWallpaper(g, desk);
-            DrawDesktop(g, desk, state);
+            DrawWallpaper(g, screen);
+            DrawDesktop(g, screen, state);
             g.ResetClip();
-            using var border = new Pen(Theme.Border);
-            g.DrawPath(border, path);
+            using var frame = new Pen(Theme.Border, 2f);
+            g.DrawPath(frame, path);
         }
+        using (var cap = new Font("Segoe UI", 8f))
+        using (var muted = new SolidBrush(Theme.TextMuted))
+            g.DrawString(PositionName(state.Position), cap, muted, screen.Left, screen.Bottom + 1);
+
+        // Right: a close-up of each bar at a readable size.
+        var x0 = screen.Right + 28;
+        var w = Width - x0 - 14;
+        if (w < 160) return;
+        taskbarHeight = 30; stripHeight = 24; compact = false;
+        var y = 24;
+        void CloseUp(string label, BarSlots slots, bool inTaskbar, string colorMode, int custom, string backdrop, int? radius = null)
+        {
+            using (var f = new Font("Segoe UI Semibold", 8.5f))
+            using (var br = new SolidBrush(Theme.TextMuted))
+                g.DrawString(label, f, br, x0, y);
+            var band = new Rectangle(x0, y + 17, w, 34);
+            var style = TaskbarStyle.Read();
+            var tbTint = state.Dark == !style.Light ? style.Tint : (state.Dark ? Color.FromArgb(32, 32, 32) : Color.FromArgb(243, 243, 243));
+            using (var path = Round(band, 8))
+            {
+                g.SetClip(path);
+                DrawWallpaper(g, band);
+                if (inTaskbar) { using var tb = new SolidBrush(Color.FromArgb(225, tbTint)); g.FillRectangle(tb, band); }
+                var strip = inTaskbar ? Rectangle.Inflate(band, -6, -3) : band;
+                DrawStrip(g, strip, slots, inTaskbar, colorMode, custom, backdrop, state, tbTint, style, radius);
+                g.ResetClip();
+                using var border = new Pen(Theme.Border);
+                g.DrawPath(border, path);
+            }
+            y += 58;
+        }
+        var integrated = state.Position == TickerPosition.TaskbarIntegrated;
+        CloseUp(Loc.T("card.mainBar"), state.Main, integrated, integrated ? state.TaskbarColorMode : state.BarColorMode,
+            integrated ? state.TaskbarCustom : state.BarCustom, integrated ? state.TaskbarBackdrop : state.BarBackdrop);
+        if (state.SecondEnabled && !integrated)
+            CloseUp(Loc.T("card.secondBar"), state.Second, true, state.TaskbarColorMode, state.TaskbarCustom, state.TaskbarBackdrop);
+        if (state.DesktopEnabled && state.Desktop is { } desktopSlots && y + 51 <= Height)
+            CloseUp(Loc.Pick("Μπάρα επιφάνειας εργασίας", "Desktop bar"), desktopSlots, false, state.BarColorMode, state.BarCustom, state.BarBackdrop, ShapeRadius(state.DesktopShape, 34));
+        taskbarHeight = 14; stripHeight = 11; compact = true;
     }
+
+    private static int ShapeRadius(string shape, int height) => shape switch { "pill" => height / 2, "rounded" => Math.Min(14, height / 2), _ => 0 };
+
+    private static string PositionName(TickerPosition p) => p switch
+    {
+        TickerPosition.Top => Loc.T("pos.top"),
+        TickerPosition.Center => Loc.T("pos.center"),
+        TickerPosition.Custom => Loc.T("pos.custom"),
+        TickerPosition.TaskbarIntegrated => Loc.T("pos.taskbar"),
+        _ => Loc.T("pos.bottom")
+    };
 
     private static void DrawWallpaper(Graphics g, Rectangle r)
     {
@@ -70,54 +126,69 @@ internal sealed class BarPreview : Control
 
     private void DrawDesktop(Graphics g, Rectangle desk, BarPreviewState s)
     {
-        var taskbar = new Rectangle(desk.Left, desk.Bottom - TaskbarHeight, desk.Width, TaskbarHeight);
+        var taskbar = new Rectangle(desk.Left, desk.Bottom - taskbarHeight, desk.Width, taskbarHeight);
         var style = TaskbarStyle.Read();
         var tbTint = s.Dark == !style.Light ? style.Tint : (s.Dark ? Color.FromArgb(32, 32, 32) : Color.FromArgb(243, 243, 243));
         using (var tb = new SolidBrush(Color.FromArgb(225, tbTint))) g.FillRectangle(tb, taskbar);
 
-        // Start button, a few apps, and the tray on the right.
+        // Start button, a few apps, and the tray on the right (scaled with the taskbar).
+        var u = taskbarHeight / 30f;
         var iconColor = s.Dark ? Color.FromArgb(220, 255, 255, 255) : Color.FromArgb(200, 40, 40, 40);
         using var icon = new SolidBrush(iconColor);
-        var x = taskbar.Left + 10;
-        g.FillRectangle(icon, x, taskbar.Top + 9, 5, 5); g.FillRectangle(icon, x + 7, taskbar.Top + 9, 5, 5);
-        g.FillRectangle(icon, x, taskbar.Top + 16, 5, 5); g.FillRectangle(icon, x + 7, taskbar.Top + 16, 5, 5);
-        x += 26;
+        var x = taskbar.Left + (int)(10 * u);
+        var sq = Math.Max(2, (int)(5 * u));
+        g.FillRectangle(icon, x, taskbar.Top + (int)(9 * u), sq, sq); g.FillRectangle(icon, x + (int)(7 * u), taskbar.Top + (int)(9 * u), sq, sq);
+        g.FillRectangle(icon, x, taskbar.Top + (int)(16 * u), sq, sq); g.FillRectangle(icon, x + (int)(7 * u), taskbar.Top + (int)(16 * u), sq, sq);
+        x += (int)(26 * u);
         var appColors = new[] { Color.FromArgb(0, 120, 212), Color.FromArgb(232, 140, 30), Color.FromArgb(60, 170, 90), Color.FromArgb(200, 60, 80), Color.FromArgb(130, 100, 200) };
+        var appSize = Math.Max(4, (int)(16 * u));
         foreach (var c in appColors)
         {
             using var b = new SolidBrush(c);
-            using var p = Round(new Rectangle(x, taskbar.Top + 7, 16, 16), 4);
+            using var p = Round(new Rectangle(x, taskbar.Top + (taskbarHeight - appSize) / 2, appSize, appSize), Math.Max(1, (int)(4 * u)));
             g.FillPath(b, p);
-            x += 24;
+            x += (int)(24 * u);
         }
-        var trayWidth = 78;
-        for (var i = 0; i < 3; i++) g.FillEllipse(icon, taskbar.Right - trayWidth + i * 12, taskbar.Top + 11, 8, 8);
-        using (var clockFont = new Font("Segoe UI", 7f))
-        using (var clock = new SolidBrush(iconColor))
-            g.DrawString("14:05", clockFont, clock, taskbar.Right - 40, taskbar.Top + 9);
+        var trayWidth = (int)(78 * u);
+        var dot = Math.Max(3, (int)(8 * u));
+        for (var i = 0; i < 3; i++) g.FillEllipse(icon, taskbar.Right - trayWidth + (int)(i * 12 * u), taskbar.Top + (taskbarHeight - dot) / 2, dot, dot);
+        if (!compact)
+            using (var clockFont = new Font("Segoe UI", 7f))
+            using (var clock = new SolidBrush(iconColor))
+                g.DrawString("14:05", clockFont, clock, taskbar.Right - 40, taskbar.Top + 9);
 
-        var freeSpan = new Rectangle(x + 8, taskbar.Top + 3, Math.Max(40, taskbar.Right - trayWidth - 12 - (x + 8)), TaskbarHeight - 6);
+        var freeSpan = new Rectangle(x + (int)(8 * u), taskbar.Top + Math.Max(1, (int)(3 * u)), Math.Max(40, taskbar.Right - trayWidth - (int)(12 * u) - (x + (int)(8 * u))), taskbarHeight - Math.Max(2, (int)(6 * u)));
 
         // The main bar.
         var mainRect = s.Position switch
         {
-            TickerPosition.Top => new Rectangle(desk.Left, desk.Top, desk.Width, StripHeight),
-            TickerPosition.Center => new Rectangle(desk.Left, desk.Top + (taskbar.Top - desk.Top - StripHeight) / 2, desk.Width, StripHeight),
-            TickerPosition.Custom => new Rectangle(desk.Left + desk.Width / 6, desk.Top + (taskbar.Top - desk.Top) / 4, desk.Width * 2 / 3, StripHeight),
+            TickerPosition.Top => new Rectangle(desk.Left, desk.Top, desk.Width, stripHeight),
+            TickerPosition.Center => new Rectangle(desk.Left, desk.Top + (taskbar.Top - desk.Top - stripHeight) / 2, desk.Width, stripHeight),
+            TickerPosition.Custom => new Rectangle(desk.Left + desk.Width / 6, desk.Top + (taskbar.Top - desk.Top) / 4, desk.Width * 2 / 3, stripHeight),
             TickerPosition.TaskbarIntegrated => freeSpan,
-            _ => new Rectangle(desk.Left, taskbar.Top - StripHeight, desk.Width, StripHeight)
+            _ => new Rectangle(desk.Left, taskbar.Top - stripHeight, desk.Width, stripHeight)
         };
+        DrawDesktopBar(g, desk, s);
         var integratedMain = s.Position == TickerPosition.TaskbarIntegrated;
         DrawStrip(g, mainRect, s.Main, integratedMain, integratedMain ? s.TaskbarColorMode : s.BarColorMode,
             integratedMain ? s.TaskbarCustom : s.BarCustom, integratedMain ? s.TaskbarBackdrop : s.BarBackdrop, s, tbTint, style);
-        Caption(g, mainRect, Loc.T("card.mainBar"), integratedMain ? freeSpan : mainRect, integratedMain);
 
         // The second bar always lives inside the taskbar.
         if (s.SecondEnabled && !integratedMain)
         {
             DrawStrip(g, freeSpan, s.Second, true, s.TaskbarColorMode, s.TaskbarCustom, s.TaskbarBackdrop, s, tbTint, style);
-            Caption(g, freeSpan, Loc.T("card.secondBar"), freeSpan, true);
         }
+    }
+
+    private void DrawDesktopBar(Graphics g, Rectangle desk, BarPreviewState s)
+    {
+        if (!s.DesktopEnabled || s.Desktop is not { } slots || s.DesktopRect.Width <= 0) return;
+        var r = new Rectangle(desk.Left + (int)(s.DesktopRect.X * desk.Width), desk.Top + (int)(s.DesktopRect.Y * desk.Height),
+            Math.Max(10, (int)(s.DesktopRect.Width * desk.Width)), Math.Max(stripHeight, (int)(s.DesktopRect.Height * desk.Height)));
+        var style = TaskbarStyle.Read();
+        DrawStrip(g, r, slots, false, s.BarColorMode, s.BarCustom, s.BarBackdrop, s, Color.Black, style, ShapeRadius(s.DesktopShape, r.Height));
+        using var outline = new Pen(Color.FromArgb(180, Theme.Accent), 1f) { DashStyle = DashStyle.Dash };
+        g.DrawRectangle(outline, r);
     }
 
     private static void Caption(Graphics g, Rectangle strip, string text, Rectangle around, bool inTaskbar)
@@ -133,7 +204,7 @@ internal sealed class BarPreview : Control
     }
 
     private void DrawStrip(Graphics g, Rectangle r, BarSlots slots, bool inTaskbar, string colorMode, int custom,
-        string backdrop, BarPreviewState s, Color taskbarTint, TaskbarStyle style)
+        string backdrop, BarPreviewState s, Color taskbarTint, TaskbarStyle style, int? radiusOverride = null)
     {
         // Background of the strip.
         Color? fill = colorMode switch
@@ -148,7 +219,7 @@ internal sealed class BarPreview : Control
         Color textColor;
         if (fill is { } f)
         {
-            using var path = Round(r, inTaskbar ? 6 : 0);
+            using var path = Round(r, radiusOverride ?? (inTaskbar ? 6 : 0));
             if (backdrop == "gradient")
             {
                 using var gb = new LinearGradientBrush(r, Color.FromArgb(alpha, f), Color.FromArgb(Math.Max(40, alpha - 90), f), 90f);
@@ -176,8 +247,23 @@ internal sealed class BarPreview : Control
         var red = new SolidBrush(Color.FromArgb(235, 80, 80));
         var sf = new StringFormat { LineAlignment = StringAlignment.Center, FormatFlags = StringFormatFlags.NoWrap };
 
+        void Dashes(Rectangle area)
+        {
+            g.SetClip(area, CombineMode.Intersect);
+            using var dash = new SolidBrush(Color.FromArgb(150, textColor));
+            var xx = area.Left + 4f; var h = Math.Max(2, area.Height / 4f);
+            while (xx < area.Right)
+            {
+                var len = 14 + (int)(xx * 7 % 17);
+                g.FillRectangle(dash, xx, area.Top + (area.Height - h) / 2, len, h);
+                xx += len + 8;
+            }
+            g.ResetClip();
+        }
+
         void News(Rectangle area)
         {
+            if (compact) { Dashes(area); return; }
             g.SetClip(area, CombineMode.Intersect);
             var xx = area.Left + 6f;
             var sample = Loc.T("preview.sampleNews");
@@ -193,6 +279,7 @@ internal sealed class BarPreview : Control
 
         void Quotes(Rectangle area)
         {
+            if (compact) { Dashes(area); return; }
             g.SetClip(area, CombineMode.Intersect);
             var xx = area.Left + 6f;
             var rows = new (string Name, string Price, string Change, bool Up)[]
@@ -215,6 +302,7 @@ internal sealed class BarPreview : Control
 
         void Weather(Rectangle area)
         {
+            if (compact) { Dashes(area); return; }
             g.SetClip(area, CombineMode.Intersect);
             var xx = area.Left + 6f;
             var samples = new[] { (City: "athens", Code: 1, Temp: 16.6, Wind: 15.0, Dir: 0, Hum: 68), (City: "thessaloniki", Code: 61, Temp: 14.2, Wind: 23.0, Dir: 45, Hum: 81), (City: "heraklion", Code: 0, Temp: 19.0, Wind: 9.0, Dir: 315, Hum: 62) };

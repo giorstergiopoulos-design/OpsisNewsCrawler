@@ -184,12 +184,57 @@ public sealed class TickerWindow : Form
         set
         {
             edgeFade = value;
-            canvas.SetEdgeFade(value);
-            canvasB.SetEdgeFade(value);
+            ApplyEdgeFadeToCanvases();
         }
     }
 
     private bool edgeFade;
+    private string shape = "rect";
+
+    // A pill has round ends: the text always fades out there so nothing is cut off by the curve.
+    private void ApplyEdgeFadeToCanvases()
+    {
+        var fade = edgeFade || shape == "pill";
+        canvas.SetEdgeFade(fade);
+        canvasB.SetEdgeFade(fade);
+    }
+
+    /// <summary>The outline of the bar: "rect", "rounded" or "pill" (the window is clipped to the shape).</summary>
+    public void SetShape(string value)
+    {
+        shape = value is "rounded" or "pill" ? value : "rect";
+        ApplyEdgeFadeToCanvases();
+        ApplyShapeRegion();
+    }
+
+    private void ApplyShapeRegion()
+    {
+        if (!IsHandleCreated) return;
+        var old = Region;
+        if (shape == "rect" || Width < 20 || Height < 10)
+        {
+            Region = null;
+        }
+        else
+        {
+            var radius = shape == "pill" ? Height / 2 : Math.Min(14, Height / 2);
+            using var path = new System.Drawing.Drawing2D.GraphicsPath();
+            var d = radius * 2;
+            path.AddArc(0, 0, d, d, 180, 90);
+            path.AddArc(Width - d, 0, d, d, 270, 90);
+            path.AddArc(Width - d, Height - d, d, d, 0, 90);
+            path.AddArc(0, Height - d, d, d, 90, 90);
+            path.CloseFigure();
+            Region = new Region(path);
+        }
+        old?.Dispose();
+    }
+
+    protected override void OnSizeChanged(EventArgs e)
+    {
+        base.OnSizeChanged(e);
+        if (shape != "rect") ApplyShapeRegion();
+    }
 
     /// <summary>Taskbar-integrated mode: find the empty part of the taskbar by itself instead of using the offsets.</summary>
     [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]

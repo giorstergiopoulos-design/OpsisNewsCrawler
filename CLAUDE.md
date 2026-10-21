@@ -73,3 +73,9 @@ Fourteen UI languages like Opsis: `Core/Locales/<code>.json` (el, en generated b
 - Dependencies: `installer\dependencies.iss` (shared with the Opsis installer) and `Windows/Dependencies.cs`.
 - Locales are edited DIRECTLY in `Core/Locales/*.json` now (the old generator script is gone); keep the same keys in all 14 files.
 - Test aids: `--snapshot <dir> [--config f]`, `--snapshot-portfolio <png> [--config f]`, `--portfolio`, `--make-icon <ico>`.
+
+## 0.13.0 additions
+- **Settings**: `Windows/FlatNav.cs` is the one navigation rail (groups + pages + search + page title); no more rows of pills. All bar settings (placement, what each bar shows, the desktop bar) are on the single Bars page, built with `Combine` and "Title|description" section headings.
+- **Market analysis window** (`Windows/AnalysisForm.cs`, `AnalysisCharts.cs`; tray and Sources > Markets flow): candlesticks, back-test, fear & greed, assistant. Logic in `Core/Analysis.cs` (`Backtest`, `FearGreed`), candles in `QuoteStore` (`Candle`, `Candles()`, `RecordCandle()`, file `quotes-cache-ohlc.json`; Athens gives exact OHLC from the trade file, other sources are sampled), `Core/AiAssistant.cs` (Anthropic Messages API with the user's own key; key encrypted with DPAPI in `Windows/SecretStore.cs`, never exported).
+- Test aids: `--snapshot-analysis <png> <page 0-3>`; the env variable `OPSISNEWSCRAWLER_DATA` redirects the price cache folder (screenshots with made-up data).
+- Tray: one Pause/Resume item (standalone and in the Opsis plugin menu), Close/Open in the plugin menu.

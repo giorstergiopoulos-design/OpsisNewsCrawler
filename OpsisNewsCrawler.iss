@@ -9,7 +9,7 @@
 ; The wizard looks for Opsis (uninstall entry, default folders) and proposes the integrated install when it finds it.
 ; Test switches: /MODE=integrated | /MODE=separate (silent installs), /PLUGINROOT=<folder> (instead of %AppData%\Opsis\plugins).
 #define MyAppName "Opsis News Crawler"
-#define MyAppVersion "0.12.8"
+#define MyAppVersion "0.13.0"
 #define MyAppExe "OpsisNewsCrawler.exe"
 #define OpsisAppId "A9E8F765-1234-4567-89AB-CDEF01234567"
 #define PluginFolder "Opsis - Desktop Customization"
