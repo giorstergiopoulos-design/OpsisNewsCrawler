@@ -59,7 +59,17 @@ internal sealed class CandleChart : Control
         return sum / period;
     }
 
-    private Rectangle Plot => new(70, 14, Math.Max(10, Width - 70 - 14), Math.Max(10, Height - 14 - 30));
+    /// <summary>A second panel under the price with the MACD lines and histogram.</summary>
+    public bool ShowMacd { get; set; }
+
+    private Rectangle Plot
+    {
+        get
+        {
+            var h = Math.Max(10, Height - 14 - 30);
+            return new(70, 14, Math.Max(10, Width - 70 - 14), ShowMacd ? (int)(h * 0.68) : h);
+        }
+    }
 
     protected override void OnMouseMove(MouseEventArgs e)
     {
@@ -168,12 +178,45 @@ internal sealed class CandleChart : Control
             if (i == hover) { using var hl = new Pen(Color.FromArgb(120, Theme.Text), 1) { DashStyle = DashStyle.Dash }; g.DrawLine(hl, x, plot.Top, x, plot.Bottom); }
         }
 
+        // MACD panel
+        if (ShowMacd && candles.Count > 0)
+        {
+            var macdPlot = new Rectangle(plot.Left, plot.Bottom + 22, plot.Width, Math.Max(10, Height - 14 - 30 - plot.Height - 22 - 8));
+            var m = Technical.Macd(candles.Select(c => c.Close).ToList());
+            double mlo = double.MaxValue, mhi = double.MinValue;
+            for (var i = first; i < candles.Count; i++)
+                foreach (var v in new[] { m.Macd[i], m.Signal[i], m.Histogram[i], 0 })
+                    if (!double.IsNaN(v)) { mlo = Math.Min(mlo, v); mhi = Math.Max(mhi, v); }
+            if (mhi <= mlo) { mhi = mlo + 1; }
+            var mpad = (mhi - mlo) * 0.1; mlo -= mpad; mhi += mpad;
+            float MY(double v) => macdPlot.Bottom - (float)((v - mlo) / (mhi - mlo) * macdPlot.Height);
+            using (var frame = new Pen(Color.FromArgb(70, Theme.Border))) g.DrawRectangle(frame, macdPlot);
+            using (var zero = new Pen(Color.FromArgb(90, Theme.TextMuted)) { DashStyle = DashStyle.Dot }) g.DrawLine(zero, macdPlot.Left, MY(0), macdPlot.Right, MY(0));
+            var barW = (float)Math.Clamp(slot * 0.6, 1.5, 14);
+            for (var i = first; i < candles.Count; i++)
+            {
+                if (double.IsNaN(m.Histogram[i])) continue;
+                var x = macdPlot.Left + (float)((i - first + 0.5) * slot);
+                var y0 = MY(0); var y1 = MY(m.Histogram[i]);
+                using var hb = new SolidBrush(Color.FromArgb(150, m.Histogram[i] >= 0 ? ChartColors.Up : ChartColors.Down));
+                g.FillRectangle(hb, x - barW / 2, Math.Min(y0, y1), barW, Math.Max(1f, Math.Abs(y1 - y0)));
+            }
+            foreach (var (series, color) in new[] { (m.Macd, Theme.Accent), (m.Signal, Color.FromArgb(230, 170, 40)) })
+            {
+                var pts = new List<PointF>();
+                for (var i = first; i < candles.Count; i++)
+                    if (!double.IsNaN(series[i])) pts.Add(new PointF(macdPlot.Left + (float)((i - first + 0.5) * slot), MY(series[i])));
+                if (pts.Count > 1) { using var pen = new Pen(color, 1.5f); g.DrawLines(pen, pts.ToArray()); }
+            }
+            TextRenderer.DrawText(g, "MACD 12·26·9", Font, new Rectangle(macdPlot.Left + 4, macdPlot.Top + 1, 160, 16), Theme.TextMuted, TextFormatFlags.Left | TextFormatFlags.NoPrefix);
+        }
+
         // day labels
         var step = Math.Max(1, count / 6);
         for (var i = first; i < candles.Count; i += step)
         {
             var x = plot.Left + (float)((i - first + 0.5) * slot);
-            TextRenderer.DrawText(g, DayText(candles[i].Day), Font, new Rectangle((int)x - 30, plot.Bottom + 4, 60, 18), Theme.TextMuted,
+            TextRenderer.DrawText(g, DayText(candles[i].Day), Font, new Rectangle((int)x - 30, ShowMacd ? Height - 24 : plot.Bottom + 4, 60, 18), Theme.TextMuted,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.NoPrefix);
         }
 

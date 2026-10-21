@@ -115,3 +115,62 @@ public class AnalysisTests
         Assert.Throws<AiException>(() => AiAssistant.ParseAnswer("nope"));
     }
 }
+
+public class MacdAndMoodTests
+{
+    [Fact]
+    public void Macd_RisingPrices_GivesPositiveMacdAboveZero_AndAlignedLengths()
+    {
+        var closes = Enumerable.Range(0, 80).Select(i => 100m + i).ToList();
+        var m = Technical.Macd(closes);
+        Assert.Equal(closes.Count, m.Macd.Length);
+        Assert.True(double.IsNaN(m.Macd[10]));
+        Assert.True(m.Macd[^1] > 0);
+        Assert.False(double.IsNaN(m.Signal[^1]));
+        Assert.Equal(m.Macd[^1] - m.Signal[^1], m.Histogram[^1], 9);
+    }
+
+    [Fact]
+    public void Backtest_MacdCross_RunsOnATrendReversal()
+    {
+        var closes = new List<decimal>();
+        decimal p = 100;
+        for (var i = 0; i < 60; i++) closes.Add(p += 1);
+        for (var i = 0; i < 60; i++) closes.Add(p -= 1);
+        for (var i = 0; i < 60; i++) closes.Add(p += 1);
+        var r = Backtest.Run(closes, BacktestStrategy.MacdCross);
+        Assert.Null(r.Problem);
+        Assert.NotEmpty(r.Trades);
+    }
+
+    [Theory]
+    [InlineData("Shares surge to a record high as profits beat forecasts", 1)]
+    [InlineData("Bank shares plunge after fraud probe and a profit warning", -1)]
+    [InlineData("Το χρηματιστήριο σημειώνει άνοδο και κέρδη στις τράπεζες", 1)]
+    [InlineData("Πτώση στη Wall Street λόγω ανησυχίας για ύφεση", -1)]
+    [InlineData("Committee meets on Tuesday", 0)]
+    public void Score_HasTheRightSign(string text, int sign) => Assert.Equal(sign, Math.Sign(NewsSentiment.Score(text)));
+
+    [Fact]
+    public void Score_NegationFlipsAWord()
+    {
+        Assert.True(NewsSentiment.Score("There is no gain for investors") < 0);
+        Assert.True(NewsSentiment.Score("Η μετοχή δεν ανεβαίνει") < 0);
+    }
+
+    [Fact]
+    public void PerShare_FindsTheHeadlinesOfAShare_AndAveragesTheirMood()
+    {
+        var ete = new QuoteInstrument(QuoteSource.Athens, "GRS003003035", "ETE", "Εθνική Τράπεζα", "National Bank", "€");
+        var news = new[]
+        {
+            new NewsItem("Εθνική Τράπεζα: ρεκόρ κερδών", "u1", "s", DateTimeOffset.Now),
+            new NewsItem("National Bank shares fall on fraud fears", "u2", "s", DateTimeOffset.Now),
+            new NewsItem("Unrelated sports result", "u3", "s", DateTimeOffset.Now),
+        };
+        var moods = NewsSentiment.PerShare(news, new[] { ete });
+        Assert.Single(moods);
+        Assert.Equal(2, moods[0].Headlines);
+        Assert.Equal(0, moods[0].Average, 6);   // one good, one bad
+    }
+}

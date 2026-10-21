@@ -472,5 +472,19 @@
   "upd.notifyTitle": "New Opsis News Crawler version",
   "upd.notifyBody": "Version {0} is available - Settings › Opsis News Crawler update.",
   "upd.noDigest": "This version cannot be verified automatically - the release page opens for a manual download.",
-  "tab.updates": "Updates"
+  "tab.updates": "Updates",
+  "analysis.tab.mood": "News mood",
+  "analysis.macd": "MACD",
+  "bt.macd": "MACD crossover",
+  "mood.positive": "Positive",
+  "mood.neutral": "Neutral",
+  "mood.negative": "Negative",
+  "mood.overall": "Mood of the headlines: {0} ({1}) — {2} headlines: {3} positive, {4} neutral, {5} negative",
+  "mood.col.share": "Share",
+  "mood.col.count": "Headlines",
+  "mood.col.mood": "Mood",
+  "mood.col.headline": "Headline",
+  "mood.col.source": "Source",
+  "mood.none": "No headlines are loaded yet (the bars load them in the background).",
+  "mood.note": "Simple Greek and English word lists on the headlines and summaries the program has loaded (active category). A rough guide to the tone of the news, not a forecast and not investment advice."
 }

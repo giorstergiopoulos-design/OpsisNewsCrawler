@@ -138,6 +138,9 @@ public sealed class TickerHost : IDisposable
 
     public string ConfigPath => configPath;
 
+    /// <summary>The headlines loaded for the active category (a copy; UI thread).</summary>
+    public IReadOnlyList<NewsItem> RecentNews => allItems.ToList();
+
     /// <summary>Raised when the user right-clicks a bar. The standalone app opens its window, the plugin asks Opsis to show its tab.</summary>
     public event Action? SettingsRequested;
 

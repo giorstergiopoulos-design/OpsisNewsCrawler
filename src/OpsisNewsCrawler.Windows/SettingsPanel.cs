@@ -268,6 +268,7 @@ public sealed class SettingsPanel : UserControl
         loading = true;
         watchLists.Clear();
         tabs = new FlatNav { Dock = DockStyle.Fill };
+        tabs.Badge = new AnimatedAppIcon(() => host.Config.TrayIconAnimated && host.Config.BarsEnabled);
 
         // One navigation rail: three groups (Settings, Sources, Information), every page under its group.
         AddGroup(Loc.T("pk.settings"),

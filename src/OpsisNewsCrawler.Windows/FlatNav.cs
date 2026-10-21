@@ -32,6 +32,20 @@ internal sealed class FlatNav : Control
 
     public event EventHandler? SelectedIndexChanged;
 
+    private Control? badge;
+
+    /// <summary>A small control (the animated program icon) shown in the title band of the content pane.</summary>
+    public Control? Badge
+    {
+        get => badge;
+        set
+        {
+            badge = value;
+            if (value is not null) { Controls.Add(value); value.BringToFront(); }
+            LayoutPages();
+        }
+    }
+
     public FlatNav()
     {
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
@@ -127,6 +141,8 @@ internal sealed class FlatNav : Control
     {
         search.Location = new Point(RailLeft + 14, SearchTop);
         foreach (var p in pages) p.SetBounds(ContentLeft, TitleHeight, ContentWidth, Math.Max(0, Height - TitleHeight));
+        if (badge is not null)
+            badge.Location = new Point(Rtl ? ContentLeft + 22 : ContentLeft + ContentWidth - badge.Width - 22, Math.Max(2, (TitleHeight - badge.Height) / 2 - 2));
     }
 
     protected override void OnResize(EventArgs e)

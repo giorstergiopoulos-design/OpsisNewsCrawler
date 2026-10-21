@@ -1,6 +1,6 @@
 namespace OpsisNewsCrawler.Core;
 
-public enum BacktestStrategy { SmaCross, RsiReversion }
+public enum BacktestStrategy { SmaCross, RsiReversion, MacdCross }
 
 /// <summary>One completed (or still open) round trip of a back-test. Indexes point into the closing-price list.</summary>
 public sealed record BacktestTrade(int EntryIndex, int? ExitIndex, decimal EntryPrice, decimal ExitPrice, double ReturnPercent, bool Open);
@@ -18,7 +18,8 @@ public static class Backtest
 {
     public static BacktestResult Run(IReadOnlyList<decimal> closes, BacktestStrategy strategy, int fast = 20, int slow = 50, int rsiPeriod = 14, double buyBelow = 30, double sellAbove = 70, double feePercent = 0)
     {
-        var warmup = strategy == BacktestStrategy.SmaCross ? Math.Max(fast, slow) + 2 : rsiPeriod + 2;
+        var warmup = strategy switch { BacktestStrategy.SmaCross => Math.Max(fast, slow) + 2, BacktestStrategy.MacdCross => 26 + 9 + 2, _ => rsiPeriod + 2 };
+        var macd = strategy == BacktestStrategy.MacdCross ? Technical.Macd(closes) : null;
         if (closes.Count < warmup + 2)
             return new BacktestResult(Array.Empty<BacktestTrade>(), 0, 0, 0, 0, 0, closes.Count, new[] { 100.0 }, $"{warmup + 2}");
 
@@ -58,6 +59,9 @@ public static class Backtest
                 case BacktestStrategy.SmaCross:
                     var f = Technical.Sma(upto, fast); var s = Technical.Sma(upto, slow);
                     if (f is not null && s is not null) wantLong = f > s;
+                    break;
+                case BacktestStrategy.MacdCross:
+                    if (macd is not null && !double.IsNaN(macd.Signal[i])) wantLong = macd.Macd[i] > macd.Signal[i];
                     break;
                 default:
                     var rsi = Technical.Rsi(upto, rsiPeriod);

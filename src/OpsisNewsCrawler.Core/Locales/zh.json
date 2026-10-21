@@ -472,5 +472,19 @@
   "upd.notifyTitle": "Opsis News Crawler 新版本",
   "upd.notifyBody": "版本 {0} 已可用——设置 › Opsis News Crawler 更新。",
   "upd.noDigest": "此版本无法自动验证——将打开发布页面供手动下载。",
-  "tab.updates": "更新"
+  "tab.updates": "更新",
+  "analysis.tab.mood": "新闻情绪",
+  "analysis.macd": "MACD",
+  "bt.macd": "MACD 交叉",
+  "mood.positive": "正面",
+  "mood.neutral": "中性",
+  "mood.negative": "负面",
+  "mood.overall": "标题情绪：{0}（{1}）— 共 {2} 条：正面 {3}、中性 {4}、负面 {5}",
+  "mood.col.share": "股票",
+  "mood.col.count": "标题数",
+  "mood.col.mood": "情绪",
+  "mood.col.headline": "标题",
+  "mood.col.source": "来源",
+  "mood.none": "尚未加载标题（各栏会在后台加载）。",
+  "mood.note": "对已加载的标题和摘要（当前分类）使用希腊语和英语的简单词表。只是新闻语气的粗略参考，不是预测，也不构成投资建议。"
 }

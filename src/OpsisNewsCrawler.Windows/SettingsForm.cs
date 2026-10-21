@@ -5,13 +5,18 @@ namespace OpsisNewsCrawler.Windows;
 public sealed class SettingsForm : Form
 {
     private readonly SettingsPanel panel;
+    private readonly Icon staticIcon;
     private readonly TickerHost host;
+    private Icon[]? iconFrames;
+    private int iconFrame;
+    private readonly System.Windows.Forms.Timer iconTimer = new() { Interval = 140 };
 
     public SettingsForm(TickerHost host)
     {
         this.host = host;
         Opacity = Math.Clamp(host.Config.SettingsOpacityPercent, 60, 100) / 100.0;
-        Icon = AppIcon.Get();
+        staticIcon = AppIcon.Get();
+        Icon = staticIcon;
         Text = Loc.T("app.name") + " — " + Loc.T("window.settings");
         StartPosition = FormStartPosition.CenterScreen;
         ClientSize = new Size(1180, 760);
@@ -34,6 +39,21 @@ public sealed class SettingsForm : Form
                 e.Handled = true;
             }
         };
+
+        // The title-bar icon moves like the one in the notification area (only while the window is visible and animation is on).
+        iconTimer.Tick += (_, _) =>
+        {
+            var animate = Visible && host.Config.TrayIconAnimated && host.Config.BarsEnabled;
+            if (!animate)
+            {
+                if (iconFrames is not null && !ReferenceEquals(Icon, staticIcon)) Icon = staticIcon;
+                return;
+            }
+            iconFrames ??= AppIconArt.BuildTrayFrames(Math.Max(16, SystemInformation.SmallIconSize.Width));
+            iconFrame = (iconFrame + 1) % iconFrames.Length;
+            Icon = iconFrames[iconFrame];
+        };
+        iconTimer.Start();
 
         HandleCreated += (_, _) => Theme.ApplyTitleBar(this);
         Theme.Changed += OnThemeChanged;
@@ -58,7 +78,12 @@ public sealed class SettingsForm : Form
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing) Theme.Changed -= OnThemeChanged;
+        if (disposing)
+        {
+            Theme.Changed -= OnThemeChanged;
+            iconTimer.Dispose();
+            if (iconFrames is not null) foreach (var f in iconFrames) f.Dispose();
+        }
         base.Dispose(disposing);
     }
 

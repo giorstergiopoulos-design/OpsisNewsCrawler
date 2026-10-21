@@ -472,5 +472,19 @@
   "upd.notifyTitle": "Opsis News Crawler の新バージョン",
   "upd.notifyBody": "バージョン {0} が利用可能です - 設定 › Opsis News Crawler の更新。",
   "upd.noDigest": "このバージョンは自動で検証できません。手動ダウンロード用にリリースページを開きます。",
-  "tab.updates": "アップデート"
+  "tab.updates": "アップデート",
+  "analysis.tab.mood": "ニュースの論調",
+  "analysis.macd": "MACD",
+  "bt.macd": "MACDクロス",
+  "mood.positive": "ポジティブ",
+  "mood.neutral": "中立",
+  "mood.negative": "ネガティブ",
+  "mood.overall": "見出しの論調：{0}（{1}）— {2}件：ポジティブ{3}、中立{4}、ネガティブ{5}",
+  "mood.col.share": "銘柄",
+  "mood.col.count": "見出し",
+  "mood.col.mood": "論調",
+  "mood.col.headline": "見出し",
+  "mood.col.source": "ソース",
+  "mood.none": "見出しはまだ読み込まれていません（バーがバックグラウンドで読み込みます）。",
+  "mood.note": "読み込んだ見出しと要約（現在のカテゴリー）にギリシャ語と英語の簡単な単語リストを当てはめたものです。ニュースの論調のおおまかな目安であり、予測でも投資助言でもありません。"
 }

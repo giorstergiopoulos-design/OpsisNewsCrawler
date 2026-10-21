@@ -26,7 +26,7 @@ public static class StockNewsFilter
         }).ToList();
     }
 
-    private static string Normalize(string? value)
+    internal static string Normalize(string? value)
     {
         if (string.IsNullOrWhiteSpace(value)) return string.Empty;
         var decomposed = value.Normalize(NormalizationForm.FormD);

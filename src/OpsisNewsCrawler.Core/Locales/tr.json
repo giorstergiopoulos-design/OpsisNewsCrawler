@@ -472,5 +472,19 @@
   "upd.notifyTitle": "Yeni Opsis News Crawler sürümü",
   "upd.notifyBody": "{0} sürümü mevcut - Ayarlar › Opsis News Crawler güncellemesi.",
   "upd.noDigest": "Bu sürüm otomatik olarak doğrulanamıyor - elle indirmek için sürüm sayfası açılır.",
-  "tab.updates": "Güncellemeler"
+  "tab.updates": "Güncellemeler",
+  "analysis.tab.mood": "Haberlerin havası",
+  "analysis.macd": "MACD",
+  "bt.macd": "MACD kesişimi",
+  "mood.positive": "Olumlu",
+  "mood.neutral": "Nötr",
+  "mood.negative": "Olumsuz",
+  "mood.overall": "Başlıkların havası: {0} ({1}) — {2} başlık: {3} olumlu, {4} nötr, {5} olumsuz",
+  "mood.col.share": "Hisse",
+  "mood.col.count": "Başlıklar",
+  "mood.col.mood": "Hava",
+  "mood.col.headline": "Başlık",
+  "mood.col.source": "Kaynak",
+  "mood.none": "Henüz başlık yüklenmedi (çubuklar bunları arka planda yükler).",
+  "mood.note": "Yüklenen başlıklar ve özetler (etkin kategori) üzerinde Yunanca ve İngilizce basit sözcük listeleri. Haberlerin tonu için kaba bir gösterge; tahmin veya yatırım tavsiyesi değildir."
 }

@@ -472,5 +472,19 @@
   "upd.notifyTitle": "Neue Opsis News Crawler-Version",
   "upd.notifyBody": "Version {0} ist verfügbar - Einstellungen › Opsis News Crawler-Update.",
   "upd.noDigest": "Diese Version kann nicht automatisch überprüft werden - die Release-Seite öffnet sich für einen manuellen Download.",
-  "tab.updates": "Updates"
+  "tab.updates": "Updates",
+  "analysis.tab.mood": "Nachrichtenstimmung",
+  "analysis.macd": "MACD",
+  "bt.macd": "MACD-Kreuzung",
+  "mood.positive": "Positiv",
+  "mood.neutral": "Neutral",
+  "mood.negative": "Negativ",
+  "mood.overall": "Stimmung der Schlagzeilen: {0} ({1}) — {2} Schlagzeilen: {3} positiv, {4} neutral, {5} negativ",
+  "mood.col.share": "Aktie",
+  "mood.col.count": "Schlagzeilen",
+  "mood.col.mood": "Stimmung",
+  "mood.col.headline": "Schlagzeile",
+  "mood.col.source": "Quelle",
+  "mood.none": "Noch keine Schlagzeilen geladen (die Leisten laden sie im Hintergrund).",
+  "mood.note": "Einfache griechische und englische Wortlisten auf den geladenen Schlagzeilen und Zusammenfassungen (aktive Kategorie). Ein grober Anhaltspunkt für den Ton der Nachrichten, keine Prognose und keine Anlageberatung."
 }

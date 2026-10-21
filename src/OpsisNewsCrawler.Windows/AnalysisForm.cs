@@ -26,6 +26,7 @@ internal sealed class AnalysisForm : Form
     private CandleChart chart = null!;
     private Label chartInfo = null!;
     private FlatCheck chartBands = null!;
+    private FlatCheck chartMacd = null!;
 
     // back-test page
     private FlatCombo btInstrument = null!, btStrategy = null!;
@@ -66,6 +67,7 @@ internal sealed class AnalysisForm : Form
         nav.AddPage(Loc.T("analysis.tab.chart"), BuildChartPage());
         nav.AddPage(Loc.T("analysis.tab.backtest"), BuildBacktestPage());
         nav.AddPage(Loc.T("analysis.tab.fear"), BuildFearPage());
+        nav.AddPage(Loc.T("analysis.tab.mood"), BuildMoodPage());
         nav.AddPage(Loc.T("analysis.tab.ai"), BuildAiPage());
         Controls.Add(nav);
         AcceptButton = sendButton;   // Enter sends the question
@@ -134,6 +136,7 @@ internal sealed class AnalysisForm : Form
             case 0: FillChart(); break;
             case 1: FillBacktest(); break;
             case 2: FillFear(); break;
+            case 3: FillMood(); break;
         }
     }
 
@@ -178,6 +181,8 @@ internal sealed class AnalysisForm : Form
         chartInfo = Muted("");
         chartBands = new FlatCheck { Text = Loc.T("analysis.bollinger"), Margin = new Padding(8, 6, 0, 0) };
         chartBands.CheckedChanged += (_, _) => FillChart();
+        chartMacd = new FlatCheck { Text = Loc.T("analysis.macd"), Margin = new Padding(8, 6, 0, 0) };
+        chartMacd.CheckedChanged += (_, _) => FillChart();
         chart = new CandleChart { Dock = DockStyle.Fill };
         chartInstrument.SelectedIndexChanged += (_, _) => { if (!syncing) FillChart(); };
         chartRange.SelectedIndexChanged += (_, _) => FillChart();
@@ -186,7 +191,7 @@ internal sealed class AnalysisForm : Form
         page.Controls.Add(chart);
         page.Controls.Add(legend);
         page.Controls.Add(chartInfo);
-        page.Controls.Add(Bar(Labelled(Loc.T("analysis.instrument"), chartInstrument), Labelled(Loc.T("analysis.range"), chartRange), chartBands));
+        page.Controls.Add(Bar(Labelled(Loc.T("analysis.instrument"), chartInstrument), Labelled(Loc.T("analysis.range"), chartRange), chartBands, chartMacd));
         chartInfo.Dock = DockStyle.Top;
         return page;
     }
@@ -196,6 +201,7 @@ internal sealed class AnalysisForm : Form
         var candles = CandlesOf(Selected(chartInstrument));
         var shown = chartRange.SelectedIndex switch { 0 => 30, 1 => 60, 2 => 130, _ => 100000 };
         chart.ShowBands = chartBands.Checked;
+        chart.ShowMacd = chartMacd.Checked;
         chart.SetData(candles, shown, Loc.T(host.Config.HistoryFromYahoo ? "analysis.empty" : "analysis.emptyNoYahoo"));
         var exact = candles.Count(c => c.Exact);
         chartInfo.Text = candles.Count == 0 ? "" : Loc.T("analysis.info", candles.Count, exact);
@@ -208,7 +214,7 @@ internal sealed class AnalysisForm : Form
         var page = NewPage();
         btInstrument = new FlatCombo { Width = 420 };
         btStrategy = new FlatCombo { Width = 300 };
-        btStrategy.SetItems(new[] { Loc.T("bt.sma"), Loc.T("bt.rsi") }, 0);
+        btStrategy.SetItems(new[] { Loc.T("bt.sma"), Loc.T("bt.rsi"), Loc.T("bt.macd") }, 0);
         btFast = new FlatNumber(); btFast.Configure(2, 100, 1); btFast.SetValueSilently(20);
         btSlow = new FlatNumber(); btSlow.Configure(3, 250, 1); btSlow.SetValueSilently(50);
         btBuy = new FlatNumber(); btBuy.Configure(5, 50, 1); btBuy.SetValueSilently(30);
@@ -217,7 +223,7 @@ internal sealed class AnalysisForm : Form
         run.SetPrimary(true);
         var fastLabel = Labelled(Loc.T("bt.fast"), btFast); var slowLabel = Labelled(Loc.T("bt.slow"), btSlow);
         var buyLabel = Labelled(Loc.T("bt.buyBelow"), btBuy); var sellLabel = Labelled(Loc.T("bt.sellAbove"), btSell);
-        void Toggle() { var sma = btStrategy.SelectedIndex == 0; fastLabel.Visible = slowLabel.Visible = sma; buyLabel.Visible = sellLabel.Visible = !sma; }
+        void Toggle() { var kind = btStrategy.SelectedIndex; fastLabel.Visible = slowLabel.Visible = kind == 0; buyLabel.Visible = sellLabel.Visible = kind == 1; }
         btStrategy.SelectedIndexChanged += (_, _) => { Toggle(); FillBacktest(); };
         Toggle();
         run.Click += (_, _) => FillBacktest();
@@ -251,8 +257,8 @@ internal sealed class AnalysisForm : Form
         var closes = candles.Select(c => c.Close).ToList();
         btTrades.Rows.Clear();
         if (candles.Count == 0) { btSummary.Text = Loc.T("analysis.empty"); btChart.SetData(Array.Empty<double>(), Array.Empty<double>()); return; }
-        var sma = btStrategy.SelectedIndex == 0;
-        var result = Backtest.Run(closes, sma ? BacktestStrategy.SmaCross : BacktestStrategy.RsiReversion, btFast.Value, Math.Max(btSlow.Value, btFast.Value + 1), 14, btBuy.Value, btSell.Value);
+        var strategy = btStrategy.SelectedIndex switch { 0 => BacktestStrategy.SmaCross, 1 => BacktestStrategy.RsiReversion, _ => BacktestStrategy.MacdCross };
+        var result = Backtest.Run(closes, strategy, btFast.Value, Math.Max(btSlow.Value, btFast.Value + 1), 14, btBuy.Value, btSell.Value);
         if (result.Problem is not null)
         {
             btSummary.Text = Loc.T("bt.notEnough", result.Problem, closes.Count);
@@ -392,6 +398,84 @@ internal sealed class AnalysisForm : Form
         removeKey.Visible = hasKey;
         keyBox.Visible = !hasKey;
         if (!hasKey && transcript.TextLength == 0) transcript.Text = Loc.T("ai.noKey");
+    }
+
+    // ---- news mood -------------------------------------------------------------------------------------------
+
+    private ScoreBar moodBar = null!;
+    private Label moodSummary = null!, moodNote = null!;
+    private DataGridView moodShares = null!, moodHeadlines = null!;
+
+    private static DataGridView NewGrid(params string[] columnKeys)
+    {
+        var grid = new DataGridView
+        {
+            ReadOnly = true, AllowUserToAddRows = false, RowHeadersVisible = false, BorderStyle = BorderStyle.None, EnableHeadersVisualStyles = false,
+            AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill, BackgroundColor = Theme.Background, GridColor = Theme.Border, SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+            ColumnHeadersHeight = 30, ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing, CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal
+        };
+        grid.ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle { BackColor = Theme.Surface, ForeColor = Theme.TextMuted, SelectionBackColor = Theme.Surface, SelectionForeColor = Theme.TextMuted, Font = new Font("Segoe UI Semibold", 9f) };
+        grid.DefaultCellStyle = new DataGridViewCellStyle { BackColor = Theme.Background, ForeColor = Theme.Text, SelectionBackColor = FlatDraw.SurfaceHover, SelectionForeColor = Theme.Text };
+        foreach (var key in columnKeys) grid.Columns.Add(key, Loc.T(key));
+        return grid;
+    }
+
+    private Control BuildMoodPage()
+    {
+        var page = NewPage();
+        moodSummary = new Label { UseMnemonic = false, AutoSize = true, MaximumSize = new Size(1000, 0), Font = new Font("Segoe UI Semibold", 10.5f), Margin = new Padding(0, 6, 0, 4), Dock = DockStyle.Top };
+        moodBar = new ScoreBar { Dock = DockStyle.Top, Height = 20 };
+        moodNote = Muted(Loc.T("mood.note"));
+        moodNote.Dock = DockStyle.Bottom;
+        moodShares = NewGrid("mood.col.share", "mood.col.count", "mood.col.mood");
+        moodShares.Dock = DockStyle.Left;
+        moodShares.Width = 360;
+        moodShares.Columns[1].FillWeight = 40; moodShares.Columns[2].FillWeight = 55;
+        moodHeadlines = NewGrid("mood.col.mood", "mood.col.headline", "mood.col.source");
+        moodHeadlines.Dock = DockStyle.Fill;
+        moodHeadlines.Columns[0].FillWeight = 32; moodHeadlines.Columns[1].FillWeight = 100; moodHeadlines.Columns[2].FillWeight = 26;
+        var spacer = new Panel { Dock = DockStyle.Left, Width = 12 };
+        page.Controls.Add(moodHeadlines);
+        page.Controls.Add(spacer);
+        page.Controls.Add(moodShares);
+        page.Controls.Add(moodNote);
+        page.Controls.Add(new Panel { Dock = DockStyle.Top, Height = 8 });
+        page.Controls.Add(moodBar);
+        page.Controls.Add(moodSummary);
+        return page;
+    }
+
+    private static string MoodText(double score) => Loc.T(NewsSentiment.Classify(score) switch { Mood.Positive => "mood.positive", Mood.Negative => "mood.negative", _ => "mood.neutral" });
+
+    private static Color MoodColor(double score) => NewsSentiment.Classify(score) switch { Mood.Positive => ChartColors.Up, Mood.Negative => ChartColors.Down, _ => Theme.TextMuted };
+
+    private void FillMood()
+    {
+        var news = host.RecentNews.Where(n => n.Kind == NewsItemKind.News).ToList();
+        moodShares.Rows.Clear();
+        moodHeadlines.Rows.Clear();
+        if (news.Count == 0)
+        {
+            moodSummary.Text = Loc.T("mood.none");
+            moodBar.Value = 50;
+            return;
+        }
+        var scored = news.Select(n => (Item: n, Score: NewsSentiment.ScoreOf(n))).ToList();
+        var average = scored.Average(x => x.Score);
+        var good = scored.Count(x => NewsSentiment.Classify(x.Score) == Mood.Positive);
+        var bad = scored.Count(x => NewsSentiment.Classify(x.Score) == Mood.Negative);
+        moodSummary.Text = Loc.T("mood.overall", MoodText(average), average.ToString("+0.00;-0.00;0.00"), news.Count, good, scored.Count - good - bad, bad);
+        moodBar.Value = (average + 1) * 50;
+        foreach (var share in NewsSentiment.PerShare(news, host.Config.Watchlist))
+        {
+            var row = moodShares.Rows[moodShares.Rows.Add($"{share.Instrument.Symbol} — {share.Instrument.DisplayName(Loc.IsGreek)}", share.Headlines, $"{MoodText(share.Average)} ({share.Average:+0.00;-0.00;0.00})")];
+            row.Cells[2].Style.ForeColor = MoodColor(share.Average);
+        }
+        foreach (var (item, score) in scored.OrderByDescending(x => Math.Abs(x.Score)).ThenByDescending(x => x.Item.PublishedAt).Take(60))
+        {
+            var row = moodHeadlines.Rows.Add($"{MoodText(score)} ({score:+0.00;-0.00;0.00})", item.Title, item.Source);
+            moodHeadlines.Rows[row].Cells[0].Style.ForeColor = MoodColor(score);
+        }
     }
 
     private string DataBlock()

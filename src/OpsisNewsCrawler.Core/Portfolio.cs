@@ -128,8 +128,36 @@ public sealed class EcbRates
 }
 
 /// <summary>Simple technical indicators from the closing prices the program has stored (an idea taken from greek-stocks-ai, written from scratch).</summary>
+/// <summary>MACD lines aligned with the closes (NaN where there is not enough data yet).</summary>
+public sealed record MacdSeries(double[] Macd, double[] Signal, double[] Histogram);
+
 public static class Technical
 {
+    /// <summary>Moving Average Convergence Divergence (12, 26, 9 by default): the fast minus the slow exponential average, its own 9-day average and the difference.</summary>
+    public static MacdSeries Macd(IReadOnlyList<decimal> closes, int fast = 12, int slow = 26, int signal = 9)
+    {
+        var n = closes.Count;
+        var macd = Enumerable.Repeat(double.NaN, n).ToArray();
+        var sig = Enumerable.Repeat(double.NaN, n).ToArray();
+        var hist = Enumerable.Repeat(double.NaN, n).ToArray();
+        if (n == 0) return new MacdSeries(macd, sig, hist);
+        double emaFast = (double)closes[0], emaSlow = (double)closes[0];
+        double af = 2.0 / (fast + 1), asl = 2.0 / (slow + 1), asg = 2.0 / (signal + 1);
+        double? ema = null;
+        var firstValid = -1;
+        for (var i = 0; i < n; i++)
+        {
+            var c = (double)closes[i];
+            if (i > 0) { emaFast += af * (c - emaFast); emaSlow += asl * (c - emaSlow); }
+            if (i < slow - 1) continue;
+            macd[i] = emaFast - emaSlow;
+            if (firstValid < 0) firstValid = i;
+            ema = ema is null ? macd[i] : ema + asg * (macd[i] - ema);
+            if (i >= firstValid + signal - 1) { sig[i] = ema!.Value; hist[i] = macd[i] - sig[i]; }
+        }
+        return new MacdSeries(macd, sig, hist);
+    }
+
     /// <summary>Relative Strength Index (Wilder, 14 days). Null when there are fewer than period + 1 closes.</summary>
     public static double? Rsi(IReadOnlyList<decimal> closes, int period = 14)
     {

@@ -472,5 +472,19 @@
   "upd.notifyTitle": "Opsis News Crawler 새 버전",
   "upd.notifyBody": "{0} 버전을 사용할 수 있습니다 - 설정 › Opsis News Crawler 업데이트.",
   "upd.noDigest": "이 버전은 자동으로 검증할 수 없습니다. 수동 다운로드를 위해 릴리스 페이지가 열립니다.",
-  "tab.updates": "업데이트"
+  "tab.updates": "업데이트",
+  "analysis.tab.mood": "뉴스 분위기",
+  "analysis.macd": "MACD",
+  "bt.macd": "MACD 교차",
+  "mood.positive": "긍정적",
+  "mood.neutral": "중립",
+  "mood.negative": "부정적",
+  "mood.overall": "헤드라인 분위기: {0}({1}) — {2}건: 긍정 {3}, 중립 {4}, 부정 {5}",
+  "mood.col.share": "종목",
+  "mood.col.count": "헤드라인",
+  "mood.col.mood": "분위기",
+  "mood.col.headline": "헤드라인",
+  "mood.col.source": "출처",
+  "mood.none": "아직 불러온 헤드라인이 없습니다(막대가 백그라운드에서 불러옵니다).",
+  "mood.note": "불러온 헤드라인과 요약(활성 카테고리)에 그리스어와 영어의 간단한 단어 목록을 적용한 것입니다. 뉴스 어조의 대략적인 지표일 뿐 예측이나 투자 조언이 아닙니다."
 }

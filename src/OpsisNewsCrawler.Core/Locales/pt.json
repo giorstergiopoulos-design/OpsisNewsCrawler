@@ -472,5 +472,19 @@
   "upd.notifyTitle": "Nova versão do Opsis News Crawler",
   "upd.notifyBody": "A versão {0} está disponível - Definições › Atualização do Opsis News Crawler.",
   "upd.noDigest": "Esta versão não pode ser verificada automaticamente: abre-se a página da versão para transferência manual.",
-  "tab.updates": "Atualizações"
+  "tab.updates": "Atualizações",
+  "analysis.tab.mood": "Humor das notícias",
+  "analysis.macd": "MACD",
+  "bt.macd": "Cruzamento MACD",
+  "mood.positive": "Positivo",
+  "mood.neutral": "Neutro",
+  "mood.negative": "Negativo",
+  "mood.overall": "Humor dos títulos: {0} ({1}) — {2} títulos: {3} positivos, {4} neutros, {5} negativos",
+  "mood.col.share": "Ação",
+  "mood.col.count": "Títulos",
+  "mood.col.mood": "Humor",
+  "mood.col.headline": "Título",
+  "mood.col.source": "Fonte",
+  "mood.none": "Ainda não há títulos carregados (as barras carregam-nos em segundo plano).",
+  "mood.note": "Listas simples de palavras em grego e inglês aplicadas aos títulos e resumos carregados (categoria ativa). Uma indicação aproximada do tom das notícias, não uma previsão nem aconselhamento de investimento."
 }
