@@ -36,6 +36,21 @@ internal sealed class CandleChart : Control
 
     private int Shown { get; set; } = 60;
 
+    /// <summary>Bollinger bands: the 20-day average plus and minus two standard deviations.</summary>
+    public bool ShowBands { get; set; }
+
+    private (double Upper, double Lower)? BandAt(int index)
+    {
+        if (index + 1 < 20) return null;
+        double sum = 0;
+        for (var i = index - 19; i <= index; i++) sum += (double)candles[i].Close;
+        var mean = sum / 20;
+        double sq = 0;
+        for (var i = index - 19; i <= index; i++) { var d = (double)candles[i].Close - mean; sq += d * d; }
+        var sd = Math.Sqrt(sq / 20);
+        return (mean + 2 * sd, mean - 2 * sd);
+    }
+
     private static double? SmaAt(IReadOnlyList<Candle> c, int index, int period)
     {
         if (index + 1 < period) return null;
@@ -89,6 +104,7 @@ internal sealed class CandleChart : Control
             lo = Math.Min(lo, (double)candles[i].Low);
             hi = Math.Max(hi, (double)candles[i].High);
             foreach (var p in new[] { 20, 50 }) if (SmaAt(candles, i, p) is { } v) { lo = Math.Min(lo, v); hi = Math.Max(hi, v); }
+            if (ShowBands && BandAt(i) is { } band) { lo = Math.Min(lo, band.Lower); hi = Math.Max(hi, band.Upper); }
         }
         if (hi <= lo) { hi = lo + Math.Max(0.01, Math.Abs(lo) * 0.01); lo -= (hi - lo) * 0.5; }
         var pad = (hi - lo) * 0.06; lo -= pad; hi += pad;
@@ -105,6 +121,26 @@ internal sealed class CandleChart : Control
                 TextRenderer.DrawText(g, v.ToString("N" + decimals, CultureInfo.CurrentCulture), Font, new Rectangle(2, (int)y - 9, plot.Left - 6, 18), Theme.TextMuted,
                     TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
             }
+
+        // Bollinger bands behind everything else
+        if (ShowBands)
+        {
+            var up = new List<PointF>(); var down = new List<PointF>();
+            for (var i = first; i < candles.Count; i++)
+                if (BandAt(i) is { } band)
+                {
+                    var bx = plot.Left + (float)((i - first + 0.5) * plot.Width / count);
+                    up.Add(new PointF(bx, Y(band.Upper))); down.Add(new PointF(bx, Y(band.Lower)));
+                }
+            if (up.Count > 1)
+            {
+                var poly = up.Concat(Enumerable.Reverse(down)).ToArray();
+                using (var fillBrush = new SolidBrush(Color.FromArgb(34, 160, 120, 230))) g.FillPolygon(fillBrush, poly);
+                using var bandPen = new Pen(Color.FromArgb(150, 160, 120, 230), 1.2f);
+                g.DrawLines(bandPen, up.ToArray());
+                g.DrawLines(bandPen, down.ToArray());
+            }
+        }
 
         // averages
         foreach (var (period, color) in new[] { (20, Color.FromArgb(230, 170, 40)), (50, Color.FromArgb(120, 150, 240)) })

@@ -47,6 +47,9 @@ public sealed class QuoteInstrument
 
     public string DisplayName(bool greek) => greek ? NameEl : NameEn;
 
+    /// <summary>The key under which the prices of this instrument are stored (Euronext shares of other markets: "MIC:ISIN").</summary>
+    public string StoreKey => Source == QuoteSource.Euronext ? (Market ?? "") + ":" + Code : Code;
+
     /// <summary>Copies all instrument fields, including the market identifier used by Euronext.</summary>
     public QuoteInstrument Clone() => new(Source, Code, Symbol, NameEl, NameEn, Unit, Enabled) { Market = Market };
 
@@ -99,6 +102,8 @@ public sealed class QuoteStore
     private readonly object gate = new();
     private readonly Dictionary<string, SortedDictionary<string, Candle>> candles = new(StringComparer.OrdinalIgnoreCase);
     private readonly string candlePath;
+    private readonly string backfillPath;
+    private readonly Dictionary<string, string> backfill = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>The price cache; the folder can be redirected with the environment variable OPSISNEWSCRAWLER_DATA (a test aid, e.g. for screenshots with made-up data).</summary>
     public static string DefaultPath => Path.Combine(
@@ -111,6 +116,7 @@ public sealed class QuoteStore
     {
         this.path = path ?? DefaultPath;
         candlePath = Path.Combine(Path.GetDirectoryName(this.path) ?? "", Path.GetFileNameWithoutExtension(this.path) + "-ohlc.json");
+        backfillPath = Path.Combine(Path.GetDirectoryName(this.path) ?? "", Path.GetFileNameWithoutExtension(this.path) + "-backfill.json");
         LoadCandles();
         try
         {
@@ -174,8 +180,38 @@ public sealed class QuoteStore
         }
     }
 
+    /// <summary>The day (yyyyMMdd) history was last asked for from an optional history source, or null.</summary>
+    public string? BackfillDay(string code) { lock (gate) return backfill.GetValueOrDefault(code); }
+
+    public void MarkBackfill(string code, string day) { lock (gate) backfill[code] = day; }
+
+    /// <summary>Adds days from a history source: exact candles from the trade file are kept, other days are added or replaced; closes are added where missing.</summary>
+    public void MergeCandles(string code, IEnumerable<Candle> incoming)
+    {
+        lock (gate)
+        {
+            if (!candles.TryGetValue(code, out var cs)) candles[code] = cs = new SortedDictionary<string, Candle>(StringComparer.Ordinal);
+            if (!days.TryGetValue(code, out var closes)) days[code] = closes = new SortedDictionary<string, decimal>(StringComparer.Ordinal);
+            foreach (var c in incoming)
+            {
+                if (!(cs.TryGetValue(c.Day, out var have) && have.Exact)) cs[c.Day] = c;
+                closes.TryAdd(c.Day, c.Close);
+            }
+            while (cs.Count > 400) cs.Remove(cs.Keys.First());
+            while (closes.Count > 130) closes.Remove(closes.Keys.First());
+        }
+    }
+
     private void LoadCandles()
     {
+        try
+        {
+            if (File.Exists(backfillPath))
+                foreach (var (k, v) in JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(backfillPath)) ?? new()) backfill[k] = v;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+        {
+        }
         try
         {
             if (!File.Exists(candlePath)) return;
@@ -232,6 +268,9 @@ public sealed class QuoteStore
             }
             SafeFile.WriteAllText(path, json);
             SafeFile.WriteAllText(candlePath, candleJson);
+            string backfillJson;
+            lock (gate) backfillJson = JsonSerializer.Serialize(backfill);
+            SafeFile.WriteAllText(backfillPath, backfillJson);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

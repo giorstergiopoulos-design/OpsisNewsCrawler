@@ -1295,6 +1295,36 @@ public sealed class TickerHost : IDisposable
         form.Close();
     }
 
+    private bool backfilling;
+
+    /// <summary>
+    /// When the user switched it on (Sources &gt; Markets flow): fills the stored price history from Yahoo Finance, a few instruments per run,
+    /// one try per instrument and day. Off by default.
+    /// </summary>
+    public async void StartHistoryBackfill()
+    {
+        if (!Config.HistoryFromYahoo || backfilling || disposed) return;
+        backfilling = true;
+        try
+        {
+            var list = Config.Watchlist.Where(w => w.Enabled).Concat(PortfolioInstruments()).ToList();
+            var ui = SynchronizationContext.Current;
+            var n = await YahooHistory.BackfillAsync(quotes.Store, list, 40, cts.Token, () => ui?.Post(_ => { if (!disposed) QuotesUpdated?.Invoke(); }, null));
+            if (n > 0 && !disposed)
+            {
+                Log.Write($"Yahoo history added for {n} instruments.");
+                QuotesUpdated?.Invoke();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            backfilling = false;
+        }
+    }
+
     private IEnumerable<QuoteInstrument> PortfolioInstruments() => Config.Portfolio.Select(p => p.ToInstrument());
 
     private async Task RefreshQuotesAsync(bool force = false)
@@ -1323,6 +1353,7 @@ public sealed class TickerHost : IDisposable
             quotesFailed = quotes.LastFailed.Count > 0 || items.Count == 0 && Config.Watchlist.Any(w => w.Enabled);
             Show(items);
             QuotesUpdated?.Invoke();
+            StartHistoryBackfill();
             CheckPriceAlerts();
             if (quotesFailed) ScheduleQuoteRetry();
         }

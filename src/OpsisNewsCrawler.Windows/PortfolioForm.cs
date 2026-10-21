@@ -147,7 +147,7 @@ internal sealed class PortfolioForm : Form
             var rates = await host.Ecb.GetAsync(CancellationToken.None);
             if (IsDisposed) return;
             var positions = host.Config.Portfolio;
-            var result = PortfolioCalc.Compute(positions, host.QuoteService.LatestByKey, rates, p => host.QuoteService.Store.History(p.Code));
+            var result = PortfolioCalc.Compute(positions, host.QuoteService.LatestByKey, rates, p => host.QuoteService.Store.History(p.StoreKey));
             var greek = Loc.IsGreek;
             var selected = grid.CurrentRow?.Index ?? -1;
             grid.Rows.Clear();

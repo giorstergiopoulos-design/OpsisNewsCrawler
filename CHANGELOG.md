@@ -3,6 +3,11 @@
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
 Detailed notes per release: `docs/RELEASE-*.md` and the GitHub releases.
 
+## Unreleased (after 0.13.0)
+- All new texts of 0.12.8–0.13.0 translated into the 12 other languages (analysis window, back-test, fear & greed, assistant, bar styles, tray, weather details, network messages). Help/Instructions/History/License remain English in those 12 languages.
+- Optional price history from Yahoo Finance (off by default, unofficial, at the user's own risk): charts, back-test and gauge work from the first day. Stooq is not supported (bot check).
+- Bollinger bands on the candlestick chart; Euronext shares of other markets and the portfolio now find their stored prices (store key MIC:ISIN).
+
 ## 0.13.0 — 2026-10-21
 - **Market analysis window**: candlestick chart (SMA20/50, hover figures; exact open/high/low/close for Athens shares from the trade file), back-test (SMA crossover, RSI), fear & greed gauge computed from the stored prices, and an optional assistant using the user's own Anthropic key (encrypted for the Windows account, not exported, nothing sent until Send).
 - **Settings window**: one left navigation rail instead of two rows of buttons; the Bars page now holds every bar setting in clear sections (placement, what each bar shows, desktop bar).

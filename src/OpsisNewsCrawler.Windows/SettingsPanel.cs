@@ -54,6 +54,7 @@ public sealed class SettingsPanel : UserControl
     private FlatButton miniMove = null!;
     private FlatCheck miniOnTop = null!;
     private FlatCheck miniWhenHidden = null!;
+    private FlatCheck yahooHistory = null!;
     private FlatCombo miniShape = null!;
     private List<string> workCities = new();
     private List<GreekCity> shownCities = new();
@@ -1018,6 +1019,13 @@ public sealed class SettingsPanel : UserControl
         var openAnalysis = new FlatButton { Text = L("btn.openAnalysis") };
         openAnalysis.Click += (_, _) => host.ShowAnalysis();
         flow.Controls.Add(openAnalysis);
+        var historyCard = new FlatCard(L("card.history"));
+        var historyFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        yahooHistory = new FlatCheck { Text = L("chk.yahooHistory") };
+        historyFlow.Controls.Add(yahooHistory);
+        historyFlow.Controls.Add(Note(L("note.yahooHistory"), 700));
+        historyCard.Controls.Add(historyFlow);
+        flow.Controls.Add(historyCard);
         flow.Controls.Add(Note(L("note.markets"), 700));
         flow.Controls.Add(Note(Loc.Pick(
             "Περιορισμοί δεδομένων: οι τιμές Αθήνας έχουν καθυστέρηση 15 λεπτών (επίσημα αρχεία Euronext Athens)· οι μετοχές άλλων αγορών Euronext είναι τιμές κλεισίματος· οι ισοτιμίες ΕΚΤ ανανεώνονται μία φορά κάθε εργάσιμη. Μέταλλα, κρυπτονομίσματα και πετρέλαιο/φυσικό αέριο (Pyth) είναι σχεδόν ζωντανά· αν το Pyth δεν απαντά, εμφανίζονται οι ημερήσιες τιμές EIA με ένδειξη ημερομηνίας.",
@@ -1511,6 +1519,7 @@ public sealed class SettingsPanel : UserControl
             trayAnimated.Checked = c.TrayIconAnimated;
             toggleHotkey.Checked = c.ToggleHotkey;
             autoUpdate.Checked = c.CheckForUpdates;
+            yahooHistory.Checked = c.HistoryFromYahoo;
             workCities = c.WeatherCities.ToList();
             ShowCities();
             miniWeather.Checked = c.MiniWeatherEnabled;
@@ -1732,6 +1741,7 @@ public sealed class SettingsPanel : UserControl
         c.StockNewsOnly = stockNewsOnly.Checked;
         c.MutedNewsKeywords = mutedKeywords;
         c.CheckForUpdates = autoUpdate.Checked;
+        c.HistoryFromYahoo = yahooHistory.Checked;
         c.ToggleHotkey = toggleHotkey.Checked;
         c.WeatherCities = workCities.ToList();
         c.MiniWeatherEnabled = miniWeather.Checked;
@@ -1806,6 +1816,7 @@ public sealed class SettingsPanel : UserControl
         c.PriceAlerts = workAlerts.Select(a => a.Clone()).ToList();
 
         host.ApplyConfig();
+        host.StartHistoryBackfill();
         host.SetBarsEnabled(barsEnabled.Checked);
         if (!host.HostedByOpsis) StartupRegistration.Set(startWithWindows.Checked);
         c.TrayIconAnimated = trayAnimated.Checked;

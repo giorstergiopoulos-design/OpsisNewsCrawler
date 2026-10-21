@@ -193,3 +193,8 @@ Build 0 errors / 0 warnings; `dotnet test` 56 passed (test project added to the 
 ## Round 20 — version 0.12.8 (2026-10-20)
 - ✅ Desktop bar appears while the auto-hiding taskbar (and the bar inside it) is hidden: `TickerWindow.HiddenByTaskbarChanged` → `TickerHost.MiniWanted`; option `MiniWhenTaskbarHidden`. Verified by switching the Windows auto-hide on/off (bar at the configured 300,200 700x60 while hidden, gone when shown).
 - ✅ 4/5 re-checked: no MotionDesk-named file or folder left in the crawler (only compat clean-up code and history text); Opsis confirmed its loader scans `*Plugin.dll` and needs no rename.
+
+## Round 21 (after 0.13.0, 2026-10-21)
+- ✅ Translations of every key added since 0.12.5 into the 12 non-Greek/English languages (key sets identical in all 14 files, except the four long info texts help/instructions/history/license which fall back to English in the 12).
+- ✅ `YahooHistory` (opt-in): live test with the real Yahoo address filled 129 daily candles for 9 Athens shares in 10 s. 5 new unit tests (69 in all).
+- ✅ Bollinger bands. ❌ Stooq (bot protection, not bypassed). ❌ Not built: MACD, news sentiment (greek-stocks-ai).

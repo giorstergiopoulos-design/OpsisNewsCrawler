@@ -25,6 +25,7 @@ internal sealed class AnalysisForm : Form
     private FlatCombo chartInstrument = null!, chartRange = null!;
     private CandleChart chart = null!;
     private Label chartInfo = null!;
+    private FlatCheck chartBands = null!;
 
     // back-test page
     private FlatCombo btInstrument = null!, btStrategy = null!;
@@ -82,6 +83,7 @@ internal sealed class AnalysisForm : Form
         HandleCreated += (_, _) => Theme.ApplyTitleBar(this);
         Theme.Apply(this);
         host.RefreshPortfolio();   // make sure the prices are being fetched
+        host.StartHistoryBackfill(); // only does something when the user switched Yahoo history on
         Refill();
     }
 
@@ -100,8 +102,9 @@ internal sealed class AnalysisForm : Form
     {
         var greek = Loc.IsGreek;
         var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var (inst, _) in host.QuoteService.LastQuotes) map[inst.Code] = $"{inst.Symbol} — {(greek ? inst.NameEl : inst.NameEn)}";
-        foreach (var p in host.Config.Portfolio) map[p.Code] = $"{p.Symbol} — {p.DisplayName(greek)}";
+        foreach (var (inst, _) in host.QuoteService.LastQuotes) map[inst.StoreKey] = $"{inst.Symbol} — {(greek ? inst.NameEl : inst.NameEn)}";
+        foreach (var w in host.Config.Watchlist) map[w.StoreKey] = $"{w.Symbol} — {(greek ? w.NameEl : w.NameEn)}";
+        foreach (var p in host.Config.Portfolio) map[p.StoreKey] = $"{p.Symbol} — {p.DisplayName(greek)}";
         foreach (var code in host.QuoteService.Store.Codes()) map.TryAdd(code, code);
         var store = host.QuoteService.Store;
         items = map.Select(kv => new Item(kv.Key, kv.Value)).Where(i => store.Candles(i.Code).Count > 0)
@@ -173,6 +176,8 @@ internal sealed class AnalysisForm : Form
         chartRange = new FlatCombo { Width = 170 };
         chartRange.SetItems(new[] { Loc.T("analysis.range.30"), Loc.T("analysis.range.60"), Loc.T("analysis.range.130"), Loc.T("analysis.range.all") }, 1);
         chartInfo = Muted("");
+        chartBands = new FlatCheck { Text = Loc.T("analysis.bollinger"), Margin = new Padding(8, 6, 0, 0) };
+        chartBands.CheckedChanged += (_, _) => FillChart();
         chart = new CandleChart { Dock = DockStyle.Fill };
         chartInstrument.SelectedIndexChanged += (_, _) => { if (!syncing) FillChart(); };
         chartRange.SelectedIndexChanged += (_, _) => FillChart();
@@ -181,7 +186,7 @@ internal sealed class AnalysisForm : Form
         page.Controls.Add(chart);
         page.Controls.Add(legend);
         page.Controls.Add(chartInfo);
-        page.Controls.Add(Bar(Labelled(Loc.T("analysis.instrument"), chartInstrument), Labelled(Loc.T("analysis.range"), chartRange)));
+        page.Controls.Add(Bar(Labelled(Loc.T("analysis.instrument"), chartInstrument), Labelled(Loc.T("analysis.range"), chartRange), chartBands));
         chartInfo.Dock = DockStyle.Top;
         return page;
     }
@@ -190,7 +195,8 @@ internal sealed class AnalysisForm : Form
     {
         var candles = CandlesOf(Selected(chartInstrument));
         var shown = chartRange.SelectedIndex switch { 0 => 30, 1 => 60, 2 => 130, _ => 100000 };
-        chart.SetData(candles, shown, Loc.T("analysis.empty"));
+        chart.ShowBands = chartBands.Checked;
+        chart.SetData(candles, shown, Loc.T(host.Config.HistoryFromYahoo ? "analysis.empty" : "analysis.emptyNoYahoo"));
         var exact = candles.Count(c => c.Exact);
         chartInfo.Text = candles.Count == 0 ? "" : Loc.T("analysis.info", candles.Count, exact);
     }
@@ -403,7 +409,7 @@ internal sealed class AnalysisForm : Form
         sb.AppendLine("Latest prices (symbol, price, change %, RSI14):");
         foreach (var (inst, q) in host.QuoteService.LastQuotes.Take(80))
         {
-            var rsi = Technical.Rsi(store.History(inst.Code).ToList());
+            var rsi = Technical.Rsi(store.History(inst.StoreKey).ToList());
             sb.AppendLine($"- {inst.Symbol} {q.Price} {(q.ChangePercent is { } c ? c.ToString("+0.00;-0.00") + "%" : "n/a")} RSI {(rsi is { } r ? r.ToString("0") : "n/a")}");
         }
         var fg = FearGreed.Compute(items.Select(i => (IReadOnlyList<decimal>)store.Candles(i.Code).Select(c => c.Close).ToList()).ToList());

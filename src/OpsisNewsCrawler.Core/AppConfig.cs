@@ -72,6 +72,9 @@ public sealed class AppConfig
 
     /// <summary>The user's own API key for the optional assistant in the markets window, encrypted for this Windows account (empty = assistant off). Never exported.</summary>
     public string AiKeyProtected { get; set; } = "";
+
+    /// <summary>OFF by default: fill the price history from Yahoo Finance (unofficial; its terms do not allow automated use - the user's own choice and risk).</summary>
+    public bool HistoryFromYahoo { get; set; }
     public string AiModel { get; set; } = AiAssistant.DefaultModel;
     /// <summary>When true the assistant also gets the delayed prices and the portfolio of the user with every question; when false only the question.</summary>
     public bool AiShareData { get; set; }
