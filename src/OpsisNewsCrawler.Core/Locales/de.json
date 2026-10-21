@@ -258,5 +258,7 @@
   "lbl.avgCost": "Durchschnittlicher Kaufkurs",
   "lbl.currency": "Währung",
   "msg.badNumber": "Geben Sie eine Zahl größer als null ein.",
-  "tray.portfolio": "Depot"
+  "tray.portfolio": "Depot",
+  "tray.pause": "Pausieren",
+  "tray.resume": "Fortsetzen"
 }

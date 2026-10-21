@@ -70,6 +70,12 @@ public sealed class AppConfig
     /// <summary>The icon in the notification area shows a little bar with the four kinds of news passing by (newspaper, ball, shield, chart and coins).</summary>
     public bool TrayIconAnimated { get; set; } = true;
 
+    /// <summary>The user's own API key for the optional assistant in the markets window, encrypted for this Windows account (empty = assistant off). Never exported.</summary>
+    public string AiKeyProtected { get; set; } = "";
+    public string AiModel { get; set; } = AiAssistant.DefaultModel;
+    /// <summary>When true the assistant also gets the delayed prices and the portfolio of the user with every question; when false only the question.</summary>
+    public bool AiShareData { get; set; }
+
     /// <summary>The holdings shown in the portfolio window (quantity and average price; profit and loss are computed).</summary>
     public List<PortfolioPosition> Portfolio { get; set; } = new();
 

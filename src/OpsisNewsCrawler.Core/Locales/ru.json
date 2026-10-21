@@ -258,5 +258,7 @@
   "lbl.avgCost": "Средняя цена покупки",
   "lbl.currency": "Валюта",
   "msg.badNumber": "Введите число больше нуля.",
-  "tray.portfolio": "Портфель"
+  "tray.portfolio": "Портфель",
+  "tray.pause": "Пауза",
+  "tray.resume": "Продолжить"
 }

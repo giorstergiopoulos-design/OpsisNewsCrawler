@@ -258,5 +258,7 @@
   "lbl.avgCost": "Preço médio pago",
   "lbl.currency": "Moeda",
   "msg.badNumber": "Escreva um número maior que zero.",
-  "tray.portfolio": "Carteira"
+  "tray.portfolio": "Carteira",
+  "tray.pause": "Pausar",
+  "tray.resume": "Retomar"
 }

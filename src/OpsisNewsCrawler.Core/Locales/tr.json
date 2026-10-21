@@ -258,5 +258,7 @@
   "lbl.avgCost": "Ödenen ortalama fiyat",
   "lbl.currency": "Para birimi",
   "msg.badNumber": "Sıfırdan büyük bir sayı girin.",
-  "tray.portfolio": "Portföy"
+  "tray.portfolio": "Portföy",
+  "tray.pause": "Duraklat",
+  "tray.resume": "Devam et"
 }

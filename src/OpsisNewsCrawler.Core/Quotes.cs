@@ -88,19 +88,30 @@ public sealed class QuoteInstrument
     };
 }
 
+/// <summary>One day of trading: open, high, low and close. <see cref="Exact"/> is false when it was only sampled from the program's own refreshes (or has just a close).</summary>
+public readonly record struct Candle(string Day, decimal Open, decimal High, decimal Low, decimal Close, bool Exact);
+
 /// <summary>Remembers the last price of each instrument per day, to know the previous close (the sources give no history).</summary>
 public sealed class QuoteStore
 {
     private readonly string path;
     private readonly Dictionary<string, SortedDictionary<string, decimal>> days = new(StringComparer.OrdinalIgnoreCase);
     private readonly object gate = new();
+    private readonly Dictionary<string, SortedDictionary<string, Candle>> candles = new(StringComparer.OrdinalIgnoreCase);
+    private readonly string candlePath;
 
+    /// <summary>The price cache; the folder can be redirected with the environment variable OPSISNEWSCRAWLER_DATA (a test aid, e.g. for screenshots with made-up data).</summary>
     public static string DefaultPath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OpsisNewsCrawler", "quotes-cache.json");
+        Environment.GetEnvironmentVariable("OPSISNEWSCRAWLER_DATA") is { Length: > 0 } dir
+            ? dir
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OpsisNewsCrawler"),
+        "quotes-cache.json");
 
     public QuoteStore(string? path = null)
     {
         this.path = path ?? DefaultPath;
+        candlePath = Path.Combine(Path.GetDirectoryName(this.path) ?? "", Path.GetFileNameWithoutExtension(this.path) + "-ohlc.json");
+        LoadCandles();
         try
         {
             if (!File.Exists(this.path)) return;
@@ -121,6 +132,65 @@ public sealed class QuoteStore
             if (!days.TryGetValue(code, out var perDay)) days[code] = perDay = new SortedDictionary<string, decimal>(StringComparer.Ordinal);
             perDay[day] = price;
             while (perDay.Count > 130) perDay.Remove(perDay.Keys.First());
+            // The same price also feeds the day's candle: the first price seen is the open, the extremes are the high and low.
+            if (!candles.TryGetValue(code, out var cs)) candles[code] = cs = new SortedDictionary<string, Candle>(StringComparer.Ordinal);
+            cs[day] = cs.TryGetValue(day, out var c)
+                ? c.Exact ? c with { Close = price, High = Math.Max(c.High, price), Low = Math.Min(c.Low, price) }
+                          : new Candle(day, c.Open, Math.Max(c.High, price), Math.Min(c.Low, price), price, false)
+                : new Candle(day, price, price, price, price, false);
+            while (cs.Count > 400) cs.Remove(cs.Keys.First());
+        }
+    }
+
+    /// <summary>The exact open, high, low and close of a day (from a source that publishes every trade); replaces what was sampled.</summary>
+    public void RecordCandle(string code, string day, decimal open, decimal high, decimal low, decimal close)
+    {
+        lock (gate)
+        {
+            if (!candles.TryGetValue(code, out var cs)) candles[code] = cs = new SortedDictionary<string, Candle>(StringComparer.Ordinal);
+            cs[day] = new Candle(day, open, high, low, close, true);
+            while (cs.Count > 400) cs.Remove(cs.Keys.First());
+        }
+    }
+
+    /// <summary>Daily candles, oldest first. Days that only have a closing price (stored before candles existed) are drawn from the previous close.</summary>
+    public IReadOnlyList<Candle> Candles(string code)
+    {
+        lock (gate)
+        {
+            var result = new SortedDictionary<string, Candle>(StringComparer.Ordinal);
+            if (days.TryGetValue(code, out var closes))
+            {
+                decimal? prev = null;
+                foreach (var (day, close) in closes)
+                {
+                    var open = prev ?? close;
+                    result[day] = new Candle(day, open, Math.Max(open, close), Math.Min(open, close), close, false);
+                    prev = close;
+                }
+            }
+            if (candles.TryGetValue(code, out var cs)) foreach (var (day, c) in cs) result[day] = c;
+            return result.Values.ToList();
+        }
+    }
+
+    private void LoadCandles()
+    {
+        try
+        {
+            if (!File.Exists(candlePath)) return;
+            var data = JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, decimal[]>>>(File.ReadAllText(candlePath));
+            if (data is null) return;
+            foreach (var (code, perDay) in data)
+            {
+                var cs = new SortedDictionary<string, Candle>(StringComparer.Ordinal);
+                foreach (var (day, v) in perDay)
+                    if (v.Length >= 5) cs[day] = new Candle(day, v[0], v[1], v[2], v[3], v[4] != 0);
+                candles[code] = cs;
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+        {
         }
     }
 
@@ -128,6 +198,12 @@ public sealed class QuoteStore
     public IReadOnlyList<decimal> History(string code)
     {
         lock (gate) return days.TryGetValue(code, out var perDay) ? perDay.Values.ToList() : new List<decimal>();
+    }
+
+    /// <summary>The codes of every instrument that has stored prices.</summary>
+    public IReadOnlyList<string> Codes()
+    {
+        lock (gate) return days.Keys.Concat(candles.Keys).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
     }
 
     /// <summary>Last price of the latest day before <paramref name="day"/>, or null.</summary>
@@ -147,8 +223,15 @@ public sealed class QuoteStore
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             string json;
-            lock (gate) json = JsonSerializer.Serialize(days);
+            string candleJson;
+            lock (gate)
+            {
+                json = JsonSerializer.Serialize(days);
+                candleJson = JsonSerializer.Serialize(candles.ToDictionary(kv => kv.Key,
+                    kv => kv.Value.ToDictionary(d => d.Key, d => new[] { d.Value.Open, d.Value.High, d.Value.Low, d.Value.Close, d.Value.Exact ? 1m : 0m })));
+            }
             SafeFile.WriteAllText(path, json);
+            SafeFile.WriteAllText(candlePath, candleJson);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -268,6 +351,8 @@ public sealed class AthensDelayedFileProvider : IQuoteProvider
             foreach (var instrument in instruments) wanted.TryAdd(instrument.Code, instrument);
             var last = new Dictionary<string, (string At, decimal Price)>(StringComparer.Ordinal);
             var first = new Dictionary<string, (string At, decimal Price)>(StringComparer.Ordinal);
+            var high = new Dictionary<string, decimal>(StringComparer.Ordinal);
+            var low = new Dictionary<string, decimal>(StringComparer.Ordinal);
 
             using var response = await http.GetAsync(Base + newest.Url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
@@ -284,6 +369,8 @@ public sealed class AthensDelayedFileProvider : IQuoteProvider
                 var at = f[0];
                 if (!last.TryGetValue(f[1], out var l) || string.CompareOrdinal(at, l.At) > 0) last[f[1]] = (at, price);
                 if (!first.TryGetValue(f[1], out var fi) || string.CompareOrdinal(at, fi.At) < 0) first[f[1]] = (at, price);
+                if (!high.TryGetValue(f[1], out var hi) || price > hi) high[f[1]] = price;
+                if (!low.TryGetValue(f[1], out var lo) || price < lo) low[f[1]] = price;
             }
 
             var results = new List<MarketQuote>();
@@ -291,6 +378,8 @@ public sealed class AthensDelayedFileProvider : IQuoteProvider
             {
                 if (!last.TryGetValue(inst.Code, out var l)) continue;
                 store.Record(inst.Code, newest.Day, l.Price);
+                if (first.TryGetValue(inst.Code, out var firstTrade)) // the file holds every trade of the day: an exact candle
+                    store.RecordCandle(inst.Code, newest.Day, firstTrade.Price, high[inst.Code], low[inst.Code], l.Price);
                 var prev = store.PreviousClose(inst.Code, newest.Day);
                 var fromOpen = false;
                 if (prev is null && first.TryGetValue(inst.Code, out var fi) && fi.Price > 0)

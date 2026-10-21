@@ -258,5 +258,7 @@
   "lbl.avgCost": "औसत खरीद भाव",
   "lbl.currency": "मुद्रा",
   "msg.badNumber": "शून्य से बड़ी संख्या लिखें।",
-  "tray.portfolio": "पोर्टफ़ोलियो"
+  "tray.portfolio": "पोर्टफ़ोलियो",
+  "tray.pause": "रोकें",
+  "tray.resume": "फिर शुरू करें"
 }

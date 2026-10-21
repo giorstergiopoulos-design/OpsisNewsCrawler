@@ -62,6 +62,15 @@ internal static class Program
             return;
         }
 
+        if (Array.IndexOf(args, "--snapshot-analysis") is >= 0 and var anAt && anAt + 2 < args.Length)
+        {
+            ApplicationConfiguration.Initialize();
+            var cfgAn = Array.IndexOf(args, "--config");
+            using var anHost = new TickerHost(cfgAn >= 0 && cfgAn + 1 < args.Length ? args[cfgAn + 1] : null);
+            anHost.SnapshotAnalysis(args[anAt + 1], int.Parse(args[anAt + 2]), 10);
+            return;
+        }
+
         // Only one ticker at a time.
         using var singleInstance = new Mutex(true, "OpsisNewsCrawler.SingleInstance", out var createdNew);
         if (!createdNew) return;
@@ -118,8 +127,14 @@ internal static class Program
         host.SnoozeChanged += active => cancelSnooze.Enabled = active;
         menu.Items.Add(snoozeMenu);
         var menuPortfolio = menu.Items.Add(Loc.T("tray.portfolio"), null, (_, _) => host.ShowPortfolio());
+        var menuAnalysis = menu.Items.Add(Loc.T("tray.analysis"), null, (_, _) => host.ShowAnalysis());
         var menuSettings = menu.Items.Add(Loc.T("tray.settings"), null, (_, _) => settings.ShowSettings());
         var menuRefresh = menu.Items.Add(Loc.T("tray.refresh"), null, (_, _) => host.Refresh());
+        var menuPause = menu.Items.Add(Loc.T("tray.pause"), null, (_, _) => host.Pause());
+        var menuResume = menu.Items.Add(Loc.T("tray.resume"), null, (_, _) => host.Resume());
+        void UpdatePauseItems() { menuPause.Enabled = !host.Paused; menuResume.Enabled = host.Paused; }
+        host.PausedChanged += UpdatePauseItems;
+        UpdatePauseItems();
         menu.Items.Add(new ToolStripSeparator());
         var menuExit = menu.Items.Add(Loc.T("tray.exit"), null, (_, _) =>
         {
@@ -132,8 +147,11 @@ internal static class Program
         {
             menuBars.Text = Loc.T("chk.barsEnabled");
             menuPortfolio.Text = Loc.T("tray.portfolio");
+            menuAnalysis.Text = Loc.T("tray.analysis");
             menuSettings.Text = Loc.T("tray.settings");
             menuRefresh.Text = Loc.T("tray.refresh");
+            menuPause.Text = Loc.T("tray.pause");
+            menuResume.Text = Loc.T("tray.resume");
             snoozeMenu.Text = Loc.IsGreek ? "Απόκρυψη προσωρινά" : "Snooze bars";
             snooze15.Text = Loc.IsGreek ? "Για 15 λεπτά" : "For 15 minutes";
             snooze60.Text = Loc.IsGreek ? "Για 60 λεπτά" : "For 60 minutes";

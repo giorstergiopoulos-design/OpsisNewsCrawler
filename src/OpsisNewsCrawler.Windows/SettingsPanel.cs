@@ -18,9 +18,7 @@ public sealed class SettingsPanel : UserControl
     private bool hasUnsavedChanges;
     private bool dirtyTrackingAttached;
 
-    private FlatStrip tabs = null!;
-    private FlatStrip settingsStrip = null!;
-    private readonly List<(int Top, FlatStrip Strip, int Sub)> leaves = new();
+    private FlatNav tabs = null!;
     private Label status = null!;
     private bool built;
     private BarPreview barPreview = null!;
@@ -216,7 +214,7 @@ public sealed class SettingsPanel : UserControl
     private void UpdatePreview()
     {
         if (!Visible || !built || barPreview is null || barPreview.IsDisposed || tabs is null) return;
-        var show = tabs.SelectedIndex == 0 && PreviewSubs.Contains(settingsStrip.SelectedIndex);
+        var show = PreviewSubs.Contains(tabs.SelectedIndex);
         if (barPreview.Visible != show) barPreview.Visible = show;
         if (!show) return;
         var dark = themeMode.SelectedIndex switch { 1 => false, 2 => true, _ => Theme.IsDark };
@@ -249,14 +247,15 @@ public sealed class SettingsPanel : UserControl
     {
         loading = true;
         watchLists.Clear();
-        leaves.Clear();
-        tabs = new FlatStrip(true) { Dock = DockStyle.Fill };
+        tabs = new FlatNav { Dock = DockStyle.Fill };
 
-        // Three tabs: Settings, Sources, Information. Each has a row of sub-buttons (no side menu any more).
-        settingsStrip = AddGroup(Loc.Pick("Ρυθμίσεις", "Settings"),
+        // One navigation rail: three groups (Settings, Sources, Information), every page under its group.
+        AddGroup(Loc.Pick("Ρυθμίσεις", "Settings"),
             (Loc.Pick("Γενικά", "General"), BuildGeneral()),
             // Bars and Position are one page now: the bars first, where they sit below.
-            (L("tab.bars"), Combine((null, BuildBars()), (L("tab.position"), BuildPosition()))),
+            (L("tab.bars"), Combine(
+                (Loc.Pick("Θέση και συμπεριφορά|Πού εμφανίζεται η μπάρα και πώς ακολουθεί τη γραμμή εργασιών.", "Placement and behaviour|Where the bar appears and how it follows the taskbar."), BuildPosition()),
+                (Loc.Pick("Τι δείχνει κάθε μπάρα|Περιεχόμενο της κύριας μπάρας, της δεύτερης και των άλλων οθονών.", "What each bar shows|The content of the main bar, the second bar and the bars of the other monitors."), BuildBars()))),
             (Loc.Pick("Μπάρα επιφάνειας εργασίας", "Desktop bar"), BuildDesktopBar()),
             (L("tab.look"), BuildLook()),
             (L("tab.breaking"), BuildBreaking()));
@@ -312,25 +311,14 @@ public sealed class SettingsPanel : UserControl
         hasUnsavedChanges = false;
     }
 
-    /// <summary>One top tab with a row of sub-buttons; every sub-page is one of the existing Build... pages.</summary>
-    private FlatStrip AddGroup(string title, params (string Title, Control Page)[] pages)
+    /// <summary>A group heading of the navigation rail with its pages; every page is one of the Build... pages.</summary>
+    private void AddGroup(string title, params (string Title, Control Page)[] pages)
     {
-        var strip = new FlatStrip(false) { Dock = DockStyle.Fill };
-        var top = tabs.Count;
-        for (var i = 0; i < pages.Length; i++)
-        {
-            strip.AddPage(pages[i].Title, pages[i].Page);
-            leaves.Add((top, strip, i));
-        }
-        tabs.AddPage(title, strip);
-        return strip;
+        tabs.AddGroup(title);
+        foreach (var (pageTitle, page) in pages) tabs.AddPage(pageTitle, page);
     }
 
-    private int CurrentLeaf()
-    {
-        var index = leaves.FindIndex(l => l.Top == tabs.SelectedIndex && l.Sub == l.Strip.SelectedIndex);
-        return Math.Max(0, index);
-    }
+    private int CurrentLeaf() => Math.Max(0, tabs.SelectedIndex);
 
     /// <summary>Puts the content of several pages one under the other on a single scrolling page.</summary>
     private static Panel Combine(params (string? Heading, Control Page)[] parts)
@@ -340,7 +328,13 @@ public sealed class SettingsPanel : UserControl
         foreach (var (heading, part) in parts)
         {
             if (heading is not null)
-                stack.Controls.Add(new Label { Text = Loc.Upper(heading), AutoSize = true, Font = new Font("Segoe UI", 11f, FontStyle.Bold), Margin = new Padding(0, 22, 0, 4), Tag = "accent" });
+            {
+                // "Title|description": a section heading with a muted line under it
+                var split = heading.Split('|', 2);
+                stack.Controls.Add(new Label { Text = split[0], AutoSize = true, Font = new Font("Segoe UI Semibold", 13f), Margin = new Padding(0, stack.Controls.Count == 0 ? 6 : 26, 0, 0) });
+                if (split.Length > 1)
+                    stack.Controls.Add(new Label { Text = split[1], AutoSize = true, MaximumSize = new Size(FlatCard.CardWidth, 0), Tag = "muted", Margin = new Padding(0, 2, 0, 4) });
+            }
             foreach (var child in part.Controls.Cast<Control>().ToList())
             {
                 part.Controls.Remove(child);
@@ -515,21 +509,6 @@ public sealed class SettingsPanel : UserControl
     {
         var page = NewPage(out var flow);
 
-        var def = new FlatCard(L("card.defaultBar"));
-        var defFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-        defaultBar = new FlatCombo { Width = 470 };
-        defaultBar.SetItems(new[] { L("defaultbar.above"), L("defaultbar.inside"), L("defaultbar.other") }, 0);
-        defFlow.Controls.Add(Row(L("lbl.defaultBar"), defaultBar, 200));
-        defFlow.Controls.Add(Note(L("note.defaultBar"), 600));
-        def.Controls.Add(defFlow);
-        flow.Controls.Add(def);
-        defaultBar.SelectedIndexChanged += (_, _) =>
-        {
-            if (loading) return;
-            if (defaultBar.SelectedIndex == 0) position.SelectedIndex = (int)TickerPosition.BottomTaskbar;
-            else if (defaultBar.SelectedIndex == 1) position.SelectedIndex = (int)TickerPosition.TaskbarIntegrated;
-        };
-
         var main = new FlatCard(L("card.mainBar"));
         var mainFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
         mainPicker = new SlotPicker();
@@ -575,13 +554,33 @@ public sealed class SettingsPanel : UserControl
     {
         var page = NewPage(out var flow);
 
+        var def = new FlatCard(L("card.defaultBar"));
+        var defFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        defaultBar = new FlatCombo { Width = 470 };
+        defaultBar.SetItems(new[] { L("defaultbar.above"), L("defaultbar.inside"), L("defaultbar.other") }, 0);
+        defFlow.Controls.Add(Row(L("lbl.defaultBar"), defaultBar, 200));
+        defFlow.Controls.Add(Note(L("note.defaultBar"), 600));
+        def.Controls.Add(defFlow);
+        flow.Controls.Add(def);
+        defaultBar.SelectedIndexChanged += (_, _) =>
+        {
+            if (loading) return;
+            if (defaultBar.SelectedIndex == 0) position.SelectedIndex = (int)TickerPosition.BottomTaskbar;
+            else if (defaultBar.SelectedIndex == 1) position.SelectedIndex = (int)TickerPosition.TaskbarIntegrated;
+        };
+
+
         position = new FlatCombo { Width = 470 };
         position.SetItems(new[] { L("pos.bottom"), L("pos.top"), L("pos.center"), L("pos.custom"), L("pos.taskbar") }, 0);
-        flow.Controls.Add(Row(L("lbl.position"), position, 200));
         followTaskbar = new FlatCheck { Text = L("chk.followTaskbar") };
         reserve = new FlatCheck { Text = L("chk.reserve") };
-        flow.Controls.Add(followTaskbar);
-        flow.Controls.Add(reserve);
+        var placement = new FlatCard(Loc.Pick("Ακριβής θέση και συμπεριφορά", "Exact placement and behaviour"));
+        var placementFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        placementFlow.Controls.Add(Row(L("lbl.position"), position, 200));
+        placementFlow.Controls.Add(followTaskbar);
+        placementFlow.Controls.Add(reserve);
+        placement.Controls.Add(placementFlow);
+        flow.Controls.Add(placement);
 
         customCard = new FlatCard(L("card.custom"));
         var cf = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
@@ -1004,6 +1003,9 @@ public sealed class SettingsPanel : UserControl
         openPortfolio.SetPrimary(true);
         openPortfolio.Click += (_, _) => host.ShowPortfolio();
         flow.Controls.Add(openPortfolio);
+        var openAnalysis = new FlatButton { Text = L("btn.openAnalysis") };
+        openAnalysis.Click += (_, _) => host.ShowAnalysis();
+        flow.Controls.Add(openAnalysis);
         flow.Controls.Add(Note(L("note.markets"), 700));
         flow.Controls.Add(Note(Loc.Pick(
             "Περιορισμοί δεδομένων: οι τιμές Αθήνας έχουν καθυστέρηση 15 λεπτών (επίσημα αρχεία Euronext Athens)· οι μετοχές άλλων αγορών Euronext είναι τιμές κλεισίματος· οι ισοτιμίες ΕΚΤ ανανεώνονται μία φορά κάθε εργάσιμη. Μέταλλα, κρυπτονομίσματα και πετρέλαιο/φυσικό αέριο (Pyth) είναι σχεδόν ζωντανά· αν το Pyth δεν απαντά, εμφανίζονται οι ημερήσιες τιμές EIA με ένδειξη ημερομηνίας.",
@@ -1467,15 +1469,13 @@ public sealed class SettingsPanel : UserControl
     // ---- loading / saving ----------------------------------------------------------------
 
     /// <summary>Number of pages that can be shown (every sub-page of every tab counts once; used by the snapshot test).</summary>
-    public int TabCount => leaves.Count;
+    public int TabCount => tabs.Count;
 
     /// <summary>Shows the page with the given index (0 = Settings / General).</summary>
     public void SelectTab(int index)
     {
-        if (index < 0 || index >= leaves.Count) return;
-        var (top, strip, sub) = leaves[index];
-        tabs.SelectedIndex = top;
-        strip.SelectedIndex = sub;
+        if (index < 0 || index >= tabs.Count) return;
+        tabs.SelectedIndex = index;
     }
 
     public void LoadFromConfig()

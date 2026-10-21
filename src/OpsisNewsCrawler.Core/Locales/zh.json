@@ -258,5 +258,7 @@
   "lbl.avgCost": "平均买入价",
   "lbl.currency": "货币",
   "msg.badNumber": "请输入大于零的数字。",
-  "tray.portfolio": "投资组合"
+  "tray.portfolio": "投资组合",
+  "tray.pause": "暂停",
+  "tray.resume": "继续"
 }

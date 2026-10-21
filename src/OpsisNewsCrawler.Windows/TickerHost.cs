@@ -516,8 +516,16 @@ public sealed class TickerHost : IDisposable
         foreach (var extra in ExtraWindows) extra.StopTicker();
     }
 
+    /// <summary>True while the bars are paused from the tray menu (the scrolling stands still).</summary>
+    public bool Paused { get; private set; }
+
+    /// <summary>Raised after <see cref="Pause"/> or <see cref="Resume"/>.</summary>
+    public event Action? PausedChanged;
+
     public void Pause()
     {
+        Paused = true;
+        PausedChanged?.Invoke();
         Window.PauseTicker();
         SecondWindow?.PauseTicker();
         foreach (var extra in ExtraWindows) extra.PauseTicker();
@@ -525,6 +533,8 @@ public sealed class TickerHost : IDisposable
 
     public void Resume()
     {
+        Paused = false;
+        PausedChanged?.Invoke();
         Window.ResumeTicker();
         SecondWindow?.ResumeTicker();
         foreach (var extra in ExtraWindows) extra.ResumeTicker();
@@ -1232,6 +1242,39 @@ public sealed class TickerHost : IDisposable
         }
         portfolio = new PortfolioForm(this);
         portfolio.Show();
+    }
+
+    private AnalysisForm? analysis;
+
+    /// <summary>Opens the market-analysis window (candles, back-test, fear &amp; greed, assistant); one at a time.</summary>
+    public void ShowAnalysis(int page = 0)
+    {
+        if (disposed) return;
+        if (analysis is { IsDisposed: false })
+        {
+            analysis.ShowPage(page);
+            analysis.Activate();
+            return;
+        }
+        analysis = new AnalysisForm(this);
+        analysis.ShowPage(page);
+        analysis.FormClosed += (_, _) => analysis = null;
+        analysis.Show();
+    }
+
+    /// <summary>Test aid (--snapshot-analysis): opens the analysis window out of sight, shows one page, saves it as a PNG.</summary>
+    public void SnapshotAnalysis(string pngPath, int page, int waitSeconds)
+    {
+        var form = new AnalysisForm(this) { StartPosition = FormStartPosition.Manual, Location = new Point(-4000, 0) };
+        form.Show();
+        form.ShowPage(page);
+        var until = DateTime.UtcNow.AddSeconds(waitSeconds);
+        while (DateTime.UtcNow < until) { Application.DoEvents(); Thread.Sleep(50); }
+        using var bmp = new Bitmap(form.Width, form.Height);
+        form.DrawToBitmap(bmp, new Rectangle(0, 0, bmp.Width, bmp.Height));
+        bmp.Save(pngPath);
+        form.Close();
+        form.Dispose();
     }
 
     /// <summary>Test aid (--snapshot-portfolio): opens the portfolio window out of sight, waits for the prices, saves it as a PNG.</summary>

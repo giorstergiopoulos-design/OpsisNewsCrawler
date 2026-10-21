@@ -258,5 +258,7 @@
   "lbl.avgCost": "평균 매수가",
   "lbl.currency": "통화",
   "msg.badNumber": "0보다 큰 숫자를 입력하세요.",
-  "tray.portfolio": "포트폴리오"
+  "tray.portfolio": "포트폴리오",
+  "tray.pause": "일시 정지",
+  "tray.resume": "다시 시작"
 }

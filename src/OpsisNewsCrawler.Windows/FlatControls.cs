@@ -555,6 +555,9 @@ internal sealed class FlatText : Panel
 
     public void FocusInner() => box.Focus();
 
+    /// <summary>Hides the typed characters (for a key).</summary>
+    public bool Password { get => box.UseSystemPasswordChar; set => box.UseSystemPasswordChar = value; }
+
     protected override void OnResize(EventArgs eventargs)
     {
         base.OnResize(eventargs);

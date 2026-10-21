@@ -258,5 +258,7 @@
   "lbl.avgCost": "متوسط سعر الشراء",
   "lbl.currency": "العملة",
   "msg.badNumber": "اكتب رقمًا أكبر من الصفر.",
-  "tray.portfolio": "المحفظة"
+  "tray.portfolio": "المحفظة",
+  "tray.pause": "إيقاف مؤقت",
+  "tray.resume": "استئناف"
 }

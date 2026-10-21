@@ -258,5 +258,7 @@
   "lbl.avgCost": "Prix moyen payé",
   "lbl.currency": "Devise",
   "msg.badNumber": "Saisissez un nombre supérieur à zéro.",
-  "tray.portfolio": "Portefeuille"
+  "tray.portfolio": "Portefeuille",
+  "tray.pause": "Pause",
+  "tray.resume": "Reprendre"
 }

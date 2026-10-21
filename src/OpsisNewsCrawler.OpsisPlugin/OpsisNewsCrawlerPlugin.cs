@@ -14,7 +14,6 @@ public sealed class OpsisNewsCrawlerPlugin : IOpsisNewsCrawlerPlugin
     public const string NavigationKey = "OpsisNewsCrawler";
 
     private readonly TickerController _controller = new();
-    private bool _paused;
 
     public OpsisNewsCrawlerPlugin()
     {
@@ -43,8 +42,21 @@ public sealed class OpsisNewsCrawlerPlugin : IOpsisNewsCrawlerPlugin
         catch (Exception ex) { Log.Write($"Plugin Start failed: {ex}"); throw; }
     }
     public void Stop() => _controller.Stop();
-    public void Pause() { _paused = true; _controller.Pause(); }
-    public void Resume() { _paused = false; _controller.Resume(); }
+
+    /// <summary>Tray "Close": the bars go away and nothing is fetched; "Open" brings them back. The plugin itself stays loaded.</summary>
+    private void CloseCrawler()
+    {
+        _controller.Stop();
+        Log.Write("Crawler closed from the tray menu.");
+    }
+
+    private void OpenCrawler()
+    {
+        _controller.Start();
+        Log.Write("Crawler opened from the tray menu.");
+    }
+    public void Pause() => _controller.Pause();
+    public void Resume() => _controller.Resume();
     public void Refresh() => _controller.Refresh();
     public void SetMode(string mode) => _controller.SetMode(TickerParsing.ParseMode(mode));
     public void SetPosition(string position) => _controller.SetPosition(TickerParsing.ParsePosition(position));
@@ -79,10 +91,10 @@ public sealed class OpsisNewsCrawlerPlugin : IOpsisNewsCrawlerPlugin
         new PluginMenuItem("news.separator", "", "", () => { }, IsSeparator: true),
         new PluginMenuItem("news.settings", "News Crawler — Ρυθμίσεις", "News Crawler — Settings", () => NavigationRequested?.Invoke(NavigationKey)),
         new PluginMenuItem("news.refresh", "News Crawler — Ανανέωση", "News Crawler — Refresh", Refresh),
-        new PluginMenuItem("news.pause", "News Crawler — Παύση / Συνέχεια", "News Crawler — Pause / Resume", () =>
-        {
-            if (_paused) Resume(); else Pause();
-        }),
+        new PluginMenuItem("news.pause", "News Crawler — Παύση", "News Crawler — Pause", Pause),
+        new PluginMenuItem("news.resume", "News Crawler — Συνέχεια", "News Crawler — Resume", Resume),
+        new PluginMenuItem("news.close", "News Crawler — Κλείσιμο", "News Crawler — Close", CloseCrawler),
+        new PluginMenuItem("news.open", "News Crawler — Άνοιγμα", "News Crawler — Open", OpenCrawler),
     };
 
     public IReadOnlyList<PluginNavigationItem> GetNavigationItems() =>

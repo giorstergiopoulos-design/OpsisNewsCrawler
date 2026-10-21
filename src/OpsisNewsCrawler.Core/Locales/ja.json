@@ -258,5 +258,7 @@
   "lbl.avgCost": "平均取得価格",
   "lbl.currency": "通貨",
   "msg.badNumber": "0 より大きい数値を入力してください。",
-  "tray.portfolio": "ポートフォリオ"
+  "tray.portfolio": "ポートフォリオ",
+  "tray.pause": "一時停止",
+  "tray.resume": "再開"
 }
