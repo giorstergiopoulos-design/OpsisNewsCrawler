@@ -70,6 +70,7 @@ public sealed class SettingsPanel : UserControl
     private Label updateStatus = null!;
     private FlatButton installUpdate = null!;
     private FlatButton openUpdatePage = null!;
+    private FlatProgress updateProgress = null!;
     private FlatList laterList = null!;
     private Label laterStatus = null!;
     private List<SavedArticle> laterShown = new();
@@ -291,7 +292,7 @@ public sealed class SettingsPanel : UserControl
             info.Add((L("tab.history"), BuildInfoPage(() => AboutTexts.History)));
             info.Add((L("tab.license"), BuildInfoPage(() => AboutTexts.License)));
         }
-        info.Add((L("card.updates"), BuildUpdates()));
+        info.Add((L("tab.updates"), BuildUpdates()));
         info.Add((L("tab.dependencies"), BuildDependencies()));
         AddGroup(Loc.T("pk.information"), info.ToArray());
 
@@ -500,22 +501,26 @@ public sealed class SettingsPanel : UserControl
     private Control BuildUpdates()
     {
         var page = NewPage(out var flow);
-        // Updates: only on request or once a day when the user allows it; nothing is installed without a click.
+        // Same logic as GearWin: look at every start (and every 12 hours), tell once per version, install only after a click and a confirmation,
+        // from this repository's GitHub releases only, verified with SHA-256, silently after the program has ended, then open it again.
         var updates = new FlatCard(L("card.updates"));
         var updFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        updFlow.Controls.Add(Note(L("note.updates"), 700));
         autoUpdate = new FlatCheck { Text = L("chk.autoUpdate") };
         updFlow.Controls.Add(autoUpdate);
         var checkNow = new FlatButton { Text = L("btn.checkNow") };
         installUpdate = new FlatButton { Text = L("btn.installUpdate"), Visible = false };
+        installUpdate.SetPrimary(true);
         openUpdatePage = new FlatButton { Text = L("btn.openPage"), Visible = false };
         var updButtons = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Margin = new Padding(0, 4, 0, 0) };
         updButtons.Controls.Add(checkNow);
         updButtons.Controls.Add(installUpdate);
         updButtons.Controls.Add(openUpdatePage);
         updFlow.Controls.Add(updButtons);
-        updateStatus = new Label { AutoSize = true, Tag = "muted", MaximumSize = new Size(560, 0), Margin = new Padding(0, 6, 0, 0), Text = " " };
+        updateProgress = new FlatProgress { Visible = false, Width = 420 };
+        updFlow.Controls.Add(updateProgress);
+        updateStatus = new Label { AutoSize = true, Tag = "muted", MaximumSize = new Size(700, 0), Margin = new Padding(0, 6, 0, 0), UseMnemonic = false, Text = Loc.T("upd.current", AboutTexts.Version) };
         updFlow.Controls.Add(updateStatus);
-        updFlow.Controls.Add(Note(L("note.updates"), 560));
         updates.Controls.Add(updFlow);
         flow.Controls.Add(updates);
         checkNow.Click += async (_, _) => await CheckUpdatesNowAsync(checkNow);
@@ -914,7 +919,7 @@ public sealed class SettingsPanel : UserControl
     {
         if (updateStatus is null || updateStatus.IsDisposed) return;
         var u = host.AvailableUpdate;
-        installUpdate.Visible = u is not null && u.SetupUrl is not null && u.ChecksumUrl is not null;
+        installUpdate.Visible = u is not null;
         openUpdatePage.Visible = u is not null;
         if (u is not null) updateStatus.Text = Loc.T("msg.updateAvailable", u.Version, AboutTexts.Version);
     }
@@ -922,6 +927,8 @@ public sealed class SettingsPanel : UserControl
     private async Task CheckUpdatesNowAsync(FlatButton button)
     {
         button.Enabled = false;
+        installUpdate.Visible = false;
+        openUpdatePage.Visible = false;
         updateStatus.Text = L("msg.checking");
         try
         {
@@ -932,7 +939,7 @@ public sealed class SettingsPanel : UserControl
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException)
         {
-            if (!IsDisposed) updateStatus.Text = L("msg.updateFailed");
+            if (!IsDisposed) updateStatus.Text = Loc.T("msg.updateFailed", ex.Message);
         }
         finally
         {
@@ -940,22 +947,61 @@ public sealed class SettingsPanel : UserControl
         }
     }
 
+    private bool installingUpdate;
+
     private async Task InstallUpdateAsync()
     {
-        if (host.AvailableUpdate is not { } u) return;
-        // Inside Opsis the plugin files are in use: the update waits until Opsis is closed, which the user must agree to.
-        if (host.HostedByOpsis && MessageBox.Show(this, L("msg.confirmUpdateOnExit"), L("app.name"), MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
-        installUpdate.Enabled = false;
-        updateStatus.Text = L("msg.downloading");
-        var result = await UpdateInstaller.DownloadAndStartAsync(u, host.HostedByOpsis);
-        if (IsDisposed) return;
-        installUpdate.Enabled = true;
-        updateStatus.Text = result switch
+        if (host.AvailableUpdate is not { } u || installingUpdate) return;
+        // Nothing to verify the file against: nothing is run, the release page opens for a manual download.
+        if (!u.CanInstallAutomatically)
         {
-            UpdateInstaller.Result.Started => L(host.HostedByOpsis ? "msg.updateScheduled" : "msg.updateStarted"),
-            UpdateInstaller.Result.ChecksumMismatch or UpdateInstaller.Result.ChecksumMissing => L("msg.verifyFailed"),
-            _ => L("msg.updateFailed")
-        };
+            updateStatus.Text = L("upd.noDigest");
+            OpenInBrowser(u.PageUrl);
+            return;
+        }
+        var hosted = host.HostedByOpsis;   // inside Opsis the plugin files are in use: the update waits until Opsis is closed
+        var question = hosted ? L("msg.confirmUpdateOnExit") : Loc.T("upd.confirm", u.Version);
+        if (MessageBox.Show(this, question, hosted ? L("app.name") : L("upd.confirmTitle"), MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+
+        installingUpdate = true;
+        installUpdate.Enabled = false;
+        updateProgress.Value = 0;
+        updateProgress.Visible = true;
+        try
+        {
+            var progress = new Progress<double>(p =>
+            {
+                if (IsDisposed) return;
+                updateProgress.Value = p;
+                updateStatus.Text = Loc.T("msg.downloading", (int)Math.Round(p * 100));
+            });
+            var (path, sha256) = await UpdateInstaller.DownloadAsync(u, progress);
+            if (IsDisposed) return;
+            updateStatus.Text = L(hosted ? "msg.updateScheduled" : "msg.updateStarted");
+            UpdateInstaller.LaunchAfterExit(path, sha256, hosted);
+            if (!hosted) host.RequestExit();
+        }
+        catch (InvalidDataException)
+        {
+            if (!IsDisposed) updateStatus.Text = L("msg.verifyFailed");
+        }
+        catch (InvalidOperationException)
+        {
+            if (!IsDisposed) { updateStatus.Text = L("upd.noDigest"); OpenInBrowser(u.PageUrl); }
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
+        {
+            if (!IsDisposed) updateStatus.Text = Loc.T("msg.updateFailed", ex.Message);
+        }
+        finally
+        {
+            installingUpdate = false;
+            if (!IsDisposed)
+            {
+                updateProgress.Visible = false;
+                installUpdate.Enabled = true;
+            }
+        }
     }
 
     // ---- read later ------------------------------------------------------------------------

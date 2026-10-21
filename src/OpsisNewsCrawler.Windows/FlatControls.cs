@@ -1076,3 +1076,37 @@ internal sealed class FlatStrip : Panel
         if (selected < 0) SelectedIndex = 0;
     }
 }
+
+/// <summary>A thin rounded progress bar (value 0..1) in the colours of the theme.</summary>
+internal sealed class FlatProgress : Control
+{
+    private double value;
+
+    public FlatProgress()
+    {
+        SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+        Height = 8;
+        Width = 360;
+        Margin = new Padding(0, 6, 0, 4);
+    }
+
+    public double Value
+    {
+        get => value;
+        set { this.value = Math.Clamp(value, 0, 1); Invalidate(); }
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        var g = e.Graphics;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        g.Clear(Parent?.BackColor ?? Theme.Surface);
+        using var track = FlatDraw.Rounded(new Rectangle(0, 0, Width - 1, Height - 1), Height / 2);
+        using (var brush = new SolidBrush(Theme.Border)) g.FillPath(brush, track);
+        var w = (int)((Width - 1) * value);
+        if (w < Height) return;
+        using var fill = FlatDraw.Rounded(new Rectangle(0, 0, w, Height - 1), Height / 2);
+        using var accent = new SolidBrush(Theme.Accent);
+        g.FillPath(accent, fill);
+    }
+}

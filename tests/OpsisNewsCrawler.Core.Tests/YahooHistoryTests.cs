@@ -128,3 +128,70 @@ public class YahooCatalogTests
         Assert.True(YahooPresets.All.Sum(g => g.Items.Count) <= YahooAccess.MaxInstruments);
     }
 }
+
+public class UpdateLogicTests
+{
+    private static string Release(string tag, string setupUrl, string digest) => $$"""
+    {"tag_name":"{{tag}}","draft":false,"prerelease":false,"html_url":"https://github.com/giorstergiopoulos-design/OpsisNewsCrawler/releases/tag/{{tag}}",
+     "assets":[{"name":"OpsisNewsCrawler-Setup.exe","browser_download_url":"{{setupUrl}}","digest":"{{digest}}"},
+               {"name":"OpsisNewsCrawler-Setup.exe.sha256","browser_download_url":"https://github.com/giorstergiopoulos-design/OpsisNewsCrawler/releases/download/{{tag}}/OpsisNewsCrawler-Setup.exe.sha256"}]}
+    """;
+
+    private const string Good = "https://github.com/giorstergiopoulos-design/OpsisNewsCrawler/releases/download/v9.0.0/OpsisNewsCrawler-Setup.exe";
+    private static readonly string Hex = new('a', 64);
+
+    [Fact]
+    public void Parse_NewerRelease_CarriesTheGitHubDigest_AndCanInstall()
+    {
+        var u = UpdateChecker.Parse(Release("v9.0.0", Good, "sha256:" + Hex.ToUpperInvariant()), new Version(0, 13, 5))!;
+        Assert.Equal(new Version(9, 0, 0), u.Version);
+        Assert.Equal(Hex, u.Sha256);
+        Assert.Equal("v9.0.0", u.Tag);
+        Assert.True(u.CanInstallAutomatically);
+    }
+
+    [Fact]
+    public void Parse_SameOrOlderVersion_IsNull() =>
+        Assert.Null(UpdateChecker.Parse(Release("v0.13.5", Good, "sha256:" + Hex), new Version(0, 13, 5)));
+
+    [Fact]
+    public void Parse_UntrustedDownloadHost_IsNotAccepted()
+    {
+        var u = UpdateChecker.Parse(Release("v9.0.0", "https://evil.example.com/releases/download/v9/OpsisNewsCrawler-Setup.exe", "sha256:" + Hex), new Version(0, 13, 5))!;
+        Assert.Null(u.SetupUrl);
+        Assert.False(u.CanInstallAutomatically);
+    }
+
+    [Theory]
+    [InlineData("sha256:xyz")]
+    [InlineData("md5:abcd")]
+    [InlineData("")]
+    public void ParseDigest_RejectsAnythingButSha256Hex(string digest) => Assert.Null(UpdateChecker.ParseDigest(digest));
+
+    [Fact]
+    public void IsTrustedDownloadUrl_OnlyThisRepositorysReleases()
+    {
+        Assert.True(UpdateChecker.IsTrustedDownloadUrl(Good));
+        Assert.False(UpdateChecker.IsTrustedDownloadUrl("http://github.com/giorstergiopoulos-design/OpsisNewsCrawler/releases/download/v1/x.exe"));
+        Assert.False(UpdateChecker.IsTrustedDownloadUrl("https://github.com/other/repo/releases/download/v1/x.exe"));
+        Assert.False(UpdateChecker.IsTrustedDownloadUrl("https://user@github.com/giorstergiopoulos-design/OpsisNewsCrawler/releases/download/v1/x.exe"));
+    }
+
+    [Fact]
+    public void NewConfig_ChecksForUpdates_AndOldSettingsGetTheNewDefaultOnce()
+    {
+        Assert.True(new AppConfig().CheckForUpdates);
+        var path = Path.Combine(Path.GetTempPath(), "cfg-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            File.WriteAllText(path, "{\"CheckForUpdates\": false}");
+            var old = AppConfig.Load(path);
+            Assert.True(old.CheckForUpdates);
+            Assert.Equal(1, old.UpdateLogicVersion);
+            old.CheckForUpdates = false;   // the user switches it off afterwards
+            old.Save(path);
+            Assert.False(AppConfig.Load(path).CheckForUpdates);
+        }
+        finally { File.Delete(path); }
+    }
+}

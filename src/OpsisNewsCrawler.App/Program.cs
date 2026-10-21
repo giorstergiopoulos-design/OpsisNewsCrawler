@@ -142,6 +142,22 @@ internal static class Program
             Application.Exit();
         });
         tray.ContextMenuStrip = menu;
+        // A new version: one notification per version; a click on it opens the settings (Information > Updates).
+        host.UpdateAnnounce += info =>
+        {
+            tray.BalloonTipTitle = Loc.T("upd.notifyTitle");
+            tray.BalloonTipText = Loc.T("upd.notifyBody", info.Version);
+            tray.BalloonTipIcon = ToolTipIcon.Info;
+            tray.ShowBalloonTip(10000);
+        };
+        tray.BalloonTipClicked += (_, _) => settings.ShowSettings();
+        // After an update setup was handed over, the program ends so the installer can replace its files and open it again.
+        host.ExitRequested += () =>
+        {
+            host.Stop();
+            tray.Visible = false;
+            Application.Exit();
+        };
         Loc.Changed += () =>
         {
             menuBars.Text = Loc.T("chk.barsEnabled");

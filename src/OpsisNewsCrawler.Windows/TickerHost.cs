@@ -84,18 +84,55 @@ public sealed class TickerHost : IDisposable
         return found;
     }
 
+    private readonly System.Windows.Forms.Timer updateTimer = new() { Interval = (int)TimeSpan.FromHours(12).TotalMilliseconds };
+    private bool autoChecking;
+
+    /// <summary>Raised (on the UI thread) once per version when an automatic check finds a newer release: the tray shows a notification.</summary>
+    public event Action<UpdateInfo>? UpdateAnnounce;
+
+    /// <summary>Raised after an update setup was handed to its helper: the program must end now so the installer can replace its files.</summary>
+    public event Action? ExitRequested;
+
+    public void RequestExit() => ExitRequested?.Invoke();
+
+    /// <summary>At every start and then every 12 hours (GearWin's logic); while offline it asks again after a minute, up to four times.</summary>
     private async Task AutoCheckForUpdatesAsync()
     {
-        if (!Config.CheckForUpdates || DateTimeOffset.Now - Config.LastUpdateCheck < TimeSpan.FromHours(24)) return;
+        if (!Config.CheckForUpdates || autoChecking || disposed) return;
+        autoChecking = true;
         try
         {
-            var found = await CheckForUpdatesAsync();
-            if (found is not null && Window.IsHandleCreated)
-                Window.BeginInvoke(new Action(() => Window.ShowToast(Loc.T("msg.updateAvailable", found.Version, AboutTexts.Version))));
+            for (var attempt = 0; attempt < 4 && !disposed; attempt++)
+            {
+                try
+                {
+                    var found = await CheckForUpdatesAsync();
+                    if (found is not null && !string.Equals(Config.LastNotifiedUpdate, found.Tag, StringComparison.Ordinal))
+                    {
+                        Config.LastNotifiedUpdate = found.Tag;
+                        SaveConfig();
+                        void Announce()
+                        {
+                            if (HostedByOpsis) Window.ShowToast(Loc.T("msg.updateAvailable", found.Version, AboutTexts.Version));   // no tray icon of its own inside Opsis
+                            else UpdateAnnounce?.Invoke(found);
+                        }
+                        if (Window.IsHandleCreated) Window.BeginInvoke(new Action(Announce));
+                    }
+                    return;
+                }
+                catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+                {
+                    if (disposed || cts.IsCancellationRequested) return;
+                    await Task.Delay(TimeSpan.FromMinutes(1), cts.Token).ConfigureAwait(true);   // offline: wait for the network
+                }
+            }
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException)
+        catch (OperationCanceledException)
         {
-            // offline or GitHub unreachable: try again at the next start
+        }
+        finally
+        {
+            autoChecking = false;
         }
     }
 
@@ -420,7 +457,12 @@ public sealed class TickerHost : IDisposable
         PushAll();
         if (Config.BarsEnabled) StartBars();
         _ = AutoCheckForUpdatesAsync();
+        updateTimer.Tick -= OnUpdateTimer;
+        updateTimer.Tick += OnUpdateTimer;
+        updateTimer.Start();
     }
+
+    private void OnUpdateTimer(object? sender, EventArgs e) => _ = AutoCheckForUpdatesAsync();
 
     private void StartBars()
     {
@@ -1381,6 +1423,7 @@ public sealed class TickerHost : IDisposable
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplaysChanged;
         cts.Cancel();
         refreshTimer.Dispose();
+        updateTimer.Dispose();
         quoteTimer.Dispose();
         snoozeTimer.Dispose();
         hotkey?.Dispose();

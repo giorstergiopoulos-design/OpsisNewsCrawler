@@ -109,7 +109,12 @@ public sealed class AppConfig
     public List<string> WeatherFields { get; set; } = new() { "wind", "humidity" };
 
     /// <summary>Ask GitHub once a day whether a newer release exists. Off until the user turns it on; nothing is installed without asking.</summary>
-    public bool CheckForUpdates { get; set; }
+    /// <summary>Look for a new version at every start and every 12 hours (GearWin's logic). On by default; nothing is installed without a click.</summary>
+    public bool CheckForUpdates { get; set; } = true;
+    /// <summary>The release tag the user was already told about (a notification is shown once per version).</summary>
+    public string LastNotifiedUpdate { get; set; } = "";
+    /// <summary>1 = the update logic of 0.13.6 (check on by default); older settings files get the new default once.</summary>
+    public int UpdateLogicVersion { get; set; }
     public DateTimeOffset LastUpdateCheck { get; set; } = DateTimeOffset.MinValue;
 
     /// <summary>Fade the text out at both ends of the bar.</summary>
@@ -415,6 +420,7 @@ public sealed class AppConfig
 
     internal void Normalize()
     {
+        if (UpdateLogicVersion < 1) { CheckForUpdates = true; UpdateLogicVersion = 1; }
         NewsRefreshSeconds = RefreshIntervalSeconds;
         MaxItemsPerFeed = Math.Clamp(MaxItemsPerFeed, 1, 50);
         NewsMaxAgeHours = Math.Clamp(NewsMaxAgeHours, 1, 720);

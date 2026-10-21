@@ -3,6 +3,10 @@
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
 Detailed notes per release: `docs/RELEASE-*.md` and the GitHub releases.
 
+## Unreleased (after 0.13.5)
+- **Updates follow the logic of GearWin's self-update**: a card with the current version, "Check now", "Download & install", "What's new" and a progress bar; a check at every start and every 12 hours (on by default, also for existing settings once; waits for the network), a tray notification once per version, a confirmation before anything is installed, only this repository's GitHub releases (https, exact path, exact file name), the SHA-256 that GitHub publishes for the setup (fallback: the .sha256 file; without either nothing runs automatically and the release page opens), a mismatch deletes the file, the hash is checked again right before the setup starts, the setup runs silently after the program has ended and the program opens again.
+- 8 new unit tests (85).
+
 ## 0.13.5 — 2026-10-21
 - **Bar styles are now visible on the full-width bars**: a rounded or pill main bar (and the second and monitor bars) floats with a 28 px margin and a thin outline instead of reaching both screen edges, where the curves were invisible.
 - **Yahoo Finance catalogue** (opt-in with the same switch as the price history, off by default, unofficial): search any share, index, currency, commodity, ETF or crypto that Yahoo offers (one request per search, only when you press Search) or add ready-made groups (indices incl. the Athens General Index, commodities, currencies, crypto); they show on the bars like the other prices. Safety limits: at most 30 instruments, at most one request per instrument every 15 minutes (a cached answer in between), requests one after the other with a pause, a 6-hour stop at the first 401/403/429, nothing is bypassed.
