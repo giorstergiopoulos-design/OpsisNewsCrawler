@@ -96,6 +96,8 @@ public sealed class AppConfig
     public bool MiniWeatherOnTop { get; set; }
     /// <summary>Shape of the desktop bar: "rect" (default), "rounded" or "pill" (a capsule with fully round ends).</summary>
     public string DesktopBarShape { get; set; } = "rect";
+    /// <summary>Shape of the main bar, the second bar and the bars of the other monitors: "rect" (default), "rounded" or "pill".</summary>
+    public string BarShape { get; set; } = "rect";
     /// <summary>True (default): while an auto-hiding taskbar is hidden (and a bar inside it with it) the desktop bar appears, at the place and size the user chose, even if it is switched off otherwise.</summary>
     public bool MiniWhenTaskbarHidden { get; set; } = true;
 
@@ -479,6 +481,7 @@ public sealed class AppConfig
         if (!Enum.IsDefined(MainContent)) MainContent = BarContent.News;
         WeatherCities = (WeatherCities ?? new()).Where(id => GreekCities.Find(id) is not null).Distinct().ToList();
         DesktopBarShape = DesktopBarShape is "rounded" or "pill" ? DesktopBarShape : "rect";
+        BarShape = BarShape is "rounded" or "pill" ? BarShape : "rect";
         MiniWeatherWidth = Math.Clamp(MiniWeatherWidth, 200, 4000);
         MiniWeatherHeight = Math.Clamp(MiniWeatherHeight, 24, 200);
         if (!Enum.IsDefined(SecondContent) || SecondContent == BarContent.Both) SecondContent = BarContent.Stocks;

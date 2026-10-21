@@ -339,6 +339,7 @@ public sealed class TickerWindow : Form
 
     protected override void OnHandleCreated(EventArgs e)
     {
+        ApplyShapeRegion();   // the shape was chosen before the window existed
         base.OnHandleCreated(e);
         Native.MarkNoSnap(Handle); // DeskZones must not snap the strip while the user moves it
         ApplyLook();

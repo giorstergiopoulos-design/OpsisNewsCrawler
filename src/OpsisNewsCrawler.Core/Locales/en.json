@@ -344,5 +344,6 @@
   "chk.yahooHistory": "Download price history from Yahoo Finance (unofficial, at my own risk)",
   "note.yahooHistory": "Off by default. Charts and the back-test need history: if you switch this on, the program asks Yahoo for the daily prices of the last six months for your instruments (one request per instrument and day, one second apart) and stores them here. Yahoo's terms do not allow automated use: the choice and the responsibility are yours. No personal data is sent and no limit or protection is bypassed; if Yahoo refuses, the program stops for today. Stooq is not supported because it asks to prove you are not a robot.",
   "analysis.bollinger": "Bollinger bands",
-  "analysis.emptyNoYahoo": "No prices are stored yet. The program keeps one price per day while it runs; for an immediate history switch on the Yahoo download in Sources → Markets flow (an unofficial option)."
+  "analysis.emptyNoYahoo": "No prices are stored yet. The program keeps one price per day while it runs; for an immediate history switch on the Yahoo download in Sources → Markets flow (an unofficial option).",
+  "lbl.barShape": "Bar style (main, second, monitors)"
 }

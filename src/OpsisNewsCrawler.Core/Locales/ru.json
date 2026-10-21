@@ -340,5 +340,6 @@
   "weather.cloud": "Облачность",
   "weather.pressure": "Давление",
   "breaking.now": "Происходит сейчас",
-  "app.name": "Opsis News Crawler"
+  "app.name": "Opsis News Crawler",
+  "lbl.barShape": "Стиль полосы (основная, вторая, мониторы)"
 }

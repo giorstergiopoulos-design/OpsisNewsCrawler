@@ -340,5 +340,6 @@
   "weather.cloud": "雲",
   "weather.pressure": "気圧",
   "breaking.now": "いま起きています",
-  "app.name": "Opsis News Crawler"
+  "app.name": "Opsis News Crawler",
+  "lbl.barShape": "バーのスタイル（メイン・2本目・モニター）"
 }

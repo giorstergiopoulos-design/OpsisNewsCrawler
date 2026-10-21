@@ -367,6 +367,7 @@ public sealed class TickerHost : IDisposable
         w.ScrollSpeed = Config.ScrollSpeed;
         w.SetThemeModeName(Config.ThemeMode);
         w.EdgeFade = Config.EdgeFade;
+        w.SetShape(Config.BarShape);
         w.TaskbarAutoDetect = Config.TaskbarAutoDetect;
         w.TaskbarLeftOffset = Config.TaskbarLeftOffset;
         w.TaskbarRightOffset = Config.TaskbarRightOffset;

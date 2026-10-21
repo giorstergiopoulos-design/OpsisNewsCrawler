@@ -10,7 +10,7 @@ internal sealed record BarPreviewState(
     bool Dark, int OpacityPercent, bool EdgeFade,
     string BarColorMode, int BarCustom, string TaskbarColorMode, int TaskbarCustom,
     string BarBackdrop, string TaskbarBackdrop,
-    bool DesktopEnabled = false, BarSlots? Desktop = null, RectangleF DesktopRect = default, string DesktopShape = "rect");
+    bool DesktopEnabled = false, BarSlots? Desktop = null, RectangleF DesktopRect = default, string DesktopShape = "rect", string BarShape = "rect");
 
 /// <summary>
 /// A small mock desktop (wallpaper, taskbar with a few apps and the tray) with the bars drawn on it the way the choices
@@ -88,7 +88,7 @@ internal sealed class BarPreview : Control
                 DrawWallpaper(g, band);
                 if (inTaskbar) { using var tb = new SolidBrush(Color.FromArgb(225, tbTint)); g.FillRectangle(tb, band); }
                 var strip = inTaskbar ? Rectangle.Inflate(band, -6, -3) : band;
-                DrawStrip(g, strip, slots, inTaskbar, colorMode, custom, backdrop, state, tbTint, style, radius);
+                DrawStrip(g, strip, slots, inTaskbar, colorMode, custom, backdrop, state, tbTint, style, radius ?? (state.BarShape != "rect" ? ShapeRadius(state.BarShape, strip.Height) : null));
                 g.ResetClip();
                 using var border = new Pen(Theme.Border);
                 g.DrawPath(border, path);
@@ -171,12 +171,14 @@ internal sealed class BarPreview : Control
         DrawDesktopBar(g, desk, s);
         var integratedMain = s.Position == TickerPosition.TaskbarIntegrated;
         DrawStrip(g, mainRect, s.Main, integratedMain, integratedMain ? s.TaskbarColorMode : s.BarColorMode,
-            integratedMain ? s.TaskbarCustom : s.BarCustom, integratedMain ? s.TaskbarBackdrop : s.BarBackdrop, s, tbTint, style);
+            integratedMain ? s.TaskbarCustom : s.BarCustom, integratedMain ? s.TaskbarBackdrop : s.BarBackdrop, s, tbTint, style,
+            s.BarShape != "rect" ? ShapeRadius(s.BarShape, mainRect.Height) : null);
 
         // The second bar always lives inside the taskbar.
         if (s.SecondEnabled && !integratedMain)
         {
-            DrawStrip(g, freeSpan, s.Second, true, s.TaskbarColorMode, s.TaskbarCustom, s.TaskbarBackdrop, s, tbTint, style);
+            DrawStrip(g, freeSpan, s.Second, true, s.TaskbarColorMode, s.TaskbarCustom, s.TaskbarBackdrop, s, tbTint, style,
+                s.BarShape != "rect" ? ShapeRadius(s.BarShape, freeSpan.Height) : null);
         }
     }
 

@@ -340,5 +340,6 @@
   "weather.cloud": "غيوم",
   "weather.pressure": "الضغط",
   "breaking.now": "يحدث الآن",
-  "app.name": "Opsis News Crawler"
+  "app.name": "Opsis News Crawler",
+  "lbl.barShape": "شكل الشريط (الرئيسي والثاني والشاشات)"
 }

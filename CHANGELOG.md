@@ -3,6 +3,12 @@
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
 Detailed notes per release: `docs/RELEASE-*.md` and the GitHub releases.
 
+## Unreleased (after 0.13.1)
+- Bar styles (rectangle, rounded, pill) now really apply: the window shape was not set when the window was created later; the main, second and monitor bars have a style too (Bars → Placement). Desktop bar style as before.
+- Settings → Bars: the monitors card sits right under the main bar.
+- Energy prices work again: FRED now serves a bot-check page, so the EIA public history pages are the fallback.
+- QA pass over the settings: every control of the panel was driven in-process in all 14 languages (no raw keys, no exceptions), buttons clicked, Apply saved and reloaded.
+
 ## 0.13.1 — 2026-10-21
 - All new texts of 0.12.8–0.13.0 translated into the 12 other languages (analysis window, back-test, fear & greed, assistant, bar styles, tray, weather details, network messages). Help/Instructions/History/License remain English in those 12 languages.
 - Optional price history from Yahoo Finance (off by default, unofficial, at the user's own risk): charts, back-test and gauge work from the first day. Stooq is not supported (bot check).

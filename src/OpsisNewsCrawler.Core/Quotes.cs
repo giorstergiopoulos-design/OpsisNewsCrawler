@@ -625,7 +625,12 @@ public sealed class FredEnergyProvider : IQuoteProvider
                 if (f.Length < 2 || !DateTime.TryParse(f[0], CultureInfo.InvariantCulture, DateTimeStyles.None, out var day)) continue;
                 if (decimal.TryParse(f[1], NumberStyles.Number, CultureInfo.InvariantCulture, out var v)) points.Add((day, v)); // holidays are "."
             }
-            if (points.Count == 0) return null;
+            if (points.Count == 0)
+            {
+                // FRED answered with something that is not the CSV (a bot-check page): use the EIA history pages instead.
+                if (!fredWarned) { fredWarned = true; Log.Write("FRED did not return a CSV (bot check?): using the EIA daily prices for oil and gas."); }
+                return await FetchEia(inst, ct).ConfigureAwait(false);
+            }
             var last = points[^1];
             decimal? change = points.Count > 1 && points[^2].Value > 0 ? Math.Round((last.Value - points[^2].Value) / points[^2].Value * 100, 2) : null;
             return new MarketQuote(inst.Symbol, inst.NameEn, last.Value, change, new DateTimeOffset(last.Day, TimeSpan.Zero), Delayed: true);
@@ -633,6 +638,23 @@ public sealed class FredEnergyProvider : IQuoteProvider
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
             if (!ct.IsCancellationRequested) Log.Write($"FRED {inst.Code}: {ex.GetType().Name}: {ex.Message}");
+            return ct.IsCancellationRequested ? null : await FetchEia(inst, ct).ConfigureAwait(false);
+        }
+    }
+
+    private bool fredWarned;
+
+    private async Task<MarketQuote?> FetchEia(QuoteInstrument inst, CancellationToken ct)
+    {
+        if (!EiaDaily.Pages.TryGetValue(inst.Code, out var url)) return null;
+        try
+        {
+            using var limit = QuoteHttp.Limit(ct, 20);
+            return EiaDaily.Latest(inst, await http.GetStringAsync(url, limit.Token).ConfigureAwait(false));
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            if (!ct.IsCancellationRequested) Log.Write($"EIA {inst.Code}: {ex.GetType().Name}: {ex.Message}");
             return null;
         }
     }

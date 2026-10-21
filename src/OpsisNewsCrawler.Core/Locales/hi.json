@@ -340,5 +340,6 @@
   "weather.cloud": "बादल",
   "weather.pressure": "दबाव",
   "breaking.now": "अभी हो रहा है",
-  "app.name": "Opsis News Crawler"
+  "app.name": "Opsis News Crawler",
+  "lbl.barShape": "बार की शैली (मुख्य, दूसरा, मॉनिटर)"
 }

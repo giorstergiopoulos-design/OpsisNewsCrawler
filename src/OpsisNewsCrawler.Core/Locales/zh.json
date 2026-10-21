@@ -340,5 +340,6 @@
   "weather.cloud": "云量",
   "weather.pressure": "气压",
   "breaking.now": "正在发生",
-  "app.name": "Opsis News Crawler"
+  "app.name": "Opsis News Crawler",
+  "lbl.barShape": "栏样式（主栏、第二栏、各显示器）"
 }

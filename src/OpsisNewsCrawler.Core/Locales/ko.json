@@ -340,5 +340,6 @@
   "weather.cloud": "구름",
   "weather.pressure": "기압",
   "breaking.now": "지금 진행 중",
-  "app.name": "Opsis News Crawler"
+  "app.name": "Opsis News Crawler",
+  "lbl.barShape": "막대 스타일(기본, 두 번째, 모니터)"
 }

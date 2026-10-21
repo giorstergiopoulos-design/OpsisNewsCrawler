@@ -340,5 +340,6 @@
   "weather.cloud": "Nubes",
   "weather.pressure": "Presión",
   "breaking.now": "Ocurre ahora",
-  "app.name": "Opsis News Crawler"
+  "app.name": "Opsis News Crawler",
+  "lbl.barShape": "Estilo de la barra (principal, segunda, monitores)"
 }

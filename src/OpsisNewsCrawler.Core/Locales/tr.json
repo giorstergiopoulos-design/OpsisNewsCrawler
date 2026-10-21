@@ -340,5 +340,6 @@
   "weather.cloud": "Bulut",
   "weather.pressure": "Basınç",
   "breaking.now": "Şu anda yaşanıyor",
-  "app.name": "Opsis News Crawler"
+  "app.name": "Opsis News Crawler",
+  "lbl.barShape": "Çubuk stili (ana, ikinci, monitörler)"
 }

@@ -56,6 +56,7 @@ public sealed class SettingsPanel : UserControl
     private FlatCheck miniWhenHidden = null!;
     private FlatCheck yahooHistory = null!;
     private FlatCombo miniShape = null!;
+    private FlatCombo barShape = null!;
     private List<string> workCities = new();
     private List<GreekCity> shownCities = new();
     private FlatCheck barsEnabled = null!;
@@ -235,7 +236,8 @@ public sealed class SettingsPanel : UserControl
             taskbarColor.SelectedIndex switch { 1 => "lightblue", 2 => "accent", 3 => "custom", _ => "taskbar" }, taskbarSwatch.Rgb,
             barBackdrop.SelectedIndex switch { 1 => "blur", 2 => "gradient", _ => "acrylic" },
             taskbarBackdrop.SelectedIndex switch { 0 => "acrylic", 2 => "gradient", _ => "blur" },
-            miniWeather.Checked, miniPicker.Get(), DesktopRelative(), miniShape.SelectedIndex switch { 1 => "rounded", 2 => "pill", _ => "rect" }));
+            miniWeather.Checked, miniPicker.Get(), DesktopRelative(), miniShape.SelectedIndex switch { 1 => "rounded", 2 => "pill", _ => "rect" },
+            barShape.SelectedIndex switch { 1 => "rounded", 2 => "pill", _ => "rect" }));
     }
 
     // ---- building ------------------------------------------------------------------------
@@ -527,17 +529,6 @@ public sealed class SettingsPanel : UserControl
         main.Controls.Add(mainFlow);
         flow.Controls.Add(main);
 
-        var second = new FlatCard(L("card.secondBar"));
-        var secondFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-        secondEnabled = new FlatCheck { Text = L("chk.secondEnabled") };
-        secondFlow.Controls.Add(secondEnabled);
-        secondPicker = new SlotPicker();
-        secondFlow.Controls.Add(secondPicker.Build());
-        secondNote = Note(L("note.secondBar"), 560);
-        secondFlow.Controls.Add(secondNote);
-        second.Controls.Add(secondFlow);
-        flow.Controls.Add(second);
-
         // One bar on every other monitor, each with its own content.
         var monitors = new FlatCard(L("card.monitors"));
         var monitorFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
@@ -555,6 +546,17 @@ public sealed class SettingsPanel : UserControl
         monitorFlow.Controls.Add(Note(others.Count > 0 ? L("note.monitors") : L("note.noOtherMonitor"), 560));
         monitors.Controls.Add(monitorFlow);
         flow.Controls.Add(monitors);
+
+        var second = new FlatCard(L("card.secondBar"));
+        var secondFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        secondEnabled = new FlatCheck { Text = L("chk.secondEnabled") };
+        secondFlow.Controls.Add(secondEnabled);
+        secondPicker = new SlotPicker();
+        secondFlow.Controls.Add(secondPicker.Build());
+        secondNote = Note(L("note.secondBar"), 560);
+        secondFlow.Controls.Add(secondNote);
+        second.Controls.Add(secondFlow);
+        flow.Controls.Add(second);
 
         secondEnabled.CheckedChanged += (_, _) => UpdateBarsUi();
         return page;
@@ -587,6 +589,9 @@ public sealed class SettingsPanel : UserControl
         var placement = new FlatCard(Loc.Pick("Ακριβής θέση και συμπεριφορά", "Exact placement and behaviour"));
         var placementFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
         placementFlow.Controls.Add(Row(L("lbl.position"), position, 200));
+        barShape = new FlatCombo { Width = 470 };
+        barShape.SetItems(new[] { L("shape.rect"), L("shape.rounded"), L("shape.pill") }, 0);
+        placementFlow.Controls.Add(Row(L("lbl.barShape"), barShape, 200));
         placementFlow.Controls.Add(followTaskbar);
         placementFlow.Controls.Add(reserve);
         placement.Controls.Add(placementFlow);
@@ -1526,6 +1531,7 @@ public sealed class SettingsPanel : UserControl
             LoadMiniBounds();
             miniOnTop.Checked = c.MiniWeatherOnTop;
             miniWhenHidden.Checked = c.MiniWhenTaskbarHidden;
+            barShape.SelectSilently(c.BarShape switch { "rounded" => 1, "pill" => 2, _ => 0 });
             miniShape.SelectSilently(c.DesktopBarShape switch { "rounded" => 1, "pill" => 2, _ => 0 });
 
             mainPicker.Set(c.MainSlots());
@@ -1756,6 +1762,7 @@ public sealed class SettingsPanel : UserControl
         else { c.MiniWeatherX = miniX.Value; c.MiniWeatherY = miniY.Value; }
         c.MiniWeatherOnTop = miniOnTop.Checked;
         c.MiniWhenTaskbarHidden = miniWhenHidden.Checked;
+        c.BarShape = barShape.SelectedIndex switch { 1 => "rounded", 2 => "pill", _ => "rect" };
         c.DesktopBarShape = miniShape.SelectedIndex switch { 1 => "rounded", 2 => "pill", _ => "rect" };
 
         var mainSlots = mainPicker.Get();

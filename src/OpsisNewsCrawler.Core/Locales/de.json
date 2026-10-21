@@ -340,5 +340,6 @@
   "weather.cloud": "Wolken",
   "weather.pressure": "Druck",
   "breaking.now": "Passiert gerade",
-  "app.name": "Opsis News Crawler"
+  "app.name": "Opsis News Crawler",
+  "lbl.barShape": "Leistenstil (Haupt-, zweite Leiste, Monitore)"
 }
