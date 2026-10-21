@@ -101,7 +101,7 @@ internal sealed class BarPreview : Control
         if (state.SecondEnabled && !integrated)
             CloseUp(Loc.T("card.secondBar"), state.Second, true, state.TaskbarColorMode, state.TaskbarCustom, state.TaskbarBackdrop);
         if (state.DesktopEnabled && state.Desktop is { } desktopSlots && y + 51 <= Height)
-            CloseUp(Loc.Pick("Μπάρα επιφάνειας εργασίας", "Desktop bar"), desktopSlots, false, state.BarColorMode, state.BarCustom, state.BarBackdrop, ShapeRadius(state.DesktopShape, 34));
+            CloseUp(Loc.T("pk.desktop.bar"), desktopSlots, false, state.BarColorMode, state.BarCustom, state.BarBackdrop, ShapeRadius(state.DesktopShape, 34));
         taskbarHeight = 14; stripHeight = 11; compact = true;
     }
 

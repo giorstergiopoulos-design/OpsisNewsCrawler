@@ -119,14 +119,14 @@ public static class WeatherInfo
     /// <summary>Plain-language name of a weather kind ("Clear", "Rain", ...), in Greek or English.</summary>
     public static string KindName(WeatherKind kind, bool greek) => kind switch
     {
-        WeatherKind.Clear => greek ? "Αίθριος" : "Clear",
-        WeatherKind.PartlyCloudy => greek ? "Λίγα σύννεφα" : "Partly cloudy",
-        WeatherKind.Cloudy => greek ? "Συννεφιά" : "Cloudy",
-        WeatherKind.Fog => greek ? "Ομίχλη" : "Fog",
-        WeatherKind.Drizzle => greek ? "Ψιχάλες" : "Drizzle",
-        WeatherKind.Rain => greek ? "Βροχή" : "Rain",
-        WeatherKind.Snow => greek ? "Χιόνι" : "Snow",
-        _ => greek ? "Καταιγίδα" : "Thunderstorm"
+        WeatherKind.Clear => Loc.T("weather.kind.clear"),
+        WeatherKind.PartlyCloudy => Loc.T("weather.kind.partly"),
+        WeatherKind.Cloudy => Loc.T("weather.kind.cloudy"),
+        WeatherKind.Fog => Loc.T("weather.kind.fog"),
+        WeatherKind.Drizzle => Loc.T("weather.kind.drizzle"),
+        WeatherKind.Rain => Loc.T("weather.kind.rain"),
+        WeatherKind.Snow => Loc.T("weather.kind.snow"),
+        _ => Loc.T("weather.kind.thunder")
     };
 
     /// <summary>Compass point the wind comes FROM: 0 = N, 1 = NE, ... 7 = NW.</summary>

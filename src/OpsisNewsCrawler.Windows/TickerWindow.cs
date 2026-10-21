@@ -311,24 +311,23 @@ public sealed class TickerWindow : Form
     private void ShowArticleMenu(Control owner, NewsItem item)
     {
         var menu = new ContextMenuStrip { ShowImageMargin = false };
-        var greek = Loc.IsGreek;
-        menu.Items.Add(greek ? "Άνοιγμα άρθρου" : "Open article", null, (_, _) =>
+        menu.Items.Add(Loc.T("menu.openArticle"), null, (_, _) =>
         {
             OpenUrl(item.Url);
             ItemOpened?.Invoke(item);
         });
         if (item.Kind == NewsItemKind.News)
         {
-            menu.Items.Add(greek ? "Διάβασε αργότερα" : "Read later", null, (_, _) => ItemSaveRequested?.Invoke(item));
-            menu.Items.Add(greek ? "Σήμανση ως διαβασμένο" : "Mark as read", null, (_, _) => ItemMarkReadRequested?.Invoke(item));
+            menu.Items.Add(Loc.T("menu.readLater"), null, (_, _) => ItemSaveRequested?.Invoke(item));
+            menu.Items.Add(Loc.T("menu.markRead"), null, (_, _) => ItemMarkReadRequested?.Invoke(item));
         }
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(greek ? "Αντιγραφή συνδέσμου" : "Copy link", null, (_, _) =>
+        menu.Items.Add(Loc.T("menu.copyLink"), null, (_, _) =>
         {
-            try { Clipboard.SetText(item.Url); ShowToast(greek ? "Ο σύνδεσμος αντιγράφηκε" : "Link copied"); }
+            try { Clipboard.SetText(item.Url); ShowToast(Loc.T("menu.linkCopied")); }
             catch (Exception ex) when (ex is System.Runtime.InteropServices.ExternalException or ThreadStateException) { }
         });
-        menu.Items.Add(greek ? "Ρυθμίσεις…" : "Settings…", null, (_, _) => SettingsRequested?.Invoke());
+        menu.Items.Add(Loc.T("menu.settings"), null, (_, _) => SettingsRequested?.Invoke());
         // Not disposed inside Closed: the menu is still handling the click that closed it (that caused "Cannot access a disposed object").
         menu.Closed += (_, _) =>
         {

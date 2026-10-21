@@ -65,7 +65,7 @@ internal sealed class WeatherMapForm : Form
         maximize.Click += (_, _) => ToggleMaximize();
         close.Click += (_, _) => Close();
 
-        title.Text = name + "  ·  " + Loc.Pick("Καιρός και χάρτης", "Weather and map");
+        title.Text = name + "  ·  " + Loc.T("pk.weather.and.map");
         title.ForeColor = Theme.TextMuted;
         title.BackColor = Theme.Surface;
         title.Dock = DockStyle.Fill;
@@ -133,8 +133,8 @@ internal sealed class WeatherMapForm : Form
         {
             web.Visible = false;
             message.Text = ex is WebView2RuntimeNotFoundException
-                ? Loc.Pick("Λείπει το Microsoft Edge WebView2 Runtime· χρειάζεται για τον χάρτη.", "Microsoft Edge WebView2 Runtime was not found; it is needed for the map.")
-                : Loc.Pick("Ο χάρτης δεν άνοιξε: ", "The map could not be opened: ") + ex.GetType().Name + ": " + ex.Message;
+                ? Loc.T("pk.microsoft.edge.webview2.runtime")
+                : Loc.T("pk.the.map.could.not") + ex.GetType().Name + ": " + ex.Message;
             message.Visible = true;
             message.BringToFront();
         }
@@ -167,7 +167,7 @@ internal sealed class WeatherMapForm : Form
         var rows = new List<string>();
         if (r is null)
         {
-            rows.Add(H(Loc.Pick("Δεν υπάρχουν ακόμα δεδομένα καιρού.", "No weather data yet.")));
+            rows.Add(H(Loc.T("pk.no.weather.data.yet")));
         }
         else
         {
@@ -180,12 +180,12 @@ internal sealed class WeatherMapForm : Form
             if (r.PrecipitationMm is { } rain) rows.Add(H(Loc.T("weather.rain")) + ": " + rain.ToString("0.0", culture) + " mm");
             if (r.CloudPercent is { } cloud) rows.Add(H(Loc.T("weather.cloud")) + ": " + cloud + "%");
             if (r.PressureHpa is { } pressure) rows.Add(H(Loc.T("weather.pressure")) + ": " + pressure.ToString("0", culture) + " hPa");
-            rows.Add("<span class='muted'>" + H(Loc.Pick("Ώρα δεδομένων", "Data time")) + ": " + r.At.ToLocalTime().ToString("dd/MM HH:mm", culture) + (stored ? " · " + H(Loc.Pick("αποθηκευμένα δεδομένα", "stored data")) : "") + "</span>");
+            rows.Add("<span class='muted'>" + H(Loc.T("pk.data.time")) + ": " + r.At.ToLocalTime().ToString("dd/MM HH:mm", culture) + (stored ? " · " + H(Loc.T("pk.stored.data")) : "") + "</span>");
         }
         var lat = city.Lat.ToString("0.####", CultureInfo.InvariantCulture);
         var lon = city.Lon.ToString("0.####", CultureInfo.InvariantCulture);
         var dark = Theme.IsDark;
-        var offline = Loc.Pick("Ο χάρτης χρειάζεται σύνδεση στο διαδίκτυο.", "The map needs an internet connection.");
+        var offline = Loc.T("pk.the.map.needs.an");
         return @"<!DOCTYPE html><html><head><meta charset='utf-8'><meta name='referrer' content='origin-when-cross-origin'>
 <link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'>
 <script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script>

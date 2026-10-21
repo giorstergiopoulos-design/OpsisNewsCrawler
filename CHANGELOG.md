@@ -7,6 +7,8 @@ Detailed notes per release: `docs/RELEASE-*.md` and the GitHub releases.
 - Bar styles (rectangle, rounded, pill) now really apply: the window shape was not set when the window was created later; the main, second and monitor bars have a style too (Bars → Placement). Desktop bar style as before.
 - Settings → Bars: the monitors card sits right under the main bar.
 - Energy prices work again: FRED now serves a bot-check page, so the EIA public history pages are the fallback.
+- Everything that was only in Greek/English is now translated into all 14 languages: ~100 UI texts (settings sections, weather conditions, article menu, alerts, feed-test messages), Help, Instructions and the newest version history (older history entries and the MIT licence text stay English).
+- The "Monitors" settings are now the last section of the Bars page, after the desktop bar.
 - QA pass over the settings: every control of the panel was driven in-process in all 14 languages (no raw keys, no exceptions), buttons clicked, Apply saved and reloaded.
 
 ## 0.13.1 — 2026-10-21

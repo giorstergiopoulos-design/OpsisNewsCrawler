@@ -205,7 +205,7 @@ public sealed class TickerHost : IDisposable
                 if (breakingItems.Count == 0) EndBreaking();
             }
             if (Config.HideRead) PushAll();
-            w.ShowToast(Loc.IsGreek ? "Σημειώθηκε ως διαβασμένο" : "Marked as read");
+            w.ShowToast(Loc.T("pk.marked.as.read"));
         };
         w.ScrollSpeedChanged += speed =>
         {
@@ -662,7 +662,7 @@ public sealed class TickerHost : IDisposable
         var visible = Config.HideRead ? candidates.Where(i => !readStore.IsRead(i.Url)).ToList() : candidates.ToList();
         if (visible.Count > 0) return visible;
         if (Config.StockNewsOnly && candidates.Count == 0)
-            return new[] { Placeholder(Loc.IsGreek ? "Δεν βρέθηκαν ειδήσεις για τις επιλεγμένες μετοχές" : "No stories matched your selected shares") };
+            return new[] { Placeholder(Loc.T("pk.no.stories.matched.your")) };
         return new[] { Placeholder(Loc.T("ph.allRead")) };
     }
 
@@ -885,14 +885,12 @@ public sealed class TickerHost : IDisposable
         if (disposed || Config.PriceAlerts.Count == 0) return;
         var hits = PriceAlertCheck.Evaluate(Config.PriceAlerts, quotes.LastQuotes);
         if (hits.Count == 0) return;
-        var culture = System.Globalization.CultureInfo.GetCultureInfo("el-GR");
+        var culture = System.Globalization.CultureInfo.CurrentCulture;
         foreach (var (alert, quote) in hits)
         {
             var label = string.IsNullOrWhiteSpace(alert.Label) ? quote.Symbol : alert.Label;
-            var text = Loc.Pick(
-                $"🔔 {label} {(alert.Above ? "πάνω από" : "κάτω από")} {alert.Threshold.ToString("0.00##", culture)}: τώρα {quote.Price.ToString("0.00##", culture)}",
-                $"🔔 {label} {(alert.Above ? "above" : "below")} {alert.Threshold.ToString("0.00##", culture)}: now {quote.Price.ToString("0.00##", culture)}");
-            breakingItems.Add(new NewsItem(text, "", Loc.Pick("Ειδοποίηση τιμής", "Price alert"), DateTimeOffset.Now,
+            var text = Loc.T(alert.Above ? "alert.above" : "alert.below", label, alert.Threshold.ToString("0.00##", culture), quote.Price.ToString("0.00##", culture));
+            breakingItems.Add(new NewsItem(text, "", Loc.T("pk.price.alert"), DateTimeOffset.Now,
                 Summary: label, Kind: NewsItemKind.News, Trend: alert.Above ? 1 : -1, Breaking: true));
         }
         breakingUntil = DateTimeOffset.Now.AddMinutes(Config.BreakingDurationMinutes);
@@ -980,9 +978,8 @@ public sealed class TickerHost : IDisposable
         foreach (var a in alerts)
         {
             var text = $"⚠ {name}: {Loc.Pick(a.TextEl, a.TextEn)}";
-            breakingItems.Add(new NewsItem(text, "", Loc.Pick("Έκτακτο καιρικό φαινόμενο", "Severe weather"), DateTimeOffset.Now,
-                Summary: Loc.Pick("Αυτόματη ειδοποίηση από την πρόγνωση Open-Meteo για τις επόμενες 12 ώρες· δεν είναι επίσημο δελτίο της ΕΜΥ.",
-                    "Automatic warning from the Open-Meteo forecast for the next 12 hours; not the official HNMS bulletin."),
+            breakingItems.Add(new NewsItem(text, "", Loc.T("pk.severe.weather"), DateTimeOffset.Now,
+                Summary: Loc.T("pk.automatic.warning.from.the"),
                 Kind: NewsItemKind.News, Trend: -1, Breaking: true));
         }
         breakingUntil = DateTimeOffset.Now.AddMinutes(Config.BreakingDurationMinutes);

@@ -198,3 +198,5 @@ Build 0 errors / 0 warnings; `dotnet test` 56 passed (test project added to the 
 - ✅ Translations of every key added since 0.12.5 into the 12 non-Greek/English languages (key sets identical in all 14 files, except the four long info texts help/instructions/history/license which fall back to English in the 12).
 - ✅ `YahooHistory` (opt-in): live test with the real Yahoo address filled 129 daily candles for 9 Athens shares in 10 s. 5 new unit tests (69 in all).
 - ✅ Bollinger bands. ❌ Stooq (bot protection, not bypassed). ❌ Not built: MACD, news sentiment (greek-stocks-ai).
+
+- ✅ Round 22: all Loc.Pick / Loc.IsGreek strings moved into the language files (keys pk.*, weather.kind.*, menu.*, feed.*, alert.*) and translated into the 12 other languages; Help, Instructions and the newest history entries translated too. Left in English on purpose: older history entries, MIT licence, instrument/city/category names (data).
