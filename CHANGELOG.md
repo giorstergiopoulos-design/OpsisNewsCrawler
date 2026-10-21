@@ -3,7 +3,7 @@
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
 Detailed notes per release: `docs/RELEASE-*.md` and the GitHub releases.
 
-## Unreleased (after 0.13.0)
+## 0.13.1 — 2026-10-21
 - All new texts of 0.12.8–0.13.0 translated into the 12 other languages (analysis window, back-test, fear & greed, assistant, bar styles, tray, weather details, network messages). Help/Instructions/History/License remain English in those 12 languages.
 - Optional price history from Yahoo Finance (off by default, unofficial, at the user's own risk): charts, back-test and gauge work from the first day. Stooq is not supported (bot check).
 - Bollinger bands on the candlestick chart; Euronext shares of other markets and the portfolio now find their stored prices (store key MIC:ISIN).

@@ -29,6 +29,8 @@
 | 🧩 Plugin | Ενσωματωμένη εγκατάσταση στο Opsis (δική του σελίδα, χρώματα και γλώσσα του Opsis) ή αυτόνομη εφαρμογή |
 | 🌍 14 γλώσσες | Ελληνικά, English, Deutsch, Français, Español, Italiano, Português, Русский, Türkçe, 日本語, 한국어, 简体中文, العربية (με δεξιά-προς-αριστερά διάταξη), हिन्दी |
 
+**Νέο στην 0.13.1:** προαιρετικό ιστορικό τιμών από το Yahoo Finance (ανενεργό από προεπιλογή, ανεπίσημο, με δική σας ευθύνη), ζώνες Bollinger, μεταφράσεις σε 14 γλώσσες.
+
 **Νέο στην 0.13.0:** παράθυρο **Ανάλυσης αγορών** (γράφημα κεριών με SMA20/50, δοκιμή στρατηγικής SMA/RSI,
 δείκτης φόβου και απληστίας από τις αποθηκευμένες τιμές, προαιρετικός βοηθός με το δικό σας κλειδί Anthropic), νέο παράθυρο
 ρυθμίσεων με πλευρική πλοήγηση και όλες τις ρυθμίσεις μπαρών στη σελίδα «Μπάρες», στυλ μπάρας επιφάνειας (ορθογώνιο, στρογγυλεμένο,
@@ -130,6 +132,8 @@ Frankfurter/ΕΚΤ, FRED/EIA. Καιρός: [Open-Meteo.com](https://open-meteo.
 | 🎨 Look | Colour, transparency, background material (acrylic/blur), fading ends, theme — the same as Opsis |
 | 🧩 Plugin | Integrated into Opsis (its own page, Opsis colours and language) or a stand-alone app |
 | 🌍 14 languages | Greek, English, German, French, Spanish, Italian, Portuguese, Russian, Turkish, Japanese, Korean, Simplified Chinese, Arabic (with right-to-left layout), Hindi |
+
+**New in 0.13.1:** optional price history from Yahoo Finance (off by default, unofficial, at your own risk), Bollinger bands, translations in 14 languages.
 
 **New in 0.13.0:** a **Market analysis** window (candlestick chart with SMA20/50, SMA/RSI back-test, a fear & greed gauge from the
 stored prices, an optional assistant with your own Anthropic key), a new settings window with side navigation and every bar setting on
