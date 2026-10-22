@@ -214,6 +214,9 @@ public sealed class TickerWindow : Form
         canvasB.SetEdgeFade(fade);
     }
 
+    /// <summary>The desktop bar: same glass as the Opsis DeskStrip (blur behind + a dark 40 % tint) instead of the theme material.</summary>
+    public bool MatchDeskStrip { get; set; }
+
     /// <summary>The outline of the bar: "rect", "rounded" or "pill" (the window is clipped to the shape).</summary>
     public void SetShape(string value)
     {
@@ -224,13 +227,20 @@ public sealed class TickerWindow : Form
         if (changed && IsHandleCreated && Visible) Reposition();   // the margin of a full-width bar changes with the shape
     }
 
+    [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
+
     private void ApplyShapeRegion()
     {
-        var outline = shape == "rect" || split ? 0 : shape == "pill" ? Height / 2 : Math.Min(14, Height / 2);
+        // "rounded": the corners are cut by Windows itself (DWM, anti-aliased, 8 px) - a GDI Region clips the backdrop with jagged edges.
+        // "pill": a Region (DWM has no capsule), the border is drawn anti-aliased by the canvas.
+        var outline = shape == "rect" || split ? 0 : shape == "pill" ? Height / 2 : Math.Min(8, Height / 2);
         if (canvas.OutlineRadius != outline) { canvas.OutlineRadius = outline; canvas.Invalidate(); }
         if (!IsHandleCreated) return;
+        var pref = shape == "rounded" && !split ? 2 /*DWMWCP_ROUND*/ : 1 /*DWMWCP_DONOTROUND*/;
+        try { DwmSetWindowAttribute(Handle, 33 /*DWMWA_WINDOW_CORNER_PREFERENCE*/, ref pref, sizeof(int)); } catch (Exception) { }
         var old = Region;
-        if (shape == "rect" || Width < 20 || Height < 10)
+        if (shape != "pill" || split || Width < 20 || Height < 10)
         {
             Region = null;
         }
@@ -252,7 +262,7 @@ public sealed class TickerWindow : Form
     protected override void OnSizeChanged(EventArgs e)
     {
         base.OnSizeChanged(e);
-        if (shape != "rect") ApplyShapeRegion();
+        if (shape == "pill") ApplyShapeRegion();
     }
 
     /// <summary>Taskbar-integrated mode: find the empty part of the taskbar by itself instead of using the offsets.</summary>
@@ -463,6 +473,15 @@ public sealed class TickerWindow : Form
                 canvasB.SetLook(st.Text, st.SourceText, st.HoverOverlay, st.Text, darkSurface);
             }
             if (IsHandleCreated) Native.SetBackdrop(Handle, backdropStyle, Color.Black, 0);
+            return;
+        }
+
+        if (MatchDeskStrip)
+        {
+            // The bar on the desktop looks like the Opsis DeskStrip: the same dark glass (blur behind, tint 0x202228 at 40 %), white text.
+            canvas.SetLook(Color.White, Color.FromArgb(150, 205, 255), Color.FromArgb(48, 255, 255, 255), Color.White, true);
+            canvasB.SetLook(Color.White, Color.FromArgb(150, 205, 255), Color.FromArgb(48, 255, 255, 255), Color.White, true);
+            if (IsHandleCreated) Native.SetBackdrop(Handle, "blur", Color.FromArgb(0x28, 0x22, 0x20), 0x66);
             return;
         }
 

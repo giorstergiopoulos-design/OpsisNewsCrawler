@@ -3,7 +3,7 @@ using System.Media;
 namespace OpsisNewsCrawler.Windows;
 
 /// <summary>
-/// The sound of an urgent alert: a short rising two-tone beep built in memory (no file to ship). It does not depend on the Windows
+/// The sound of an urgent alert: a short newsroom-style stinger (whoosh, bell hits, ringing chord) synthesised in memory (no file to ship). It does not depend on the Windows
 /// sound scheme, which may be set to "No sounds". Falls back to the system "exclamation" sound if it cannot be played.
 /// </summary>
 internal static class AlertSound
@@ -27,23 +27,60 @@ internal static class AlertSound
         }
     }
 
-    /// <summary>16-bit mono PCM, 22.05 kHz: three beeps (660, 880, 660 Hz), 140 ms each with a short fade, 40 ms apart.</summary>
+    /// <summary>
+    /// A newsroom-style "breaking" stinger, 16-bit mono PCM at 44.1 kHz (about 2.3 s): a quick rising whoosh, three bell hits
+    /// (E5, E5, B5) and a long G major-7 chord (G5, B5, D6, F#6) that rings out. Bell timbre = a few harmonics with an exponential decay.
+    /// </summary>
     internal static byte[] Build()
     {
-        const int rate = 22050;
-        var tones = new[] { 660.0, 880.0, 660.0 };
-        var samples = new List<short>();
-        foreach (var hz in tones)
+        const int rate = 44100;
+        const double total = 2.3;
+        var mix = new double[(int)(rate * total)];
+
+        void Bell(double start, double hz, double length, double gain)
         {
-            var n = rate * 140 / 1000;
+            var from = (int)(start * rate);
+            var n = Math.Min((int)(length * rate), mix.Length - from);
             for (var i = 0; i < n; i++)
             {
-                var envelope = Math.Min(1.0, Math.Min(i, n - i) / (rate * 0.01)); // 10 ms fade in/out
-                samples.Add((short)(Math.Sin(2 * Math.PI * hz * i / rate) * envelope * 0.6 * short.MaxValue));
+                var t = i / (double)rate;
+                var attack = Math.Min(1.0, i / (rate * 0.004));
+                var decay = Math.Exp(-t * 3.2 / length * 2);
+                var v = Math.Sin(2 * Math.PI * hz * t)
+                      + 0.45 * Math.Sin(2 * Math.PI * hz * 2 * t) * Math.Exp(-t * 6)
+                      + 0.25 * Math.Sin(2 * Math.PI * hz * 3.01 * t) * Math.Exp(-t * 9)
+                      + 0.12 * Math.Sin(2 * Math.PI * hz * 4.2 * t) * Math.Exp(-t * 14);
+                mix[from + i] += v * attack * decay * gain;
             }
-            samples.AddRange(new short[rate * 40 / 1000]);
         }
-        var dataLength = samples.Count * 2;
+
+        // Whoosh: a sine sweep 300 -> 1500 Hz in 0.35 s
+        {
+            var n = (int)(rate * 0.35);
+            double phase = 0;
+            for (var i = 0; i < n; i++)
+            {
+                var k = i / (double)n;
+                var hz = 300 + 1200 * k * k;
+                phase += 2 * Math.PI * hz / rate;
+                mix[i] += Math.Sin(phase) * Math.Sin(Math.PI * k) * 0.35;
+            }
+        }
+        Bell(0.40, 659.25, 0.45, 0.55);   // E5
+        Bell(0.62, 659.25, 0.45, 0.55);   // E5
+        Bell(0.84, 987.77, 0.60, 0.60);   // B5
+        foreach (var hz in new[] { 783.99, 987.77, 1174.66, 1479.98 })
+            Bell(1.15, hz, 1.15, 0.28);   // ringing chord
+
+        var peak = mix.Max(Math.Abs);
+        var scale = peak > 0 ? 0.8 * short.MaxValue / peak : 0;
+        var samples = new short[mix.Length];
+        for (var i = 0; i < samples.Length; i++)
+        {
+            var fadeOut = Math.Min(1.0, (samples.Length - i) / (rate * 0.05));   // no click at the end
+            samples[i] = (short)(mix[i] * scale * fadeOut);
+        }
+        var dataLength = samples.Length * 2;
         using var ms = new MemoryStream();
         using (var w = new BinaryWriter(ms, System.Text.Encoding.ASCII, leaveOpen: true))
         {

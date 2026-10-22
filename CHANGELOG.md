@@ -3,6 +3,12 @@
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
 Detailed notes per release: `docs/RELEASE-*.md` and the GitHub releases.
 
+## 0.14.1 — 2026-10-22
+- Breaking news: clicking an urgent headline opens it and the bar goes straight back to normal news (before, it stayed red and showed only the other urgent items until the time ran out).
+- New breaking-news sound: a newsroom-style stinger (whoosh, three bell hits and a ringing chord, ~2.3 s) instead of a plain beep.
+- Default bar position: inside the free part of the taskbar, between the weather and the date.
+- The desktop bar has the same glass/transparency as the Opsis DeskStrip, and rounded corners are drawn by Windows (no jagged edges).
+
 ## 0.14.0 — 2026-10-22
 - **Low-power mode inside Opsis**: when the host reports the Low hardware tier, the bar scrolls at ~30 fps instead of ~66 and polls the taskbar every ~90 ms instead of 30 ms. The scroll is time based, so the visible speed does not change.
 - The plugin contract gained the optional `IPluginProfileAware` (the source in this repo was missing it although the Opsis host already shipped it).

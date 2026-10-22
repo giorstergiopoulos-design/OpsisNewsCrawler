@@ -39,7 +39,7 @@ public sealed class AppConfig
 
     public string Language { get; set; } = "el";
     public TickerMode Mode { get; set; } = TickerMode.Economy;
-    public TickerPosition Position { get; set; } = TickerPosition.BottomTaskbar;
+    public TickerPosition Position { get; set; } = TickerPosition.TaskbarIntegrated;   // default: in the free part of the taskbar, between the weather and the date
     public int NewsRefreshSeconds { get; set; } = 300;
     public bool PauseOnOtherWindow { get; set; } = true;
     public bool FollowTaskbar { get; set; } = true;

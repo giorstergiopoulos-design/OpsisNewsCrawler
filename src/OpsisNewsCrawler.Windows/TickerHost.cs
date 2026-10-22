@@ -220,12 +220,11 @@ public sealed class TickerHost : IDisposable
             readStore.MarkRead(item.Url);
             if (breakingActive)
             {
-                breakingItems.RemoveAll(i => i.Url == item.Url);
-                if (breakingItems.Count == 0)
-                {
-                    EndBreaking();
-                    return;
-                }
+                // Opening an urgent headline acknowledges the alert: ALL current urgent items are marked as seen and the bar goes back to normal.
+                // (Before, the bar stayed red and showed nothing but the other urgent items - e.g. the same story from several sources - until the timeout.)
+                foreach (var urgent in breakingItems.Where(i => !string.IsNullOrEmpty(i.Url))) readStore.MarkRead(urgent.Url);
+                EndBreaking();
+                return;
             }
             if (Config.HideRead && allItems.Count > 0) PushAll();
         };
@@ -1230,7 +1229,9 @@ public sealed class TickerHost : IDisposable
         w.SetBarColor(Config.BarColorMode, Config.BarCustomColor);
         w.SetBarHeight(Config.MiniWeatherHeight);
         w.SetDesktopLayer(!Config.MiniWeatherOnTop);
+        w.MatchDeskStrip = true;      // a chosen colour (BarColorMode) still wins: ApplyLook handles the tint first
         w.SetShape(Config.DesktopBarShape);
+        w.ApplyLook();
         w.SetCustomBounds(GetMiniWeatherBounds());
         w.SetPosition(TickerPosition.Custom);
         PushTo(w, miniState, Config.MiniSlots());
