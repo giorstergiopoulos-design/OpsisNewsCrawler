@@ -9,7 +9,7 @@ namespace OpsisNewsCrawler.OpsisPlugin;
 /// Hosted, the crawler never creates its own tray icon: its commands are offered through <see cref="GetTrayMenuItems"/>
 /// and its settings are a tab of the host.
 /// </summary>
-public sealed class OpsisNewsCrawlerPlugin : IOpsisNewsCrawlerPlugin
+public sealed class OpsisNewsCrawlerPlugin : IOpsisNewsCrawlerPlugin, IPluginProfileAware
 {
     public const string NavigationKey = "OpsisNewsCrawler";
 
@@ -64,6 +64,8 @@ public sealed class OpsisNewsCrawlerPlugin : IOpsisNewsCrawlerPlugin
     public void SetTheme(bool dark, int background, int surface, int border, int text, int textMuted, int accent, double opacity) =>
         Theme.SetColors(dark, Color.FromArgb(background), Color.FromArgb(surface), Color.FromArgb(border),
             Color.FromArgb(text), Color.FromArgb(textMuted), Color.FromArgb(accent), Theme.Opacity); // the strip keeps its own transparency setting
+
+    public void SetHardwareProfile(string tier) => TickerWindow.LowPower = string.Equals(tier, "Low", StringComparison.OrdinalIgnoreCase);
 
     public void SetLanguage(string code)
     {

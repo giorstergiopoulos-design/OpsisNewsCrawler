@@ -29,6 +29,8 @@
 | 🧩 Plugin | Ενσωματωμένη εγκατάσταση στο Opsis (δική του σελίδα, χρώματα και γλώσσα του Opsis) ή αυτόνομη εφαρμογή |
 | 🌍 14 γλώσσες | Ελληνικά, English, Deutsch, Français, Español, Italiano, Português, Русский, Türkçe, 日本語, 한국어, 简体中文, العربية (με δεξιά-προς-αριστερά διάταξη), हिन्दी |
 
+**Νέο στην 0.14.0:** λειτουργία χαμηλής κατανάλωσης μέσα στο Opsis για αδύναμα PC (λιγότερη CPU, ίδια ταχύτητα κύλισης).
+
 **Νέο στην 0.13.8:** ενημερώσεις με τη λογική του GearWin, MACD, σελίδα «Διάθεση ειδήσεων», κινούμενο εικονίδιο στις ρυθμίσεις.
 
 **Νέο στην 0.13.5:** προαιρετικός κατάλογος Yahoo Finance (αναζήτηση μετοχών, δεικτών, νομισμάτων, πρώτων υλών, με αυστηρά όρια αιτήσεων), ορατά στυλ στρογγυλεμένης/pill μπάρας.
@@ -136,6 +138,8 @@ Frankfurter/ΕΚΤ, FRED/EIA. Καιρός: [Open-Meteo.com](https://open-meteo.
 | 🎨 Look | Colour, transparency, background material (acrylic/blur), fading ends, theme — the same as Opsis |
 | 🧩 Plugin | Integrated into Opsis (its own page, Opsis colours and language) or a stand-alone app |
 | 🌍 14 languages | Greek, English, German, French, Spanish, Italian, Portuguese, Russian, Turkish, Japanese, Korean, Simplified Chinese, Arabic (with right-to-left layout), Hindi |
+
+**New in 0.14.0:** a low-power mode inside Opsis for weak PCs (less CPU, same scroll speed).
 
 **New in 0.13.8:** updates with GearWin's logic, MACD, a News mood page, the animated icon in the settings.
 

@@ -9,7 +9,7 @@
 ; The wizard looks for Opsis (uninstall entry, default folders) and proposes the integrated install when it finds it.
 ; Test switches: /MODE=integrated | /MODE=separate (silent installs), /PLUGINROOT=<folder> (instead of %AppData%\Opsis\plugins).
 #define MyAppName "Opsis News Crawler"
-#define MyAppVersion "0.13.8"
+#define MyAppVersion "0.14.0"
 #ifndef BinDir
 #define BinDir "bin"
 #endif
@@ -48,7 +48,7 @@ LanguageDetectionMethod=uilanguage
 [Languages]
 ; Same fourteen languages as Opsis. The wizard follows the Windows display language; English is the fallback (first entry).
 Name: "english"; MessagesFile: "compiler:Default.isl"
-Name: "greek"; MessagesFile: "compiler:Languages\Greek.isl"
+Name: "greek"; MessagesFile: "installer\Greek.isl"
 Name: "german"; MessagesFile: "compiler:Languages\German.isl"
 Name: "french"; MessagesFile: "compiler:Languages\French.isl"
 Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"

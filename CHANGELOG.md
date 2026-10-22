@@ -3,6 +3,10 @@
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
 Detailed notes per release: `docs/RELEASE-*.md` and the GitHub releases.
 
+## 0.14.0 — 2026-10-22
+- **Low-power mode inside Opsis**: when the host reports the Low hardware tier, the bar scrolls at ~30 fps instead of ~66 and polls the taskbar every ~90 ms instead of 30 ms. The scroll is time based, so the visible speed does not change.
+- The plugin contract gained the optional `IPluginProfileAware` (the source in this repo was missing it although the Opsis host already shipped it).
+
 ## 0.13.8 — 2026-10-21
 - **MACD**: a panel under the chart (lines and histogram) and a third back-test strategy (MACD crossover).
 - **News mood** page in the market analysis: simple Greek/English word lists on the loaded headlines (negation aware), overall mood, per watched share and a list of the strongest headlines. A rough guide, not investment advice. 14 languages.

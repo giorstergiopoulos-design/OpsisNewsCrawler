@@ -54,6 +54,21 @@ public sealed class TickerWindow : Form
     private readonly Stopwatch alertClock = new();
     private bool breaking;
     private static readonly Color BreakingRed = Color.FromArgb(255, 188, 22, 28);
+    // Low-end PCs (Opsis hardware tier "Low"): scroll at ~30 fps instead of ~66 fps and poll the taskbar every ~90 ms instead
+    // of 30 ms. The scroll is time based (see ScrollTicker), so the speed the user sees does not change.
+    private static bool lowPower;
+    private static event Action? PowerChanged;
+    public static bool LowPower
+    {
+        get => lowPower;
+        set { if (lowPower == value) return; lowPower = value; PowerChanged?.Invoke(); }
+    }
+    private void ApplyPowerProfile()
+    {
+        scrollTimer.Interval = lowPower ? 33 : 15;
+        taskbarTimer.Interval = lowPower ? 90 : 30;
+    }
+
     private readonly System.Windows.Forms.Timer scrollTimer = new() { Interval = 15 };
     private readonly System.Windows.Forms.Timer focusTimer = new() { Interval = 250 };
     private readonly System.Windows.Forms.Timer hoverTimer = new() { Interval = HoverPreviewDelayMs };
@@ -299,6 +314,8 @@ public sealed class TickerWindow : Form
         LayoutCanvases();
 
         scrollTimer.Tick += (_, _) => ScrollTicker();
+        PowerChanged += ApplyPowerProfile;
+        ApplyPowerProfile();
         focusTimer.Tick += (_, _) =>
         {
             CheckForeground();
@@ -492,6 +509,7 @@ public sealed class TickerWindow : Form
             Theme.Changed -= ApplyLook;
             if (appBarRegistered && IsHandleCreated) Native.AppBarRemove(Handle);
             appBarRegistered = false;
+            PowerChanged -= ApplyPowerProfile;
             taskbarTimer.Dispose();
             scrollTimer.Dispose();
             focusTimer.Dispose();

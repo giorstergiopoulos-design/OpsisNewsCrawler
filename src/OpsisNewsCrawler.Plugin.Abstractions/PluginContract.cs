@@ -73,3 +73,12 @@ public interface IOpsisNewsCrawlerPlugin
     /// </summary>
     event Action<string>? NavigationRequested;
 }
+
+/// <summary>
+/// Optional capability (the host checks with <c>is</c>, so plugins that do not implement it keep working): the host's
+/// hardware tier ("Low", "Balanced" or "High"). A plugin should lighten its animations and polling on "Low".
+/// </summary>
+public interface IPluginProfileAware
+{
+    void SetHardwareProfile(string tier);
+}
