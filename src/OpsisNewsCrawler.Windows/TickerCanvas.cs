@@ -371,7 +371,7 @@ internal sealed class TickerCanvas : Control
         hoverIndex = index;
         hoverCopy = copy;
 
-        var clickable = index >= 0 && (!string.IsNullOrEmpty(entries[index].Item.Url) || entries[index].Item.Kind == NewsItemKind.Weather && !string.IsNullOrEmpty(entries[index].Item.Key));
+        var clickable = index >= 0 && (!string.IsNullOrEmpty(entries[index].Item.Url) || entries[index].Item.Breaking || entries[index].Item.Kind == NewsItemKind.Weather && !string.IsNullOrEmpty(entries[index].Item.Key));
         Cursor = clickable ? Cursors.Hand : Cursors.Default;
         Invalidate();
 
@@ -421,7 +421,8 @@ internal sealed class TickerCanvas : Control
             if (!string.IsNullOrEmpty(item.Key)) WeatherClicked?.Invoke(item);
             return;
         }
-        if (!string.IsNullOrEmpty(item.Url)) ItemClicked?.Invoke(item);
+        // An alert without a link (severe weather, price limit) is clickable too: the click dismisses it.
+        if (!string.IsNullOrEmpty(item.Url) || item.Breaking) ItemClicked?.Invoke(item);
     }
 
     protected override void OnPaintBackground(PaintEventArgs e)

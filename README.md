@@ -29,6 +29,8 @@
 | 🧩 Plugin | Ενσωματωμένη εγκατάσταση στο Opsis (δική του σελίδα, χρώματα και γλώσσα του Opsis) ή αυτόνομη εφαρμογή |
 | 🌍 14 γλώσσες | Ελληνικά, English, Deutsch, Français, Español, Italiano, Português, Русский, Türkçe, 日本語, 한국어, 简体中文, العربية (με δεξιά-προς-αριστερά διάταξη), हिन्दी |
 
+**Νέο στην 0.14.2:** κλικ σε ειδοποίηση καιρού ανοίγει τις προειδοποιήσεις και η μπάρα ξαναγυρνά στις ειδήσεις.
+
 **Νέο στην 0.14.1:** κλικ σε έκτακτη την ανοίγει και επιστρέφει στις κανονικές ειδήσεις, νέος ήχος έκτακτης, προεπιλεγμένη θέση μέσα στη γραμμή εργασιών, μπάρα επιφάνειας με γυαλί DeskStrip.
 
 **Νέο στην 0.14.0:** λειτουργία χαμηλής κατανάλωσης μέσα στο Opsis για αδύναμα PC (λιγότερη CPU, ίδια ταχύτητα κύλισης).
@@ -140,6 +142,8 @@ Frankfurter/ΕΚΤ, FRED/EIA. Καιρός: [Open-Meteo.com](https://open-meteo.
 | 🎨 Look | Colour, transparency, background material (acrylic/blur), fading ends, theme — the same as Opsis |
 | 🧩 Plugin | Integrated into Opsis (its own page, Opsis colours and language) or a stand-alone app |
 | 🌍 14 languages | Greek, English, German, French, Spanish, Italian, Portuguese, Russian, Turkish, Japanese, Korean, Simplified Chinese, Arabic (with right-to-left layout), Hindi |
+
+**New in 0.14.2:** clicking a weather alert opens the warnings page and the bar returns to normal news.
 
 **New in 0.14.1:** clicking a breaking item opens it and returns to normal news, new breaking-news sound, default position inside the taskbar, desktop bar with DeskStrip glass.
 

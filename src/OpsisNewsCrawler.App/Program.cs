@@ -179,6 +179,13 @@ internal static class Program
 
         if (args.Contains("--portfolio")) host.ShowPortfolio(); // handy for testing
 
+        if (args.Contains("--test-weather-alert"))
+        {
+            var tw = new System.Windows.Forms.Timer { Interval = 6000 };
+            tw.Tick += (_, _) => { tw.Stop(); host.SimulateWeatherAlert(); };
+            tw.Start();
+        }
+
         if (args.Contains("--test-breaking"))
         {
             // Simulates an urgent headline a few seconds after the start (for testing the red bar and the live button).

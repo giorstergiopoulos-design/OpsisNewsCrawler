@@ -3,6 +3,10 @@
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
 Detailed notes per release: `docs/RELEASE-*.md` and the GitHub releases.
 
+## 0.14.2 — 2026-10-22
+- Severe-weather alert: clicking it opens the warnings page (meteo.gr) and the bar returns to normal news. Before, nothing opened and the bar stayed red and static for 30 minutes.
+- While only alerts without an article (weather, price limits) are active, the normal news keeps scrolling after them so the bar never looks frozen. Clicking a price-limit alert dismisses it.
+
 ## 0.14.1 — 2026-10-22
 - Breaking news: clicking an urgent headline opens it and the bar goes straight back to normal news (before, it stayed red and showed only the other urgent items until the time ran out).
 - New breaking-news sound: a newsroom-style stinger (whoosh, three bell hits and a ringing chord, ~2.3 s) instead of a plain beep.

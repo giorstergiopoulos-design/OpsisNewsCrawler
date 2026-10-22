@@ -217,7 +217,7 @@ public sealed class TickerHost : IDisposable
         w.ItemOpened += item =>
         {
             if (item.Kind != NewsItemKind.News) return;
-            readStore.MarkRead(item.Url);
+            if (!string.IsNullOrEmpty(item.Url)) readStore.MarkRead(item.Url);
             if (breakingActive)
             {
                 // Opening an urgent headline acknowledges the alert: ALL current urgent items are marked as seen and the bar goes back to normal.
@@ -796,7 +796,12 @@ public sealed class TickerHost : IDisposable
         {
             // Urgent headlines take over the main bar until they are read or time out.
             Window.SetSplit(false);
-            Window.SetItems(breakingItems, State.ScrollOffset);
+            // Alerts that have no article (severe weather, price limits) cannot be "read": the normal news keeps scrolling after them,
+            // so the bar never looks frozen. A click on an alert dismisses it.
+            var urgent = breakingItems.Any(i => !string.IsNullOrEmpty(i.Url))
+                ? (IEnumerable<NewsItem>)breakingItems
+                : breakingItems.Concat(ItemsFor(Config.MainSlots().A));
+            Window.SetItems(urgent, State.ScrollOffset);
         }
         else
         {
@@ -1017,13 +1022,16 @@ public sealed class TickerHost : IDisposable
         }
     }
 
+    private const string WeatherWarningsUrl = "https://www.meteo.gr/warnings.cfm";
+
     private void AddWeatherAlertItems(GreekCity city, IReadOnlyList<WeatherAlert> alerts)
     {
         var name = Loc.IsGreek ? city.NameEl : city.NameEn;
         foreach (var a in alerts)
         {
             var text = $"⚠ {name}: {Loc.Pick(a.TextEl, a.TextEn)}";
-            breakingItems.Add(new NewsItem(text, "", Loc.T("pk.severe.weather"), DateTimeOffset.Now,
+            // A link makes the alert open something when clicked (the Hellenic weather warnings page) and end the alert.
+            breakingItems.Add(new NewsItem(text, WeatherWarningsUrl, Loc.T("pk.severe.weather"), DateTimeOffset.Now,
                 Summary: Loc.T("pk.automatic.warning.from.the"),
                 Kind: NewsItemKind.News, Trend: -1, Breaking: true));
         }

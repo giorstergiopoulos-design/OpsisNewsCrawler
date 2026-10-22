@@ -1,5 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup><TargetFramework>net10.0</TargetFramework><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><Version>0.14.1</Version></PropertyGroup>
+  <PropertyGroup><TargetFramework>net10.0</TargetFramework><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><Version>0.14.2</Version></PropertyGroup>
   <!-- Built-in UI languages (Greek, English). More languages = more files in a "locales" folder next to the program. -->
   <ItemGroup><EmbeddedResource Include="Locales\*.json" LogicalName="OpsisNewsCrawler.Locales.%(Filename).json" /></ItemGroup>
   <ItemGroup><InternalsVisibleTo Include="OpsisNewsCrawler.Core.Tests" /></ItemGroup>
