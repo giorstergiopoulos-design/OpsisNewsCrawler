@@ -53,6 +53,13 @@ internal static class Program
             return;
         }
 
+        if (Array.IndexOf(args, "--snapshot-bar") is >= 0 and var barAt && barAt + 1 < args.Length)
+        {
+            ApplicationConfiguration.Initialize();
+            BarSnapshot.Save(args[barAt + 1]);
+            return;
+        }
+
         if (Array.IndexOf(args, "--snapshot-portfolio") is >= 0 and var pfAt && pfAt + 1 < args.Length)
         {
             ApplicationConfiguration.Initialize();

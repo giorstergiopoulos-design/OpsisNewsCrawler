@@ -19,7 +19,6 @@ namespace OpsisNewsCrawler.Windows;
 internal sealed class TickerCanvas : Control
 {
     private const int LeftPad = 16;
-    private const int IconSize = 16;
     private const int IconGap = 7;
     private const int SourceTitleGap = 5;
     private const int ItemGap = 44;
@@ -134,6 +133,7 @@ internal sealed class TickerCanvas : Control
         Invalidate();
     }
 
+    private int IconSize => IconGeometry.ItemIconSize(fontScale);
     private int WeatherIconSize => (int)Math.Round(22 * fontScale);
     private Bitmap? buffer;
     private int loop;
@@ -433,6 +433,21 @@ internal sealed class TickerCanvas : Control
     protected override void OnPaint(PaintEventArgs e)
     {
         if (Width <= 0 || Height <= 0) return;
+        ComposeFrame();
+        // Copy, don't blend: the alpha channel of the frame goes to the window as it is.
+        e.Graphics.CompositingMode = CompositingMode.SourceCopy;
+        e.Graphics.DrawImageUnscaled(buffer!, 0, 0);
+    }
+
+    /// <summary>The current frame with its alpha channel, for the snapshot switch. The returned bitmap is a copy.</summary>
+    internal Bitmap RenderFrame()
+    {
+        ComposeFrame();
+        return new Bitmap(buffer!);
+    }
+
+    private void ComposeFrame()
+    {
         if (buffer is null || buffer.Width != Width || buffer.Height != Height)
         {
             buffer?.Dispose();
@@ -467,10 +482,6 @@ internal sealed class TickerCanvas : Control
             using var pen = new Pen(Color.FromArgb(110, titleColor), 1f);
             g2.DrawLine(pen, Width - 1, 8, Width - 1, Height - 8);
         }
-
-        // Copy, don't blend: the alpha channel of the frame goes to the window as it is.
-        e.Graphics.CompositingMode = CompositingMode.SourceCopy;
-        e.Graphics.DrawImageUnscaled(buffer, 0, 0);
     }
 
     private string? toastText;
@@ -516,22 +527,35 @@ internal sealed class TickerCanvas : Control
         var cx = Width / 2f;
         var cy = Height / 2f;
 
-        // expanding ring behind the icon
+        // The rectangular icon uses the whole height of the bar (2 px margin) and four times that in width.
+        var (iconW, iconH) = IconGeometry.IntroSize(Width, Height);
+
+        // expanding rounded rectangle behind the icon (same proportions, so it reads as the icon's echo)
         var ringT = (alertT - 0.15) / 1.1;
         if (ringT is > 0 and < 1)
         {
-            var radius = (float)(Ease(ringT) * Height * 1.6);
+            var grow = (float)(Ease(ringT) * 1.6);
+            var rw = iconW * (1 + grow);
+            var rh = iconH * (1 + grow);
+            using var ringPath = AppIconArt.RoundedBox(new RectangleF(cx - rw / 2, cy - rh / 2, rw, rh), AppIconArt.WideCornerRadius((int)rw, (int)rh));
             using var ring = new Pen(Color.FromArgb((int)(180 * (1 - ringT)), Color.White), 2f);
-            g.DrawEllipse(ring, cx - radius, cy - radius, radius * 2, radius * 2);
+            g.DrawPath(ring, ringPath);
         }
 
         // the app icon, growing from the centre
         var iconAlpha = alertT < 1.5 ? 1.0 : 1 - (alertT - 1.5) / 0.6;
         if (iconAlpha > 0)
         {
-            alertIcon ??= LoadIcon();
-            var size = (float)(6 + Ease((alertT - 0.15) / 0.9) * (Height - 4 - 6));
-            var rect = new RectangleF(cx - size / 2, cy - size / 2, size, size);
+            // Drawn once at the final pixel size and only ever scaled down while it grows: crisp at every DPI.
+            if (alertIcon is null || alertIcon.Height != iconH || alertIcon.Width != iconW)
+            {
+                alertIcon?.Dispose();
+                alertIcon = AppIconArt.RenderWide(iconW, iconH);
+            }
+            var k = (float)(0.15 + Ease((alertT - 0.15) / 0.9) * 0.85);
+            var w = iconW * k;
+            var h = iconH * k;
+            var rect = new RectangleF(cx - w / 2, cy - h / 2, w, h);
             using var attrs = new ImageAttributes();
             attrs.SetColorMatrix(new ColorMatrix { Matrix33 = (float)Math.Clamp(iconAlpha, 0, 1) });
             g.DrawImage(alertIcon, Rectangle.Round(rect), 0, 0, alertIcon.Width, alertIcon.Height, GraphicsUnit.Pixel, attrs);
@@ -547,12 +571,6 @@ internal sealed class TickerCanvas : Control
             using var center = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
             g.DrawString(UpperNoAccents(Loc.T("breaking.title") + "  ·  " + Loc.T("breaking.now")), font, brush, new RectangleF(0, 0, Width, Height), center);
         }
-    }
-
-    private static Bitmap LoadIcon()
-    {
-        using var icon = new Icon(AppIcon.Get(), 64, 64);
-        return icon.ToBitmap();
     }
 
     private void DrawLiveButton(Graphics g)
@@ -688,7 +706,9 @@ internal sealed class TickerCanvas : Control
         var hash = 0;
         foreach (var ch in name) hash = (hash * 31 + ch) & 0x7fffffff;
         using var brush = new SolidBrush(BadgeColors[hash % BadgeColors.Length]);
-        g.FillEllipse(brush, rect);
+        // A rounded rectangle, never a circle: the letter gets the whole square.
+        using (var badge = AppIconArt.RoundedBox(rect, Math.Max(2f, rect.Width * 0.22f)))
+            g.FillPath(brush, badge);
 
         var letter = name.FirstOrDefault(char.IsLetterOrDigit);
         if (letter != default)

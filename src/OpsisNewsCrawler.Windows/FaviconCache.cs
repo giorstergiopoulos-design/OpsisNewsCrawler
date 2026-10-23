@@ -10,7 +10,8 @@ namespace OpsisNewsCrawler.Windows;
 internal static class FaviconCache
 {
     private const int MaxIconBytes = 256 * 1024;
-    private const int IconSize = 16;
+    // Kept at 64 px (the largest size most .ico files carry in a usable form) and scaled DOWN by the canvas: crisp at any bar height and DPI.
+    private const int IconSize = 64;
 
     private static readonly HttpClient Http = CreateClient();
     private static readonly ConcurrentDictionary<string, Bitmap?> Cache = new(StringComparer.OrdinalIgnoreCase);
@@ -24,6 +25,9 @@ internal static class FaviconCache
     }
 
     private static readonly ConcurrentDictionary<(string Host, bool DarkSurface), Bitmap?> Styled = new();
+
+    /// <summary>Puts a picture in the cache without a download (snapshots and tests).</summary>
+    internal static void Seed(string host, Bitmap icon) => Cache[host] = FitSquare(icon);
 
     public static Bitmap? TryGet(string host) => Cache.TryGetValue(host, out var bmp) ? bmp : null;
 
@@ -84,8 +88,9 @@ internal static class FaviconCache
         {
             // Coloured but low contrast: draw it on a plate that stands out from the strip.
             using var plate = new SolidBrush(darkSurface ? Color.FromArgb(235, 255, 255, 255) : Color.FromArgb(235, 40, 40, 46));
-            g.FillEllipse(plate, 0, 0, src.Width - 1, src.Height - 1);
-            var inset = Math.Max(2, src.Width / 6);
+            using (var plateShape = AppIconArt.RoundedBox(new RectangleF(0, 0, src.Width - 1, src.Height - 1), Math.Max(2f, src.Width * 0.2f)))
+                g.FillPath(plate, plateShape);
+            var inset = Math.Max(2, src.Width / 12);
             g.DrawImage(src, new Rectangle(inset, inset, src.Width - 2 * inset, src.Height - 2 * inset));
         }
         return result;
@@ -182,7 +187,8 @@ internal static class FaviconCache
         {
             using var ms = new MemoryStream(data);
             using var icon = new Icon(ms, new Size(IconSize, IconSize));
-            return icon.ToBitmap();
+            using var raw = icon.ToBitmap();
+            return FitSquare(raw);
         }
         catch (Exception ex) when (ex is ArgumentException or ExternalException or InvalidOperationException)
         {
@@ -194,11 +200,23 @@ internal static class FaviconCache
             using var ms = new MemoryStream(data);
             using var image = Image.FromStream(ms);
             if ((long)image.Width * image.Height > SafeImage.MaxPixels) return null;
-            return new Bitmap(image, IconSize, IconSize);
+            return FitSquare(image);
         }
         catch (Exception ex) when (ex is ArgumentException or ExternalException or OutOfMemoryException)
         {
             return null;
         }
+    }
+
+    /// <summary>The whole picture inside an <see cref="IconSize"/> square (aspect kept, nothing cropped, no round mask).</summary>
+    internal static Bitmap FitSquare(Image src)
+    {
+        var bmp = new Bitmap(IconSize, IconSize, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+        using var g = Graphics.FromImage(bmp);
+        g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+        g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+        var (w, h) = OpsisNewsCrawler.Core.IconGeometry.FitInside(src.Width, src.Height, IconSize);
+        g.DrawImage(src, new RectangleF((IconSize - w) / 2f, (IconSize - h) / 2f, w, h));
+        return bmp;
     }
 }

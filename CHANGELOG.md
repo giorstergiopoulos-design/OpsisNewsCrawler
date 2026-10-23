@@ -3,6 +3,11 @@
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
 Detailed notes per release: `docs/RELEASE-*.md` and the GitHub releases.
 
+## 0.14.3 — 2026-10-23
+- The icon is rectangular: the breaking-news intro draws the whole artwork (four news symbols) over the full bar height, crisp at 100/150/200 % DPI (rendered at the final pixel size, only scaled down while it grows); the intro echo ring is a rounded rectangle.
+- Settings header icon is the same wide icon. Letter badges and favicon plates are rounded squares, not circles; favicons are kept at 64 px and scaled down; the icon next to a headline grows with the bar (20 px at 42 px).
+- New --snapshot-bar <png> switch; review with proposals in docs/REVIEW-2026-10.md. Tests: 113.
+
 ## 0.14.2 — 2026-10-22
 - Severe-weather alert: clicking it opens the warnings page (meteo.gr) and the bar returns to normal news. Before, nothing opened and the bar stayed red and static for 30 minutes.
 - While only alerts without an article (weather, price limits) are active, the normal news keeps scrolling after them so the bar never looks frozen. Clicking a price-limit alert dismisses it.

@@ -79,6 +79,64 @@ public static class AppIconArt
         return bmp;
     }
 
+    /// <summary>Width of the rectangular icon for a given height: four square symbol cells side by side.</summary>
+    public static int WideWidthFor(int height) => OpsisNewsCrawler.Core.IconGeometry.WideWidthFor(height);
+
+    public const double WideAspect = OpsisNewsCrawler.Core.IconGeometry.WideAspect;
+
+    /// <summary>
+    /// The rectangular version of the icon: the whole artwork (tile with the four news symbols) uses the full width and height of the
+    /// given box, with a small corner radius and no round mask. Drawn at exactly the pixel size asked for, so it is crisp at any DPI.
+    /// <paramref name="phase"/> 0..1 slides the symbols like the tray icon does; <paramref name="showAllFour"/> is the still picture.
+    /// </summary>
+    public static Bitmap RenderWide(int width, int height, double phase = 0, bool showAllFour = true)
+    {
+        width = Math.Max(8, width);
+        height = Math.Max(8, height);
+        var bmp = new Bitmap(width, height, PixelFormat.Format32bppPArgb);
+        using var g = Graphics.FromImage(bmp);
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+        g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+        g.Clear(Color.Transparent);
+
+        var radius = WideCornerRadius(width, height);
+        var tileRect = new RectangleF(0.5f, 0.5f, width - 1f, height - 1f);
+        using (var tile = RoundRect(tileRect, radius))
+        {
+            using (var back = new LinearGradientBrush(new RectangleF(0, 0, width, height), Color.FromArgb(24, 40, 78), Color.FromArgb(14, 120, 140), 20f))
+                g.FillPath(back, tile);
+
+            // Symbols clipped to the tile; the strip slides right to left, drawn twice so there is no gap.
+            g.SetClip(tile, CombineMode.Intersect);
+            var pad = height * 0.10f;
+            var cell = showAllFour ? (width - pad) / 4.0 : Math.Max(height * 0.95, width / 2.6);
+            var loop = cell * 4;
+            var shift = (float)(phase * loop);
+            for (var repeat = 0; repeat < (showAllFour ? 1 : 2); repeat++)
+            {
+                for (var i = 0; i < 4; i++)
+                {
+                    var x = pad / 2 + (float)(i * cell + repeat * loop) - shift;
+                    var box = new RectangleF(x + (float)cell * 0.04f, height * 0.10f, (float)cell * 0.92f, height * 0.80f);
+                    if (box.Right < 0 || box.Left > width) continue;
+                    DrawSymbol(g, i, box);
+                }
+            }
+            g.ResetClip();
+
+            using var rim = new Pen(Color.FromArgb(110, 255, 255, 255), Math.Max(1f, height / 40f));
+            g.DrawPath(rim, tile);
+        }
+        return bmp;
+    }
+
+    /// <summary>Small corner radius shared by the wide icon and the letter badges (about a fifth of the height, never a circle).</summary>
+    public static float WideCornerRadius(int width, int height) => OpsisNewsCrawler.Core.IconGeometry.CornerRadius(width, height);
+
+    /// <summary>A rounded rectangle for callers that draw next to the icon (letter badges, favicon plates).</summary>
+    public static GraphicsPath RoundedBox(RectangleF r, float radius) => RoundRect(r, Math.Min(radius, Math.Min(r.Width, r.Height) / 2f));
+
     /// <summary>0 newspaper, 1 ball, 2 shield (defence and diplomacy), 3 chart with coins (economy).</summary>
     private static void DrawSymbol(Graphics g, int kind, RectangleF box)
     {

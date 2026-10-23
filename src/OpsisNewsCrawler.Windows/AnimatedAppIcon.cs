@@ -20,7 +20,7 @@ internal sealed class AnimatedAppIcon : Control
         this.animateWhen = animateWhen;
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.SupportsTransparentBackColor, true);
         BackColor = Color.Transparent;
-        Size = new Size(size, size);
+        Size = new Size(AppIconArt.WideWidthFor(size), size);
         timer.Tick += (_, _) =>
         {
             if (!Visible || !IsHandleCreated || !animateWhen()) return;
@@ -32,12 +32,12 @@ internal sealed class AnimatedAppIcon : Control
 
     private void EnsureFrames()
     {
-        var size = Math.Max(16, Math.Min(Width, Height));
-        if (renderedSize == size && still is not null) return;
+        var size = Math.Max(16, Height);
+        if (renderedSize == size * 10000 + Width && still is not null) return;
         DisposeFrames();
-        renderedSize = size;
-        still = AppIconArt.Render(size, 0, showAllFour: true);
-        frames = Enumerable.Range(0, FrameCount).Select(i => AppIconArt.Render(size, i / (double)FrameCount)).ToArray();
+        renderedSize = size * 10000 + Width;
+        still = AppIconArt.RenderWide(Width, size, 0, showAllFour: true);
+        frames = Enumerable.Range(0, FrameCount).Select(i => AppIconArt.RenderWide(Width, size, i / (double)FrameCount, showAllFour: false)).ToArray();
     }
 
     protected override void OnPaint(PaintEventArgs e)
