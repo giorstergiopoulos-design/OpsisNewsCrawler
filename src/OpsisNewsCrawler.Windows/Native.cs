@@ -108,6 +108,19 @@ internal static class Native
     /// With auto-hide on, current Windows does not move the taskbar window (its rectangle stays the same): the desktop
     /// compositor "cloaks" it while it is hidden and uncloaks it while it is shown. This is the signal to follow.
     /// </summary>
+    /// <summary>
+    /// The auto-hide taskbar is hidden: Windows 11 does NOT cloak it, it only slides it down so that 1-2 pixel rows stay on the screen
+    /// (measured: rect top 1438 on a 1440 px screen, DWMWA_CLOAKED = 0). Also true when it is cloaked.
+    /// </summary>
+    internal static bool IsTaskbarHiddenByAutoHide()
+    {
+        if (IsTaskbarCloaked()) return true;
+        var rect = GetTaskbarRect();
+        if (rect.IsEmpty) return false;
+        var screen = (Screen.PrimaryScreen ?? Screen.AllScreens[0]).Bounds;
+        var visible = Rectangle.Intersect(rect, screen);
+        return visible.Height <= 4 || visible.Width <= 4;
+    }
     internal static bool IsTaskbarCloaked()
     {
         var h = GetTaskbarHandle();

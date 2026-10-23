@@ -909,7 +909,7 @@ public sealed class TickerWindow : Form
         {
             // A bar inside the taskbar hides and shows together with it - and slides out and in like the taskbar does,
             // not a jump (the bar above the taskbar already does the same).
-            var cloaked = autoHide && Native.IsTaskbarCloaked();
+            var cloaked = autoHide && Native.IsTaskbarHiddenByAutoHide();
             if (cloaked != hiddenByTaskbar)
             {
                 hiddenByTaskbar = cloaked;

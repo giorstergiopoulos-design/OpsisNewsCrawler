@@ -3,6 +3,9 @@
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
 Detailed notes per release: `docs/RELEASE-*.md` and the GitHub releases.
 
+## 0.14.6 — 2026-10-23
+- Auto-hide taskbar: detected correctly on Windows 11 (the taskbar is slid down to 1-2 pixel rows, not cloaked), so the bar inside it hides and the desktop bar takes over. Verified live with the Windows auto-hide on.
+
 ## 0.14.5 — 2026-10-23
 - The same story from different publishers (different wording) is shown once (word-set overlap, accents ignored).
 - Feeds use ETag / If-Modified-Since; per-feed health (last success, failures in a row) is tracked in the provider.
