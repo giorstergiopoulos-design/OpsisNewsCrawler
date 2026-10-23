@@ -1262,8 +1262,8 @@ public sealed class TickerHost : IDisposable
         w.SetBackdropStyle(Config.BarBackdrop);
         w.SetBarColor(Config.BarColorMode, Config.BarCustomColor);
         w.SetBarHeight(Config.MiniWeatherHeight);
-        // As the stand-in for an auto-hidden taskbar the bar must be ABOVE the (usually maximized) windows - on the desktop layer it would be invisible.
-        w.SetDesktopLayer(!(Config.MiniWeatherOnTop || (!Config.MiniWeatherEnabled && taskbarHidden)));
+        // Only the user's choice decides: unchecked = on the desktop layer, behind every window (also when it stands in for a hidden taskbar).
+        w.SetDesktopLayer(!Config.MiniWeatherOnTop);
         w.MatchDeskStrip = true;      // a chosen colour (BarColorMode) still wins: ApplyLook handles the tint first
         w.SetShape(Config.DesktopBarShape);
         w.ApplyLook();

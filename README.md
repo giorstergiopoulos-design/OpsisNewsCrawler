@@ -29,6 +29,8 @@
 | 🧩 Plugin | Ενσωματωμένη εγκατάσταση στο Opsis (δική του σελίδα, χρώματα και γλώσσα του Opsis) ή αυτόνομη εφαρμογή |
 | 🌍 14 γλώσσες | Ελληνικά, English, Deutsch, Français, Español, Italiano, Português, Русский, Türkçe, 日本語, 한국어, 简体中文, العربية (με δεξιά-προς-αριστερά διάταξη), हिन्दी |
 
+**Νέο στην 0.14.7:** η μπάρα επιφάνειας σέβεται πάντα το «Να μένει πάνω από τα άλλα παράθυρα».
+
 **Νέο στην 0.14.6:** σωστή ανίχνευση της μπάρας εργασιών με αυτόματη απόκρυψη στα Windows 11.
 
 **Νέο στην 0.14.5:** θέματα Opsis στις ρυθμίσεις, ομαλότερο κινούμενο εικονίδιο, μπάρα επιφάνειας πάνω από τα παράθυρα όταν κρύβεται η μπάρα εργασιών.
@@ -150,6 +152,8 @@ Frankfurter/ΕΚΤ, FRED/EIA. Καιρός: [Open-Meteo.com](https://open-meteo.
 | 🎨 Look | Colour, transparency, background material (acrylic/blur), fading ends, theme — the same as Opsis |
 | 🧩 Plugin | Integrated into Opsis (its own page, Opsis colours and language) or a stand-alone app |
 | 🌍 14 languages | Greek, English, German, French, Spanish, Italian, Portuguese, Russian, Turkish, Japanese, Korean, Simplified Chinese, Arabic (with right-to-left layout), Hindi |
+
+**New in 0.14.7:** the desktop bar always respects "Keep it above other windows".
 
 **New in 0.14.6:** auto-hide taskbar detected correctly on Windows 11.
 
