@@ -3,6 +3,12 @@
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
 Detailed notes per release: `docs/RELEASE-*.md` and the GitHub releases.
 
+## 0.14.4 — 2026-10-23
+- The same story from different publishers (different wording) is shown once (word-set overlap, accents ignored).
+- Feeds use ETag / If-Modified-Since; per-feed health (last success, failures in a row) is tracked in the provider.
+- After resume from sleep, news, quotes and weather refresh after 6 s.
+- Review corrected: exact-title de-duplication already existed. Tests: 119.
+
 ## 0.14.3 — 2026-10-23
 - The icon is rectangular: the breaking-news intro draws the whole artwork (four news symbols) over the full bar height, crisp at 100/150/200 % DPI (rendered at the final pixel size, only scaled down while it grows); the intro echo ring is a rounded rectangle.
 - Settings header icon is the same wide icon. Letter badges and favicon plates are rounded squares, not circles; favicons are kept at 64 px and scaled down; the icon next to a headline grows with the bar (20 px at 42 px).

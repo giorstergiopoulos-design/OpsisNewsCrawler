@@ -191,6 +191,7 @@ public sealed class TickerHost : IDisposable
             SnoozeChanged?.Invoke(false);
         };
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplaysChanged;
+        Microsoft.Win32.SystemEvents.PowerModeChanged += OnPowerModeChanged;
         Window.LiveRequested += ToggleLivePreview;
         breakingTimer.Tick += (_, _) =>
         {
@@ -387,6 +388,24 @@ public sealed class TickerHost : IDisposable
                 entry.Window.SetPosition(TickerPosition.BottomTaskbar);
             }
         }
+    }
+
+    private void OnPowerModeChanged(object? sender, Microsoft.Win32.PowerModeChangedEventArgs e)
+    {
+        // After sleep the data is hours old and the network needs a few seconds to come back: refresh everything once it has.
+        if (e.Mode != Microsoft.Win32.PowerModes.Resume || disposed || !Window.IsHandleCreated) return;
+        try
+        {
+            Window.BeginInvoke(new Action(async () =>
+            {
+                await Task.Delay(TimeSpan.FromSeconds(6));
+                if (disposed || !started) return;
+                _ = RefreshAsync(force: true);
+                _ = RefreshQuotesAsync();
+                _ = RefreshWeatherAsync();
+            }));
+        }
+        catch (InvalidOperationException) { }
     }
 
     private void OnDisplaysChanged(object? sender, EventArgs e)
@@ -1433,6 +1452,7 @@ public sealed class TickerHost : IDisposable
         disposed = true;
         Loc.Changed -= OnLanguageChanged;
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplaysChanged;
+        Microsoft.Win32.SystemEvents.PowerModeChanged -= OnPowerModeChanged;
         cts.Cancel();
         refreshTimer.Dispose();
         updateTimer.Dispose();
