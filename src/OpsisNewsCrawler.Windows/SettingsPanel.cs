@@ -126,6 +126,11 @@ public sealed class SettingsPanel : UserControl
 
     // Look
     private FlatCombo themeMode = null!;
+    private FlatCheck themeAccent = null!;
+    private Control themeRow = null!;
+
+    private static int ThemeIndex(string mode) => mode switch { "light" => 1, "dark" => 2, _ => Array.IndexOf(Theme.NamedThemes, mode) is >= 0 and var i ? 3 + i : 0 };
+    private static string ThemeNameAt(int index) => index switch { 1 => "light", 2 => "dark", >= 3 when index - 3 < Theme.NamedThemes.Length => Theme.NamedThemes[index - 3], _ => "system" };
     private FlatSlider opacity = null!;
     private Label opacityLabel = null!;
     private FlatCheck edgeFade = null!;
@@ -235,7 +240,7 @@ public sealed class SettingsPanel : UserControl
         var show = PreviewSubs.Contains(tabs.SelectedIndex);
         if (barPreview.Visible != show) barPreview.Visible = show;
         if (!show) return;
-        var dark = themeMode.SelectedIndex switch { 1 => false, 2 => true, _ => Theme.IsDark };
+        var dark = themeMode.SelectedIndex switch { 1 => false, 2 => true, 3 or 4 or 6 => true, 5 => false, _ => Theme.IsDark };
         barPreview.SetState(new BarPreviewState(
             (TickerPosition)Math.Max(0, position.SelectedIndex), mainPicker.Get(),
             secondEnabled.Checked, secondPicker.Get(),
@@ -1417,8 +1422,11 @@ public sealed class SettingsPanel : UserControl
     {
         var page = NewPage(out var flow);
         themeMode = new FlatCombo { Width = 300 };
-        themeMode.SetItems(new[] { L("theme.system"), L("theme.light"), L("theme.dark") }, 0);
-        flow.Controls.Add(Row(L("lbl.theme"), themeMode, 240));
+        themeMode.SetItems(new[] { L("theme.system"), L("theme.light"), L("theme.dark") }.Concat(Theme.NamedThemes).ToArray(), 0);
+        themeRow = Row(L("lbl.theme"), themeMode, 240);
+        flow.Controls.Add(themeRow);
+        themeAccent = new FlatCheck { Text = L("chk.themeAccent") };
+        flow.Controls.Add(themeAccent);
 
         opacity = new FlatSlider { Width = 300 };
         opacity.SetRange(30, 100);
@@ -1654,7 +1662,7 @@ public sealed class SettingsPanel : UserControl
             tbLeft.SetValueSilently(c.TaskbarLeftOffset);
             tbRight.SetValueSilently(c.TaskbarRightOffset);
 
-            themeMode.SelectSilently(c.ThemeMode switch { "light" => 1, "dark" => 2, _ => 0 });
+            themeMode.SelectSilently(ThemeIndex(c.ThemeMode)); themeAccent.Checked = c.ThemeFollowAccent;
             opacity.Value = Math.Clamp(c.OpacityPercent, 30, 100);
             opacityLabel.Text = $"{opacity.Value} %";
             edgeFade.Checked = c.EdgeFade;
@@ -1680,8 +1688,9 @@ public sealed class SettingsPanel : UserControl
             duration.SetValueSilently(c.BreakingDurationMinutes);
             workLive = c.LiveFeeds.Select(f => new LiveFeed(f.Name, f.Url) { Enabled = f.Enabled }).ToList();
             RebuildLiveList();
-            themeMode.Enabled = !HostThemeLocked;
-            themeNote.Text = HostThemeLocked ? L("note.hostTheme") : "";
+            // Inside Opsis the theme belongs to Opsis (colours, accent, light/dark are pushed by the host): no theme controls here.
+            themeRow.Visible = !HostThemeLocked; themeAccent.Visible = !HostThemeLocked;
+            themeNote.Text = "";
 
             newsMaxAge.SetValueSilently(c.NewsMaxAgeHours);
             newsNewestFirst.Checked = c.NewsSortNewestFirst;
@@ -1956,7 +1965,7 @@ public sealed class SettingsPanel : UserControl
         c.TaskbarLeftOffset = tbLeft.Value;
         c.TaskbarRightOffset = tbRight.Value;
 
-        if (!HostThemeLocked) c.ThemeMode = themeMode.SelectedIndex switch { 1 => "light", 2 => "dark", _ => "system" };
+        if (!HostThemeLocked) { c.ThemeMode = ThemeNameAt(themeMode.SelectedIndex); c.ThemeFollowAccent = themeAccent.Checked; }
         c.OpacityPercent = opacity.Value;
         c.EdgeFade = edgeFade.Checked;
         if (!HostThemeLocked) c.SettingsOpacityPercent = windowOpacity.Value;

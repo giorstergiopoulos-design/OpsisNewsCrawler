@@ -29,6 +29,8 @@
 | 🧩 Plugin | Ενσωματωμένη εγκατάσταση στο Opsis (δική του σελίδα, χρώματα και γλώσσα του Opsis) ή αυτόνομη εφαρμογή |
 | 🌍 14 γλώσσες | Ελληνικά, English, Deutsch, Français, Español, Italiano, Português, Русский, Türkçe, 日本語, 한국어, 简体中文, العربية (με δεξιά-προς-αριστερά διάταξη), हिन्दी |
 
+**Νέο στην 0.14.5:** θέματα Opsis στις ρυθμίσεις, ομαλότερο κινούμενο εικονίδιο, μπάρα επιφάνειας πάνω από τα παράθυρα όταν κρύβεται η μπάρα εργασιών.
+
 **Νέο στην 0.14.4:** μία φορά η ίδια είδηση από πολλές πηγές, ανανέωση μετά από ύπνο, ETag στα feeds.
 
 **Νέο στην 0.14.3:** ορθογώνιο εικονίδιο (όλο το σχέδιο σε όλο το ύψος της μπάρας, χωρίς κύκλους).
@@ -146,6 +148,8 @@ Frankfurter/ΕΚΤ, FRED/EIA. Καιρός: [Open-Meteo.com](https://open-meteo.
 | 🎨 Look | Colour, transparency, background material (acrylic/blur), fading ends, theme — the same as Opsis |
 | 🧩 Plugin | Integrated into Opsis (its own page, Opsis colours and language) or a stand-alone app |
 | 🌍 14 languages | Greek, English, German, French, Spanish, Italian, Portuguese, Russian, Turkish, Japanese, Korean, Simplified Chinese, Arabic (with right-to-left layout), Hindi |
+
+**New in 0.14.5:** Opsis themes in settings, smoother animated icon, desktop stand-in bar above windows when the taskbar hides.
 
 **New in 0.14.4:** same story shown once across sources, refresh after sleep, ETag on feeds.
 

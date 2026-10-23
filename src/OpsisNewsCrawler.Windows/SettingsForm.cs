@@ -9,7 +9,7 @@ public sealed class SettingsForm : Form
     private readonly TickerHost host;
     private Icon[]? iconFrames;
     private int iconFrame;
-    private readonly System.Windows.Forms.Timer iconTimer = new() { Interval = 140 };
+    private readonly System.Windows.Forms.Timer iconTimer = new() { Interval = 60 };
 
     public SettingsForm(TickerHost host)
     {

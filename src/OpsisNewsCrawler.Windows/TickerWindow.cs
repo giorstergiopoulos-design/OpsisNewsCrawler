@@ -386,7 +386,7 @@ public sealed class TickerWindow : Form
         // The user changed the Windows theme / transparency / accent colour: follow it (raised on another thread).
         if (IsHandleCreated && !IsDisposed) BeginInvoke(new Action(() =>
         {
-            if (themeModeName == "system") Theme.SetMode("system", Theme.Opacity);
+            Theme.SetMode(themeModeName, Theme.Opacity);
             ApplyLook();
         }));
     }

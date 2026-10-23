@@ -151,7 +151,7 @@ public sealed class TickerHost : IDisposable
         Config = AppConfig.Load(this.configPath);
 
         State.SetMode(Config.Mode);
-        Theme.SetMode(Config.ThemeMode, Config.OpacityPercent / 100.0);
+        Theme.SetMode(Config.ThemeMode, Config.OpacityPercent / 100.0, Config.ThemeFollowAccent);
         Loc.SetLanguage(Config.Language);
 
         LoadCachedNews();
@@ -293,7 +293,7 @@ public sealed class TickerHost : IDisposable
     {
         YahooAccess.Enabled = Config.HistoryFromYahoo;
         if (!LanguageFollowsHost) Loc.SetLanguage(Config.Language);
-        Theme.SetMode(Config.ThemeMode, Config.OpacityPercent / 100.0);
+        Theme.SetMode(Config.ThemeMode, Config.OpacityPercent / 100.0, Config.ThemeFollowAccent);
         UpdateHotkey();
 
         ConfigureWindow(Window, Config.Position, main: true);
@@ -661,6 +661,13 @@ public sealed class TickerHost : IDisposable
     }
 
     private bool taskbarHidden;   // a bar inside the auto-hiding taskbar is hidden right now
+
+    /// <summary>Test switch (--test-taskbar-hidden): behaves as if the auto-hiding taskbar and the bar inside it were hidden.</summary>
+    public void SimulateTaskbarHidden(bool hidden)
+    {
+        taskbarHidden = hidden;
+        UpdateMiniWeather();
+    }
     private bool MiniWanted => Config.MiniWeatherEnabled || (Config.MiniWhenTaskbarHidden && taskbarHidden);
 
     private bool Needs(SlotKind kind) => AllBarSlots().Any(slots => slots.Has(kind));
@@ -1255,7 +1262,8 @@ public sealed class TickerHost : IDisposable
         w.SetBackdropStyle(Config.BarBackdrop);
         w.SetBarColor(Config.BarColorMode, Config.BarCustomColor);
         w.SetBarHeight(Config.MiniWeatherHeight);
-        w.SetDesktopLayer(!Config.MiniWeatherOnTop);
+        // As the stand-in for an auto-hidden taskbar the bar must be ABOVE the (usually maximized) windows - on the desktop layer it would be invisible.
+        w.SetDesktopLayer(!(Config.MiniWeatherOnTop || (!Config.MiniWeatherEnabled && taskbarHidden)));
         w.MatchDeskStrip = true;      // a chosen colour (BarColorMode) still wins: ApplyLook handles the tint first
         w.SetShape(Config.DesktopBarShape);
         w.ApplyLook();

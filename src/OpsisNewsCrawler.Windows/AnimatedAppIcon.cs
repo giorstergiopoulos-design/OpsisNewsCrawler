@@ -7,9 +7,9 @@ namespace OpsisNewsCrawler.Windows;
 /// </summary>
 internal sealed class AnimatedAppIcon : Control
 {
-    private const int FrameCount = 32;
+    private const int FrameCount = 96;   // 96 frames at 40 ms: a ~3.8 s loop, 25 fps
     private readonly Func<bool> animateWhen;
-    private readonly System.Windows.Forms.Timer timer = new() { Interval = 140 };
+    private readonly System.Windows.Forms.Timer timer = new() { Interval = 40 };
     private Bitmap[]? frames;
     private Bitmap? still;
     private int frame;

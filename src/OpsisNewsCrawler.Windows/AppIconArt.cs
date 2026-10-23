@@ -11,7 +11,7 @@ namespace OpsisNewsCrawler.Windows;
 /// </summary>
 public static class AppIconArt
 {
-    private const int FramesPerLoop = 32;
+    private const int FramesPerLoop = 64;   // with the 60 ms tray timer: a ~3.8 s loop that moves smoothly
 
     /// <summary>One picture of the icon. <paramref name="phase"/> 0..1 is the position in the loop of the passing symbols.</summary>
     public static Bitmap Render(int size, double phase, bool showAllFour = false)

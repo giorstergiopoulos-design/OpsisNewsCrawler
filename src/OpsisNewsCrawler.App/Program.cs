@@ -79,7 +79,12 @@ internal static class Program
         }
 
         // Only one ticker at a time.
-        using var singleInstance = new Mutex(true, "OpsisNewsCrawler.SingleInstance", out var createdNew);
+        // A run with its own --config (tests, a second profile) does not collide with the normal instance.
+        var configArgAt = Array.IndexOf(args, "--config");
+        var mutexName = configArgAt >= 0 && configArgAt + 1 < args.Length
+            ? "OpsisNewsCrawler.SingleInstance." + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(Path.GetFullPath(args[configArgAt + 1]).ToLowerInvariant())))[..16]
+            : "OpsisNewsCrawler.SingleInstance";
+        using var singleInstance = new Mutex(true, mutexName, out var createdNew);
         if (!createdNew) return;
 
         ApplicationConfiguration.Initialize();
@@ -101,7 +106,7 @@ internal static class Program
         var trayFrames = AppIconArt.BuildTrayFrames(Math.Max(16, SystemInformation.SmallIconSize.Width));
         var trayFrame = 0;
         var trayAnimating = false;
-        var trayTimer = new System.Windows.Forms.Timer { Interval = 140 };
+        var trayTimer = new System.Windows.Forms.Timer { Interval = 60 };
         trayTimer.Tick += (_, _) =>
         {
             var animate = host.Config.TrayIconAnimated && host.Config.BarsEnabled;
@@ -191,6 +196,14 @@ internal static class Program
             var tw = new System.Windows.Forms.Timer { Interval = 6000 };
             tw.Tick += (_, _) => { tw.Stop(); host.SimulateWeatherAlert(); };
             tw.Start();
+        }
+
+        if (args.Contains("--test-taskbar-hidden"))
+        {
+            // Behaves as if the auto-hiding taskbar were hidden, to see the desktop bar that stands in for it.
+            var th = new System.Windows.Forms.Timer { Interval = 6000 };
+            th.Tick += (_, _) => { th.Stop(); host.SimulateTaskbarHidden(true); };
+            th.Start();
         }
 
         if (args.Contains("--test-breaking"))

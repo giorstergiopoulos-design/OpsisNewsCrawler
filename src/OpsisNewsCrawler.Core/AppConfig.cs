@@ -122,6 +122,8 @@ public sealed class AppConfig
 
     /// <summary>"system", "light" or "dark".</summary>
     public string ThemeMode { get; set; } = "system";
+    /// <summary>Take the accent colour from Windows (as in Opsis). Used by the light/dark/named themes when the program runs on its own.</summary>
+    public bool ThemeFollowAccent { get; set; }
     public int OpacityPercent { get; set; } = 94;
 
     /// <summary>Opacity of the settings window itself (the standalone one), like Opsis' window opacity: 60-100.</summary>
@@ -431,7 +433,7 @@ public sealed class AppConfig
         if (!Enum.IsDefined(Position)) Position = TickerPosition.BottomTaskbar;
         OpacityPercent = Math.Clamp(OpacityPercent, 30, 100);
         SettingsOpacityPercent = Math.Clamp(SettingsOpacityPercent, 60, 100);
-        if (ThemeMode is not ("system" or "light" or "dark")) ThemeMode = "system";
+        if (ThemeMode is not ("system" or "light" or "dark" or "Midnight" or "Forest" or "Dawn" or "Contrast")) ThemeMode = "system";
 
         Categories ??= new List<FeedCategory>();
         Feeds ??= new();
