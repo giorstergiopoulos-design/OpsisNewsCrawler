@@ -121,7 +121,8 @@ public sealed class AppConfig
     public bool EdgeFade { get; set; }
 
     /// <summary>"system", "light" or "dark".</summary>
-    public string ThemeMode { get; set; } = "system";
+    public string ThemeMode { get; set; } = "system";   // system | light | dark | Midnight | Forest | Dawn | Contrast | host (follow Opsis, only inside Opsis)
+    public bool ThemeIndependentMigrated { get; set; }  // inside Opsis the crawler used to follow the Opsis colours only: existing installs keep that once, as the explicit "host" choice
     /// <summary>Take the accent colour from Windows (as in Opsis). Used by the light/dark/named themes when the program runs on its own.</summary>
     public bool ThemeFollowAccent { get; set; }
     public int OpacityPercent { get; set; } = 94;
@@ -433,7 +434,7 @@ public sealed class AppConfig
         if (!Enum.IsDefined(Position)) Position = TickerPosition.BottomTaskbar;
         OpacityPercent = Math.Clamp(OpacityPercent, 30, 100);
         SettingsOpacityPercent = Math.Clamp(SettingsOpacityPercent, 60, 100);
-        if (ThemeMode is not ("system" or "light" or "dark" or "Midnight" or "Forest" or "Dawn" or "Contrast")) ThemeMode = "system";
+        if (ThemeMode is not ("system" or "light" or "dark" or "Midnight" or "Forest" or "Dawn" or "Contrast" or "host")) ThemeMode = "system";
 
         Categories ??= new List<FeedCategory>();
         Feeds ??= new();

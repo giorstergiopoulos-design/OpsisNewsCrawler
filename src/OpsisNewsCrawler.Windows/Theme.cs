@@ -22,7 +22,10 @@ public static class Theme
     /// <summary>Window opacity 0.3 - 1.0 for the ticker strip.</summary>
     public static double Opacity { get; private set; } = .94;
 
-    private static bool hostOwnsColors;
+    // The colours the host (Opsis) pushed. They are used ONLY when the user chose "host" (Follow Opsis): the crawler's own themes
+    // (Windows / light / dark / Midnight / Forest / Dawn / Contrast) are independent of Opsis.
+    private static Palette? hostPalette;
+    private static string currentMode = "system";
 
     private static bool followAccent;
 
@@ -49,11 +52,8 @@ public static class Theme
     {
         Opacity = Math.Clamp(opacity, .3, 1.0);
         if (useWindowsAccent is { } flag) followAccent = flag;
-        if (hostOwnsColors)
-        {
-            Changed?.Invoke();
-            return;
-        }
+        currentMode = (mode ?? "system");
+        if (currentMode == "host" && hostPalette is { } hp) { ApplyHost(hp); return; }
         if (Named(mode) is { } p)
         {
             IsDark = p.Dark;
@@ -81,15 +81,15 @@ public static class Theme
     /// <summary>Host (Opsis) supplies its own colours.</summary>
     public static void SetColors(bool dark, Color background, Color surface, Color border, Color text, Color textMuted, Color accent, double opacity)
     {
-        hostOwnsColors = true;
-        IsDark = dark;
-        Background = background;
-        Surface = surface;
-        Border = border;
-        Text = text;
-        TextMuted = textMuted;
-        Accent = accent;
+        hostPalette = new Palette(dark, background, surface, border, text, textMuted, accent);
         Opacity = Math.Clamp(opacity, .3, 1.0);
+        if (currentMode == "host") ApplyHost(hostPalette);     // otherwise only remembered: the user's own theme stays
+    }
+
+    private static void ApplyHost(Palette p)
+    {
+        IsDark = p.Dark;
+        Background = p.Background; Surface = p.Surface; Border = p.Border; Text = p.Text; TextMuted = p.Muted; Accent = p.Accent;
         Changed?.Invoke();
     }
 

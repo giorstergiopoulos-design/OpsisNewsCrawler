@@ -129,8 +129,8 @@ public sealed class SettingsPanel : UserControl
     private FlatCheck themeAccent = null!;
     private Control themeRow = null!;
 
-    private static int ThemeIndex(string mode) => mode switch { "light" => 1, "dark" => 2, _ => Array.IndexOf(Theme.NamedThemes, mode) is >= 0 and var i ? 3 + i : 0 };
-    private static string ThemeNameAt(int index) => index switch { 1 => "light", 2 => "dark", >= 3 when index - 3 < Theme.NamedThemes.Length => Theme.NamedThemes[index - 3], _ => "system" };
+    private static int ThemeIndex(string mode) => mode switch { "light" => 1, "dark" => 2, "host" => 3 + Theme.NamedThemes.Length, _ => Array.IndexOf(Theme.NamedThemes, mode) is >= 0 and var i ? 3 + i : 0 };
+    private static string ThemeNameAt(int index) => index switch { 1 => "light", 2 => "dark", _ when index == 3 + Theme.NamedThemes.Length => "host", >= 3 when index - 3 < Theme.NamedThemes.Length => Theme.NamedThemes[index - 3], _ => "system" };
     private FlatSlider opacity = null!;
     private Label opacityLabel = null!;
     private FlatCheck edgeFade = null!;
@@ -1422,7 +1422,7 @@ public sealed class SettingsPanel : UserControl
     {
         var page = NewPage(out var flow);
         themeMode = new FlatCombo { Width = 300 };
-        themeMode.SetItems(new[] { L("theme.system"), L("theme.light"), L("theme.dark") }.Concat(Theme.NamedThemes).ToArray(), 0);
+        themeMode.SetItems(new[] { L("theme.system"), L("theme.light"), L("theme.dark") }.Concat(Theme.NamedThemes).Concat(host.HostedByOpsis ? new[] { L("theme.host") } : Array.Empty<string>()).ToArray(), 0);
         themeRow = Row(L("lbl.theme"), themeMode, 240);
         flow.Controls.Add(themeRow);
         themeAccent = new FlatCheck { Text = L("chk.themeAccent") };
@@ -1662,7 +1662,7 @@ public sealed class SettingsPanel : UserControl
             tbLeft.SetValueSilently(c.TaskbarLeftOffset);
             tbRight.SetValueSilently(c.TaskbarRightOffset);
 
-            themeMode.SelectSilently(ThemeIndex(c.ThemeMode)); themeAccent.Checked = c.ThemeFollowAccent;
+            themeMode.SelectSilently(ThemeIndex(c.ThemeMode) is var ti && ti < themeMode.Count ? ti : 0); themeAccent.Checked = c.ThemeFollowAccent;
             opacity.Value = Math.Clamp(c.OpacityPercent, 30, 100);
             opacityLabel.Text = $"{opacity.Value} %";
             edgeFade.Checked = c.EdgeFade;
@@ -1688,9 +1688,9 @@ public sealed class SettingsPanel : UserControl
             duration.SetValueSilently(c.BreakingDurationMinutes);
             workLive = c.LiveFeeds.Select(f => new LiveFeed(f.Name, f.Url) { Enabled = f.Enabled }).ToList();
             RebuildLiveList();
-            // Inside Opsis the theme belongs to Opsis (colours, accent, light/dark are pushed by the host): no theme controls here.
-            themeRow.Visible = !HostThemeLocked; themeAccent.Visible = !HostThemeLocked;
-            themeNote.Text = "";
+            // The crawler's themes are its own, also inside Opsis; "Follow Opsis" is just one more choice there.
+            themeRow.Visible = true; themeAccent.Visible = true;
+            themeNote.Text = host.HostedByOpsis ? L("note.hostTheme") : "";
 
             newsMaxAge.SetValueSilently(c.NewsMaxAgeHours);
             newsNewestFirst.Checked = c.NewsSortNewestFirst;
@@ -1965,7 +1965,7 @@ public sealed class SettingsPanel : UserControl
         c.TaskbarLeftOffset = tbLeft.Value;
         c.TaskbarRightOffset = tbRight.Value;
 
-        if (!HostThemeLocked) { c.ThemeMode = ThemeNameAt(themeMode.SelectedIndex); c.ThemeFollowAccent = themeAccent.Checked; }
+        c.ThemeMode = ThemeNameAt(themeMode.SelectedIndex); c.ThemeFollowAccent = themeAccent.Checked;
         c.OpacityPercent = opacity.Value;
         c.EdgeFade = edgeFade.Checked;
         if (!HostThemeLocked) c.SettingsOpacityPercent = windowOpacity.Value;

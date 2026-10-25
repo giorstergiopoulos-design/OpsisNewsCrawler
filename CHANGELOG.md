@@ -3,6 +3,9 @@
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
 Detailed notes per release: `docs/RELEASE-*.md` and the GitHub releases.
 
+## Unreleased
+- **The crawler themes are independent of Opsis**: inside Opsis you can now choose any crawler theme (Follow Windows, Light, Dark, Midnight, Forest, Dawn, Contrast, with or without the Windows accent). A new choice "Follow Opsis" uses the Opsis colours; existing installs are switched to it once, so nothing changes until you pick another theme.
+
 ## 0.14.7 — 2026-10-23
 - The desktop bar follows the option Keep it above other windows in every case (0.14.5 forced it on top while standing in for a hidden taskbar).
 

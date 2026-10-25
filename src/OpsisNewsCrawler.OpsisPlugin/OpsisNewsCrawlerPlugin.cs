@@ -135,6 +135,12 @@ internal sealed class TickerController
             if (_host is null)
             {
                 _host = new TickerHost { HostedByOpsis = true, LanguageFollowsHost = LanguageFromHost };
+                if (!_host.Config.ThemeIndependentMigrated)
+                {
+                    _host.Config.ThemeIndependentMigrated = true;
+                    _host.Config.ThemeMode = "host";
+                    try { _host.Config.Save(); } catch (Exception) { }
+                }
                 _host.ApplyConfig(); // HostedByOpsis changes the default for reserving screen space
                 _host.SettingsRequested += () => SettingsRequested?.Invoke();
             }
