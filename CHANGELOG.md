@@ -3,18 +3,14 @@
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
 Detailed notes per release: `docs/RELEASE-*.md` and the GitHub releases.
 
-<<<<<<< HEAD
-## Unreleased
-- **The crawler themes are independent of Opsis**: inside Opsis you can now choose any crawler theme (Follow Windows, Light, Dark, Midnight, Forest, Dawn, Contrast, with or without the Windows accent). A new choice "Follow Opsis" uses the Opsis colours; existing installs are switched to it once, so nothing changes until you pick another theme.
-=======
 ## 0.15.0 — 2026-10-27
+- **The crawler themes are independent of Opsis**: inside Opsis you can now choose any crawler theme (Follow Windows, Light, Dark, Midnight, Forest, Dawn, Contrast, with or without the Windows accent). A new choice "Follow Opsis" uses the Opsis colours; existing installs are switched to it once, so nothing changes until you pick another theme.
 - **Welcome guide**: six short pages with the animated icon, shown on the first start of a new major/minor version (not inside Opsis, which has its own), from the tray menu "Welcome guide", with "Don't show again". Closing it (Finish, Skip, Esc) shrinks and fades it into the header icon of the settings window when that is open, otherwise into the tray area (a plain fade when animations are off or the PC is Low-tier).
 - **The Opsis family** window (tray menu): one card per app of the shared catalogue (installed state read from the registry/known paths, "Update available" from GitHub, Open, Install / Download, Details). A download needs your confirmation (file, size, source), comes only from the app's own GitHub releases, is checked against the SHA-256 (GitHub digest or the .sha256 file) and deleted on a mismatch, and is never started by the program. Catalogue: `suite/apps.json` of the Opsis repo, fetched at most once a day (5 s timeout, https and GitHub hosts only, 256 KB), with a copy built into the program.
 - **Update notice**: first check 30 s after the start, then every 24 h, ETag so an unchanged answer is free, once per version, not while a full-screen app is in front, and not inside Opsis (Opsis announces).
 - Inside Opsis the plugin only adds the two menu entries; nothing is shown by itself.
 - Fixed: in 0.14.7 twelve language files contained an unescaped quotation mark in the history text and could not be read (menus showed raw keys); a new test checks that every language file is valid and has the same keys and placeholders.
 - 14 languages for all new texts. Tests: 233.
->>>>>>> b028dca (0.15.0: welcome guide, "The Opsis family" window with checked downloads, update notice once per version (30 s, 24 h, ETag); fixes the broken language files of 0.14.7)
 
 ## 0.14.7 — 2026-10-23
 - The desktop bar follows the option Keep it above other windows in every case (0.14.5 forced it on top while standing in for a hidden taskbar).
