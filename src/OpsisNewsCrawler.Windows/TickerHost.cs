@@ -84,7 +84,7 @@ public sealed class TickerHost : IDisposable
         return found;
     }
 
-    private readonly System.Windows.Forms.Timer updateTimer = new() { Interval = (int)TimeSpan.FromHours(12).TotalMilliseconds };
+    private readonly System.Windows.Forms.Timer updateTimer = new() { Interval = (int)TimeSpan.FromHours(24).TotalMilliseconds };
     private bool autoChecking;
 
     /// <summary>Raised (on the UI thread) once per version when an automatic check finds a newer release: the tray shows a notification.</summary>
@@ -95,7 +95,7 @@ public sealed class TickerHost : IDisposable
 
     public void RequestExit() => ExitRequested?.Invoke();
 
-    /// <summary>At every start and then every 12 hours (GearWin's logic); while offline it asks again after a minute, up to four times.</summary>
+    /// <summary>About 30 seconds after the start and then every 24 hours (GearWin's logic); while offline it asks again after a minute, up to four times.</summary>
     private async Task AutoCheckForUpdatesAsync()
     {
         if (!Config.CheckForUpdates || autoChecking || disposed) return;
@@ -107,16 +107,17 @@ public sealed class TickerHost : IDisposable
                 try
                 {
                     var found = await CheckForUpdatesAsync();
-                    if (found is not null && !string.Equals(Config.LastNotifiedUpdate, found.Tag, StringComparison.Ordinal))
+                    // Inside Opsis the balloon is Opsis' job (the card in the settings still shows the update); never while a full-screen app is in front.
+                    if (found is not null && !HostedByOpsis && UpdateAnnouncePolicy.ShouldAnnounce(Config.LastNotifiedUpdate, found.Tag))
                     {
+                        if (Window.IsHandleCreated && Native.IsFullscreenAppActive(Window.Handle, hostWindowDetector))
+                        {
+                            _ = RetryUpdateAnnounceLater();
+                            return;
+                        }
                         Config.LastNotifiedUpdate = found.Tag;
                         SaveConfig();
-                        void Announce()
-                        {
-                            if (HostedByOpsis) Window.ShowToast(Loc.T("msg.updateAvailable", found.Version, AboutTexts.Version));   // no tray icon of its own inside Opsis
-                            else UpdateAnnounce?.Invoke(found);
-                        }
-                        if (Window.IsHandleCreated) Window.BeginInvoke(new Action(Announce));
+                        if (Window.IsHandleCreated) Window.BeginInvoke(new Action(() => UpdateAnnounce?.Invoke(found)));
                     }
                     return;
                 }
@@ -136,7 +137,87 @@ public sealed class TickerHost : IDisposable
         }
     }
 
+    private async Task RetryUpdateAnnounceLater()
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromMinutes(15), cts.Token).ConfigureAwait(true);
+            _ = AutoCheckForUpdatesAsync();
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private async Task FirstUpdateCheckAsync()
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(30), cts.Token).ConfigureAwait(true);
+            _ = AutoCheckForUpdatesAsync();
+        }
+        catch (OperationCanceledException) { }
+    }
+
     public string ConfigPath => configPath;
+
+    /// <summary>The folder of the settings file: the catalogue cache of the Opsis family window lives there too.</summary>
+    public string DataDirectory => Path.GetDirectoryName(Path.GetFullPath(configPath)) ?? ".";
+
+    // ---- welcome guide and the Opsis family window --------------------------------------------------------
+
+    /// <summary>Where a closing splash shrinks to. The standalone app points it at the settings window's header icon when that is open; otherwise the tray area.</summary>
+    public Func<Rectangle>? MinimiseTargetProvider { get; set; }
+
+    private Rectangle MinimiseTargetRect() => (MinimiseTargetProvider ?? MinimiseTarget.Tray)();
+
+    private WelcomeForm? welcome;
+    private SuiteForm? suite;
+
+    private static Version CurrentVersion => Version.TryParse(AboutTexts.Version, out var v) ? v : new Version(0, 0);
+
+    /// <summary>First start of a new major/minor version, not switched off, not inside Opsis (Opsis has its own guide).</summary>
+    public bool ShouldShowWelcome() => WelcomePolicy.ShouldShow(CurrentVersion, Config.WelcomeSeenVersion, Config.WelcomeDisabled, HostedByOpsis);
+
+    /// <summary>Opens the welcome guide (also from the tray menu). Closing remembers the version; "show the family afterwards" opens the family window once.</summary>
+    public void ShowWelcome()
+    {
+        if (disposed) return;
+        if (welcome is { IsDisposed: false }) { welcome.Activate(); return; }
+        var form = new WelcomeForm(MinimiseTargetRect) { };
+        form.SetDontShowAgain(Config.WelcomeDisabled);
+        welcome = form;
+        form.FormClosed += (_, _) =>
+        {
+            welcome = null;
+            var v = CurrentVersion;
+            var seen = $"{v.Major}.{v.Minor}.0";
+            Config.WelcomeSeenVersion = seen;
+            Config.WelcomeDisabled = form.DontShowAgain;
+            var offer = form.ShowFamilyAfterwards && Config.SuiteOfferedVersion != seen;
+            if (offer) Config.SuiteOfferedVersion = seen;
+            SaveConfig();
+            if (!offer || disposed) return;
+            var later = new System.Windows.Forms.Timer { Interval = 350 };
+            later.Tick += (_, _) => { later.Stop(); later.Dispose(); ShowSuite(); };
+            later.Start();
+        };
+        form.Show();
+        form.Activate();
+    }
+
+    /// <summary>Closes the welcome guide the way the user's Esc would (with the shrink animation). For the test switch.</summary>
+    public void CloseWelcome() => welcome?.Close();
+
+    /// <summary>Opens the "Opsis family" window (one at a time).</summary>
+    public void ShowSuite()
+    {
+        if (disposed) return;
+        if (suite is { IsDisposed: false }) { suite.Activate(); return; }
+        var form = new SuiteForm(DataDirectory, MinimiseTargetRect);
+        suite = form;
+        form.FormClosed += (_, _) => suite = null;
+        form.Show();
+        form.Activate();
+    }
 
     /// <summary>The headlines loaded for the active category (a copy; UI thread).</summary>
     public IReadOnlyList<NewsItem> RecentNews => allItems.ToList();
@@ -477,7 +558,7 @@ public sealed class TickerHost : IDisposable
         started = true;
         PushAll();
         if (Config.BarsEnabled) StartBars();
-        _ = AutoCheckForUpdatesAsync();
+        _ = FirstUpdateCheckAsync();
         updateTimer.Tick -= OnUpdateTimer;
         updateTimer.Tick += OnUpdateTimer;
         updateTimer.Start();

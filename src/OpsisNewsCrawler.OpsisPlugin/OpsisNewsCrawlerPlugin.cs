@@ -97,6 +97,9 @@ public sealed class OpsisNewsCrawlerPlugin : IOpsisNewsCrawlerPlugin, IPluginPro
         {
             if (_controller.Host.Paused) Resume(); else Pause();
         }),
+        // The guide and the family window are offered here; inside Opsis they are never shown by themselves (Opsis has its own).
+        new PluginMenuItem("news.welcome", "News Crawler β€” ΞΞ΄Ξ·Ξ³ΟΟ‚ ΞΊΞ±Ξ»Ο‰ΟƒΞΏΟΞ―ΟƒΞΌΞ±Ο„ΞΏΟ‚", "News Crawler β€” Welcome guide", () => _controller.Host.ShowWelcome()),
+        new PluginMenuItem("news.suite", "News Crawler β€” Ξ— ΞΏΞΉΞΊΞΏΞ³Ξ­Ξ½ΞµΞΉΞ± Opsis", "News Crawler β€” The Opsis family", () => _controller.Host.ShowSuite()),
         new PluginMenuItem("news.close", "News Crawler — Κλείσιμο", "News Crawler — Close", CloseCrawler),
         new PluginMenuItem("news.open", "News Crawler — Άνοιγμα", "News Crawler — Open", OpenCrawler),
     };

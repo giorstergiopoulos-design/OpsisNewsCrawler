@@ -113,6 +113,12 @@ public sealed class AppConfig
     public bool CheckForUpdates { get; set; } = true;
     /// <summary>The release tag the user was already told about (a notification is shown once per version).</summary>
     public string LastNotifiedUpdate { get; set; } = "";
+    /// <summary>Version (major.minor) for which the welcome guide was shown; "" = never.</summary>
+    public string WelcomeSeenVersion { get; set; } = "";
+    /// <summary>"Don't show again" in the welcome guide.</summary>
+    public bool WelcomeDisabled { get; set; }
+    /// <summary>Version for which the Opsis family window was offered after the welcome guide.</summary>
+    public string SuiteOfferedVersion { get; set; } = "";
     /// <summary>1 = the update logic of 0.13.6 (check on by default); older settings files get the new default once.</summary>
     public int UpdateLogicVersion { get; set; }
     public DateTimeOffset LastUpdateCheck { get; set; } = DateTimeOffset.MinValue;

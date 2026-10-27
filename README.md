@@ -29,6 +29,8 @@
 | 🧩 Plugin | Ενσωματωμένη εγκατάσταση στο Opsis (δική του σελίδα, χρώματα και γλώσσα του Opsis) ή αυτόνομη εφαρμογή |
 | 🌍 14 γλώσσες | Ελληνικά, English, Deutsch, Français, Español, Italiano, Português, Русский, Türkçe, 日本語, 한국어, 简体中文, العربية (με δεξιά-προς-αριστερά διάταξη), हिन्दी |
 
+**Νέο στην 0.15.0:** οδηγός καλωσορίσματος με κινούμενο εικονίδιο, παράθυρο «Η οικογένεια Opsis» (κατάσταση εγκατάστασης, λήψη με έλεγχο SHA-256 μετά από επιβεβαίωση), ειδοποίηση νέας έκδοσης μία φορά ανά έκδοση.
+
 **Νέο στην 0.14.7:** η μπάρα επιφάνειας σέβεται πάντα το «Να μένει πάνω από τα άλλα παράθυρα».
 
 **Νέο στην 0.14.6:** σωστή ανίχνευση της μπάρας εργασιών με αυτόματη απόκρυψη στα Windows 11.
@@ -130,6 +132,10 @@ powershell -ExecutionPolicy Bypass -File tools\release.ps1     # publish + insta
 - `tests/OpsisNewsCrawler.Core.Tests/` — unit tests (xUnit) · `installer/` — κοινά κομμάτια του installer · `tools/` — `release.ps1`
 - `docs/` — σημειώσεις έκδοσης, πηγές δεδομένων (`DATA-SOURCES.md`), λίστα εργασιών (`TASKS.md`), στιγμιότυπα
 
+### Απόρρητο και δίκτυο
+
+Το πρόγραμμα δεν στέλνει τηλεμετρία. Εκτός από τις πηγές ειδήσεων/τιμών/καιρού που επιλέγετε, κάνει μόνο: (1) έναν έλεγχο νέας έκδοσης προς το GitHub (`api.github.com`, 30 s μετά την εκκίνηση και μία φορά την ημέρα, με ETag) και (2) όταν ανοίξετε το παράθυρο «Η οικογένεια Opsis», τη λήψη του καταλόγου εφαρμογών (`raw.githubusercontent.com`, το πολύ μία φορά την ημέρα) και την ερώτηση για την τελευταία έκδοση κάθε εγκατεστημένης εφαρμογής του καταλόγου. Κανένα αρχείο δεν κατεβαίνει χωρίς τη δική σας επιβεβαίωση και κανένα δεν εκτελείται από το πρόγραμμα.
+
 ### Πηγές δεδομένων και πιστώσεις
 
 Ειδήσεις: RSS των ίδιων των εκδοτών (εμφανίζονται μόνο τίτλος, σύντομη περίληψη και σύνδεσμος). Τιμές: Euronext, gold-api.com,
@@ -152,6 +158,8 @@ Frankfurter/ΕΚΤ, FRED/EIA. Καιρός: [Open-Meteo.com](https://open-meteo.
 | 🎨 Look | Colour, transparency, background material (acrylic/blur), fading ends, theme — the same as Opsis |
 | 🧩 Plugin | Integrated into Opsis (its own page, Opsis colours and language) or a stand-alone app |
 | 🌍 14 languages | Greek, English, German, French, Spanish, Italian, Portuguese, Russian, Turkish, Japanese, Korean, Simplified Chinese, Arabic (with right-to-left layout), Hindi |
+
+**New in 0.15.0:** welcome guide with the animated icon, "The Opsis family" window (installed state, download with SHA-256 check after confirmation), one update notice per version.
 
 **New in 0.14.7:** the desktop bar always respects "Keep it above other windows".
 
@@ -253,6 +261,10 @@ from the application.
 - `src/OpsisNewsCrawler.OpsisPlugin/` — the plugin DLL for Opsis · `src/OpsisNewsCrawler.Plugin.Abstractions/` — the contract
 - `tests/OpsisNewsCrawler.Core.Tests/` — unit tests (xUnit) · `installer/` — shared installer parts · `tools/` — `release.ps1`
 - `docs/` — release notes, data sources (`DATA-SOURCES.md`), task list (`TASKS.md`), screenshots
+
+### Privacy and network
+
+The program sends no telemetry. Besides the news/price/weather sources you choose, it only does: (1) one version check to GitHub (`api.github.com`, 30 s after the start and once a day, with an ETag) and (2) when you open "The Opsis family" window, one download of the app catalogue (`raw.githubusercontent.com`, at most once a day) and one question about the latest release of each installed app of the catalogue. No file is downloaded without your confirmation and the program never runs one.
 
 ### Data sources and credits
 

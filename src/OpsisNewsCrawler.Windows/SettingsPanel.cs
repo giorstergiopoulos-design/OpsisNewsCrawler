@@ -1600,6 +1600,9 @@ public sealed class SettingsPanel : UserControl
     /// <summary>Number of pages that can be shown (every sub-page of every tab counts once; used by the snapshot test).</summary>
     public int TabCount => tabs.Count;
 
+    /// <summary>Screen rectangle of the animated icon in the header (where a closing splash shrinks to); empty when it is not visible.</summary>
+    public Rectangle BadgeScreenRect() => tabs.Badge is { IsHandleCreated: true, Visible: true } b ? b.RectangleToScreen(b.ClientRectangle) : Rectangle.Empty;
+
     /// <summary>Shows the page with the given index (0 = Settings / General).</summary>
     public void SelectTab(int index)
     {

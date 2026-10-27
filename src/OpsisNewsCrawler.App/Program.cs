@@ -60,6 +60,32 @@ internal static class Program
             return;
         }
 
+        if (Array.IndexOf(args, "--snapshot-welcome") is >= 0 and var wAt && wAt + 1 < args.Length)
+        {
+            ApplicationConfiguration.Initialize();
+            var cfgW = Array.IndexOf(args, "--config");
+            using var wHost = new TickerHost(cfgW >= 0 && cfgW + 1 < args.Length ? args[cfgW + 1] : null);
+            SuiteSnapshots.Welcome(args[wAt + 1]);
+            return;
+        }
+
+        if (Array.IndexOf(args, "--snapshot-suite") is >= 0 and var sAt && sAt + 1 < args.Length)
+        {
+            ApplicationConfiguration.Initialize();
+            var cfgS = Array.IndexOf(args, "--config");
+            using var sHost = new TickerHost(cfgS >= 0 && cfgS + 1 < args.Length ? args[cfgS + 1] : null);
+            SuiteSnapshots.Suite(args[sAt + 1], sHost.DataDirectory);
+            return;
+        }
+
+        if (Array.IndexOf(args, "--snapshot-minimise") is >= 0 and var mAt && mAt + 1 < args.Length)
+        {
+            ApplicationConfiguration.Initialize();
+            var cfgM = Array.IndexOf(args, "--config");
+            using var mHost = new TickerHost(cfgM >= 0 && cfgM + 1 < args.Length ? args[cfgM + 1] : null);
+            SuiteSnapshots.Minimise(args[mAt + 1]);
+            return;
+        }
         if (Array.IndexOf(args, "--snapshot-portfolio") is >= 0 and var pfAt && pfAt + 1 < args.Length)
         {
             ApplicationConfiguration.Initialize();
@@ -142,6 +168,8 @@ internal static class Program
         var menuAnalysis = menu.Items.Add(Loc.T("tray.analysis"), null, (_, _) => host.ShowAnalysis());
         var menuSettings = menu.Items.Add(Loc.T("tray.settings"), null, (_, _) => settings.ShowSettings());
         var menuRefresh = menu.Items.Add(Loc.T("tray.refresh"), null, (_, _) => host.Refresh());
+        var menuWelcome = menu.Items.Add(Loc.T("tray.welcome"), null, (_, _) => host.ShowWelcome());
+        var menuSuite = menu.Items.Add(Loc.T("tray.suite"), null, (_, _) => host.ShowSuite());
         // One item that switches between Pause and Resume.
         var menuPause = menu.Items.Add(Loc.T("tray.pause"), null, (_, _) => { if (host.Paused) host.Resume(); else host.Pause(); });
         void UpdatePauseItem() => menuPause.Text = Loc.T(host.Paused ? "tray.resume" : "tray.pause");
@@ -177,6 +205,8 @@ internal static class Program
             menuAnalysis.Text = Loc.T("tray.analysis");
             menuSettings.Text = Loc.T("tray.settings");
             menuRefresh.Text = Loc.T("tray.refresh");
+            menuWelcome.Text = Loc.T("tray.welcome");
+            menuSuite.Text = Loc.T("tray.suite");
             UpdatePauseItem();
             snoozeMenu.Text = Loc.T("pk.snooze.bars");
             snooze15.Text = Loc.T("pk.for.15.minutes");
@@ -187,9 +217,32 @@ internal static class Program
         tray.DoubleClick += (_, _) => settings.ShowSettings();
 
         host.SettingsRequested += settings.ShowSettings; // right-click on the strip
+
+        // A closing splash shrinks into the header icon of the settings window when that is open, otherwise into the tray area.
+        host.MinimiseTargetProvider = () =>
+        {
+            var header = settings.HeaderIconScreenRect();
+            return header.IsEmpty ? MinimiseTarget.Tray() : header;
+        };
         host.Start();
 
         if (args.Contains("--portfolio")) host.ShowPortfolio(); // handy for testing
+        if (args.Contains("--welcome")) host.ShowWelcome();     // test switches: the guide / the family window at once
+        if (args.Contains("--suite")) host.ShowSuite();
+        if (args.Contains("--test-welcome-close"))
+        {
+            var closer = new System.Windows.Forms.Timer { Interval = 5000 };
+            closer.Tick += (_, _) => { closer.Stop(); host.CloseWelcome(); };
+            closer.Start();
+        }
+
+        // First start of a new major/minor version: the welcome guide, a moment after the bar is up (nothing waits for it).
+        if (!args.Contains("--welcome") && host.ShouldShowWelcome())
+        {
+            var first = new System.Windows.Forms.Timer { Interval = 2500 };
+            first.Tick += (_, _) => { first.Stop(); first.Dispose(); host.ShowWelcome(); };
+            first.Start();
+        }
 
         if (args.Contains("--test-weather-alert"))
         {

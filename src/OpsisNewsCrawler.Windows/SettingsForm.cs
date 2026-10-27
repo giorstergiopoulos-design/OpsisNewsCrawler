@@ -110,6 +110,9 @@ public sealed class SettingsForm : Form
         Hide();
     }
 
+    /// <summary>The header icon of the open settings window, or an empty rectangle.</summary>
+    public Rectangle HeaderIconScreenRect() => Visible && WindowState != FormWindowState.Minimized ? panel.BadgeScreenRect() : Rectangle.Empty;
+
     public void ShowSettings()
     {
         panel.LoadFromConfig();

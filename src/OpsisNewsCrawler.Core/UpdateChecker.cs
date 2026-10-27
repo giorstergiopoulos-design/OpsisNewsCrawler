@@ -22,13 +22,35 @@ public static class UpdateChecker
     private const string SetupName = "OpsisNewsCrawler-Setup.exe";
     private static readonly string DownloadPrefix = $"https://github.com/{Repository}/releases/download/";
 
+    private static readonly object CacheLock = new();
+    private static string? etag;
+    private static string? lastJson;
+
+    /// <summary>Forgets the remembered ETag (tests).</summary>
+    internal static void ResetCache() { lock (CacheLock) { etag = null; lastJson = null; } }
+
     /// <summary>The newer release, or null when this version is the latest. Throws only <see cref="HttpRequestException"/>/<see cref="TaskCanceledException"/>.</summary>
-    public static async Task<UpdateInfo?> CheckAsync(Version current, CancellationToken ct = default)
+    public static async Task<UpdateInfo?> CheckAsync(Version current, CancellationToken ct = default, HttpMessageHandler? handler = null)
     {
-        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(15), MaxResponseContentBufferSize = 2 * 1024 * 1024 };
+        using var http = handler is null
+            ? new HttpClient { Timeout = TimeSpan.FromSeconds(15), MaxResponseContentBufferSize = 2 * 1024 * 1024 }
+            : new HttpClient(handler, disposeHandler: false) { Timeout = TimeSpan.FromSeconds(15), MaxResponseContentBufferSize = 2 * 1024 * 1024 };
         http.DefaultRequestHeaders.UserAgent.ParseAdd("OpsisNewsCrawler-UpdateCheck");
         http.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
-        var json = await http.GetStringAsync($"https://api.github.com/repos/{Repository}/releases/latest", ct).ConfigureAwait(false);
+        // ETag / If-None-Match: an unchanged answer (HTTP 304) is free and does not count against GitHub's rate limit.
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{Repository}/releases/latest");
+        string? cachedEtag, cachedJson;
+        lock (CacheLock) { cachedEtag = etag; cachedJson = lastJson; }
+        if (cachedEtag is not null && cachedJson is not null) request.Headers.TryAddWithoutValidation("If-None-Match", cachedEtag);
+        using var response = await http.SendAsync(request, ct).ConfigureAwait(false);
+        string json;
+        if (response.StatusCode == System.Net.HttpStatusCode.NotModified && cachedJson is not null) json = cachedJson;
+        else
+        {
+            response.EnsureSuccessStatusCode();
+            json = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            lock (CacheLock) { etag = response.Headers.ETag?.ToString(); lastJson = json; }
+        }
         try
         {
             return Parse(json, current);
@@ -90,4 +112,11 @@ public static class UpdateChecker
         if (dash >= 0) text = text[..dash];
         return Version.TryParse(text, out version!);
     }
+}
+
+/// <summary>"Once per version": a release is announced when it is not the one the user was already told about.</summary>
+public static class UpdateAnnouncePolicy
+{
+    public static bool ShouldAnnounce(string? lastNotifiedTag, string? foundTag) =>
+        !string.IsNullOrWhiteSpace(foundTag) && !string.Equals(lastNotifiedTag, foundTag, StringComparison.Ordinal);
 }
