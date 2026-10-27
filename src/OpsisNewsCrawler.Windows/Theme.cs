@@ -54,7 +54,7 @@ public static class Theme
         if (useWindowsAccent is { } flag) followAccent = flag;
         currentMode = (mode ?? "system");
         if (currentMode == "host" && hostPalette is { } hp) { ApplyHost(hp); return; }
-        if (Named(mode) is { } p)
+        if (Named(currentMode) is { } p)
         {
             IsDark = p.Dark;
             Background = p.Background; Surface = p.Surface; Border = p.Border; Text = p.Text; TextMuted = p.Muted;
@@ -62,7 +62,7 @@ public static class Theme
             Changed?.Invoke();
             return;
         }
-        var dark = mode.ToLowerInvariant() switch
+        var dark = currentMode.ToLowerInvariant() switch
         {
             "dark" => true,
             "light" => false,

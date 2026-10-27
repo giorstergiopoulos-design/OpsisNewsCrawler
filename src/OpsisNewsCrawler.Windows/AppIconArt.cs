@@ -5,12 +5,15 @@ using System.Runtime.InteropServices;
 namespace OpsisNewsCrawler.Windows;
 
 /// <summary>
-/// The artwork of the application icon, drawn in code: a rounded tile with a news bar across it; on the bar the four kinds of news
-/// pass from right to left — newspaper (news), ball (sports), shield with olive leaf (defence and diplomacy), chart with coins (economy).
+/// The artwork of the application icon, drawn in code: a rounded tile with a news bar across it; on the bar the six kinds of content
+/// pass from right to left — newspaper (news), ball (sports), shield with olive leaf (defence and diplomacy), chart with coins (economy), sun and cloud (weather), warning triangle over a wave (natural disasters).
 /// The same drawing makes the static .ico of the program and the frames of the animated tray icon.
 /// </summary>
 public static class AppIconArt
 {
+    /// <summary>Newspaper, ball, shield, economy, weather, natural-disaster alert.</summary>
+    public const int SymbolCount = 6;
+
     private const int FramesPerLoop = 64;   // with the 60 ms tray timer: a ~3.8 s loop that moves smoothly
 
     /// <summary>One picture of the icon. <paramref name="phase"/> 0..1 is the position in the loop of the passing symbols.</summary>
@@ -44,13 +47,13 @@ public static class AppIconArt
 
             // The symbols, clipped to the bar.
             g.SetClip(bar, CombineMode.Intersect);
-            var cell = (showAllFour ? barRect.Width / 4.0 : Math.Max(barRect.Height * 0.95, barRect.Width / 2.6)); // pixels per symbol cell
-            var loop = cell * 4;
+            var cell = (showAllFour ? barRect.Width / SymbolCount : Math.Max(barRect.Height * 0.95, barRect.Width / 2.6)); // pixels per symbol cell
+            var loop = cell * SymbolCount;
             var shift = (float)(phase * loop);
             // Moving right to left: the strip is drawn twice so there is never a gap.
             for (var repeat = 0; repeat < 2; repeat++)
             {
-                for (var i = 0; i < 4; i++)
+                for (var i = 0; i < SymbolCount; i++)
                 {
                     var x = barRect.Left + (float)(i * cell + repeat * loop) - shift;
                     var box = new RectangleF(x + (float)cell * 0.06f, barRect.Top + barRect.Height * 0.08f, (float)cell * 0.88f, barRect.Height * 0.84f);
@@ -110,12 +113,12 @@ public static class AppIconArt
             // Symbols clipped to the tile; the strip slides right to left, drawn twice so there is no gap.
             g.SetClip(tile, CombineMode.Intersect);
             var pad = height * 0.10f;
-            var cell = showAllFour ? (width - pad) / 4.0 : Math.Max(height * 0.95, width / 2.6);
-            var loop = cell * 4;
+            var cell = showAllFour ? (width - pad) / SymbolCount : Math.Max(height * 0.95, width / 2.6);
+            var loop = cell * SymbolCount;
             var shift = (float)(phase * loop);
             for (var repeat = 0; repeat < (showAllFour ? 1 : 2); repeat++)
             {
-                for (var i = 0; i < 4; i++)
+                for (var i = 0; i < SymbolCount; i++)
                 {
                     var x = pad / 2 + (float)(i * cell + repeat * loop) - shift;
                     var box = new RectangleF(x + (float)cell * 0.04f, height * 0.10f, (float)cell * 0.92f, height * 0.80f);
@@ -150,9 +153,44 @@ public static class AppIconArt
             case 0: Newspaper(g); break;
             case 1: Ball(g); break;
             case 2: Shield(g); break;
-            default: Economy(g); break;
+            case 3: Economy(g); break;
+            case 4: Weather(g); break;
+            default: Alert(g); break;
         }
         g.Restore(state);
+    }
+
+    /// <summary>A sun half behind a cloud: the weather.</summary>
+    private static void Weather(Graphics g)
+    {
+        using (var ray = new Pen(Color.FromArgb(255, 205, 60), 5f) { StartCap = LineCap.Round, EndCap = LineCap.Round })
+            for (var i = 0; i < 8; i++)
+            {
+                var a = i * Math.PI / 4;
+                g.DrawLine(ray, (float)(60 + Math.Cos(a) * 27), (float)(38 + Math.Sin(a) * 27), (float)(60 + Math.Cos(a) * 36), (float)(38 + Math.Sin(a) * 36));
+            }
+        using (var sun = new SolidBrush(Color.FromArgb(255, 200, 45))) g.FillEllipse(sun, 42, 20, 36, 36);
+        using var cloud = new SolidBrush(Color.FromArgb(240, 246, 252));
+        g.FillEllipse(cloud, 10, 54, 30, 30);
+        g.FillEllipse(cloud, 28, 44, 36, 36);
+        g.FillEllipse(cloud, 50, 54, 32, 30);
+        g.FillRectangle(cloud, 24, 62, 42, 22);
+        using var edge = new Pen(Color.FromArgb(120, 150, 185), 3f);
+        g.DrawArc(edge, 10, 54, 30, 30, 90, 180);
+        g.DrawLine(edge, 25, 84, 66, 84);
+    }
+
+    /// <summary>A warning triangle over a seismic wave: earthquakes, floods, fires and the other natural disasters.</summary>
+    private static void Alert(Graphics g)
+    {
+        using var path = new GraphicsPath();
+        path.AddPolygon(new[] { new PointF(50, 8), new PointF(94, 82), new PointF(6, 82) });
+        using (var fill = new LinearGradientBrush(new RectangleF(6, 8, 88, 74), Color.FromArgb(255, 150, 60), Color.FromArgb(225, 70, 50), 90f)) g.FillPath(fill, path);
+        using (var edge = new Pen(Color.FromArgb(255, 235, 215), 5f) { LineJoin = LineJoin.Round }) g.DrawPath(edge, path);
+        using (var mark = new Pen(Color.White, 8f) { StartCap = LineCap.Round, EndCap = LineCap.Round }) g.DrawLine(mark, 50, 32, 50, 56);
+        using (var dot = new SolidBrush(Color.White)) g.FillEllipse(dot, 45, 62, 10, 10);
+        using var wave = new Pen(Color.FromArgb(90, 150, 235), 4f) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
+        g.DrawLines(wave, new[] { new PointF(6, 94), new PointF(24, 94), new PointF(32, 86), new PointF(42, 98), new PointF(52, 90), new PointF(60, 94), new PointF(94, 94) });
     }
 
     private static void Newspaper(Graphics g)

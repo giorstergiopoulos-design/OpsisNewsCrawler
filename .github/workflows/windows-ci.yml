@@ -29,7 +29,13 @@ jobs:
             'src/OpsisNewsCrawler.OpsisPlugin/OpsisNewsCrawler.OpsisPlugin.csproj',
             'src/OpsisNewsCrawler.Plugin.Abstractions/OpsisNewsCrawler.Plugin.Abstractions.csproj'
           )
-          foreach ($file in $files) {
-            if ((Get-Content $file -Raw) -notmatch '<Version>0\.11\.5\.3</Version>') { throw "Version mismatch in $file" }
+          $versions = foreach ($file in $files) {
+            if ((Get-Content $file -Raw) -notmatch '<Version>([0-9.]+)</Version>') { throw "No <Version> in $file" }
+            $Matches[1]
           }
-          if ((Get-Content 'OpsisNewsCrawler.iss' -Raw) -notmatch '#define MyAppVersion "0\.11\.5\.3"') { throw 'Installer version mismatch' }
+          $expected = $versions[0]
+          if (($versions | Select-Object -Unique).Count -ne 1) { throw "Project versions differ: $($versions -join ', ')" }
+          if ((Get-Content 'OpsisNewsCrawler.iss' -Raw) -notmatch ('#define MyAppVersion "' + [regex]::Escape($expected) + '"')) { throw "Installer version is not $expected" }
+          if ((Get-Content 'src/OpsisNewsCrawler.Windows/AboutTexts.cs' -Raw) -notmatch ('Version = "' + [regex]::Escape($expected) + '"')) { throw "AboutTexts version is not $expected" }
+          if ((Get-Content 'CHANGELOG.md' -Raw) -notmatch ('## ' + [regex]::Escape($expected) + ' ')) { throw "CHANGELOG has no entry for $expected" }
+          "All versions are $expected"

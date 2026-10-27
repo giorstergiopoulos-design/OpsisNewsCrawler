@@ -86,6 +86,20 @@ internal static class Program
             SuiteSnapshots.Minimise(args[mAt + 1]);
             return;
         }
+        if (Array.IndexOf(args, "--audit-settings") is >= 0 and var auAt && auAt + 1 < args.Length)
+        {
+            ApplicationConfiguration.Initialize();
+            var cfgAu = Array.IndexOf(args, "--config");
+            using var auHost = new TickerHost(cfgAu >= 0 && cfgAu + 1 < args.Length ? args[cfgAu + 1] : null);
+            SettingsAudit.Run(auHost, args[auAt + 1]);
+            return;
+        }
+        if (Array.IndexOf(args, "--make-brand-art") is >= 0 and var baAt && baAt + 1 < args.Length)
+        {
+            ApplicationConfiguration.Initialize();
+            BrandArt.SaveAll(args[baAt + 1]);
+            return;
+        }
         if (Array.IndexOf(args, "--snapshot-portfolio") is >= 0 and var pfAt && pfAt + 1 < args.Length)
         {
             ApplicationConfiguration.Initialize();

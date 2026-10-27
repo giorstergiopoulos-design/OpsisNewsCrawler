@@ -9,6 +9,15 @@ namespace OpsisNewsCrawler.Windows;
 
 internal static class FlatDraw
 {
+    /// <summary>The keyboard focus ring (2 px accent outline just outside the shape); drawn only when the control is focused through the keyboard.</summary>
+    public static void FocusRing(Graphics g, Rectangle bounds, int radius)
+    {
+        var r = Rectangle.Inflate(bounds, -1, -1);
+        using var path = Rounded(r, radius);
+        using var pen = new Pen(Theme.Accent, 2f);
+        g.DrawPath(pen, path);
+    }
+
     public static GraphicsPath Rounded(Rectangle r, int radius)
     {
         var d = Math.Max(1, radius * 2);
@@ -40,7 +49,8 @@ internal sealed class FlatButton : Button
     public FlatButton()
     {
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer, true);
-        SetStyle(ControlStyles.Selectable, false);
+        SetStyle(ControlStyles.Selectable, true);     // Tab reaches the button; Space / Enter press it
+        TabStop = true;
         FlatStyle = FlatStyle.Flat;
         FlatAppearance.BorderSize = 0;
         AutoSize = true;
@@ -65,6 +75,8 @@ internal sealed class FlatButton : Button
 
     protected override void OnMouseEnter(EventArgs e) { base.OnMouseEnter(e); hot = true; Invalidate(); }
     protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); hot = false; Invalidate(); }
+    protected override void OnGotFocus(EventArgs e) { base.OnGotFocus(e); Invalidate(); }
+    protected override void OnLostFocus(EventArgs e) { base.OnLostFocus(e); Invalidate(); }
 
     protected override void OnPaint(PaintEventArgs e)
     {
@@ -85,6 +97,7 @@ internal sealed class FlatButton : Button
         var color = !Enabled ? Theme.TextMuted : primary ? Color.White : Theme.Text;
         TextRenderer.DrawText(g, Text, Font, rect, color,
             TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+        if (Focused && ShowFocusCues) FlatDraw.FocusRing(g, rect, Height / 2);
     }
 }
 
@@ -124,6 +137,8 @@ internal sealed class FlatCheck : CheckBox
 
     protected override void OnMouseEnter(EventArgs e) { base.OnMouseEnter(e); hot = true; Invalidate(); }
     protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); hot = false; Invalidate(); }
+    protected override void OnGotFocus(EventArgs e) { base.OnGotFocus(e); Invalidate(); }
+    protected override void OnLostFocus(EventArgs e) { base.OnLostFocus(e); Invalidate(); }
 
     protected override void OnPaint(PaintEventArgs e)
     {
@@ -132,6 +147,7 @@ internal sealed class FlatCheck : CheckBox
         g.Clear(Parent?.BackColor ?? Theme.Background); // Clear, not an antialiased fill: that leaves a faint line on the edge pixels
 
         var box = new Rectangle(0, (Height - BoxSize) / 2, BoxSize, BoxSize);
+        if (Focused && ShowFocusCues) FlatDraw.FocusRing(g, Rectangle.Inflate(box, 3, 3), 7);
         using var path = FlatDraw.Rounded(box, 5);
         if (Checked)
         {
@@ -185,6 +201,32 @@ internal sealed class FlatCombo : Panel
     }
 
     public int Count => items.Count;
+
+    protected override bool IsInputKey(Keys keyData) =>
+        (keyData & ~Keys.Shift) is Keys.Up or Keys.Down or Keys.Home or Keys.End or Keys.F4 || base.IsInputKey(keyData);
+
+    protected override void OnGotFocus(EventArgs e) { base.OnGotFocus(e); Invalidate(); }
+    protected override void OnLostFocus(EventArgs e) { base.OnLostFocus(e); Invalidate(); }
+
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+        if (!Enabled || items.Count == 0) return;
+        int? target = e.KeyCode switch
+        {
+            Keys.Down when e.Alt => -2,
+            Keys.Down => Math.Min(items.Count - 1, selected + 1),
+            Keys.Up => Math.Max(0, selected - 1),
+            Keys.Home => 0,
+            Keys.End => items.Count - 1,
+            Keys.F4 or Keys.Space or Keys.Enter => -2,
+            _ => null
+        };
+        if (target is null) return;
+        e.Handled = e.SuppressKeyPress = true;
+        if (target == -2) OpenDropdown();
+        else SelectedIndex = target.Value;
+    }
 
     public int SelectedIndex
     {
@@ -261,6 +303,7 @@ internal sealed class FlatCombo : Panel
         using var chevron = new Pen(Theme.TextMuted, 1.6f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
         float cx = Width - 18, cy = Height / 2f - 1.5f;
         g.DrawLines(chevron, new[] { new PointF(cx - 4, cy - 2), new PointF(cx, cy + 2), new PointF(cx + 4, cy - 2) });
+        if (Focused && ShowFocusCues) FlatDraw.FocusRing(g, rect, 7);
     }
 }
 
@@ -365,10 +408,36 @@ internal sealed class FlatSlider : Control
         return minimum + (int)Math.Round(frac * (maximum - minimum));
     }
 
+    protected override bool IsInputKey(Keys keyData) =>
+        (keyData & ~Keys.Shift) is Keys.Left or Keys.Right or Keys.Up or Keys.Down or Keys.Home or Keys.End or Keys.PageUp or Keys.PageDown || base.IsInputKey(keyData);
+
+    protected override void OnGotFocus(EventArgs e) { base.OnGotFocus(e); Invalidate(); }
+    protected override void OnLostFocus(EventArgs e) { base.OnLostFocus(e); Invalidate(); }
+
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+        var big = Math.Max(1, (maximum - minimum) / 10);
+        int? next = e.KeyCode switch
+        {
+            Keys.Left or Keys.Down => value - 1,
+            Keys.Right or Keys.Up => value + 1,
+            Keys.PageDown => value - big,
+            Keys.PageUp => value + big,
+            Keys.Home => minimum,
+            Keys.End => maximum,
+            _ => null
+        };
+        if (next is null) return;
+        e.Handled = e.SuppressKeyPress = true;
+        Value = next.Value;
+    }
+
     protected override void OnMouseDown(MouseEventArgs e)
     {
         base.OnMouseDown(e);
         if (e.Button != MouseButtons.Left) return;
+        Focus();
         dragging = true;
         Value = ValueFromX(e.X);
     }
@@ -403,6 +472,9 @@ internal sealed class FlatSlider : Control
         using (var brush = new SolidBrush(Theme.Surface)) g.FillEllipse(brush, thumbX - ThumbRadius, midY - ThumbRadius, ThumbRadius * 2, ThumbRadius * 2);
         using (var pen = new Pen(Enabled ? Theme.Accent : Theme.TextMuted, 2f))
             g.DrawEllipse(pen, thumbX - ThumbRadius + 1, midY - ThumbRadius + 1, ThumbRadius * 2 - 2, ThumbRadius * 2 - 2);
+        if (Focused && ShowFocusCues)
+            using (var ring = new Pen(Theme.Accent, 1.5f) { DashStyle = DashStyle.Dot })
+                g.DrawEllipse(ring, thumbX - ThumbRadius - 3, midY - ThumbRadius - 3, ThumbRadius * 2 + 6, ThumbRadius * 2 + 6);
     }
 }
 

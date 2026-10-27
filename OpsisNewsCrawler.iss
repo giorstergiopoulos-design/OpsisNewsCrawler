@@ -23,6 +23,9 @@ AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher=Opsis
 SetupIconFile=src\OpsisNewsCrawler.Windows\Assets\app.ico
+; Wizard pictures drawn from the app artwork (BrandArt, --make-brand-art): 100 / 125 / 150 / 200 %
+WizardImageFile=installer\wizard\large-100.bmp,installer\wizard\large-125.bmp,installer\wizard\large-150.bmp,installer\wizard\large-200.bmp
+WizardSmallImageFile=installer\wizard\small-100.bmp,installer\wizard\small-125.bmp,installer\wizard\small-150.bmp,installer\wizard\small-200.bmp
 DefaultDirName={code:GetDefaultDir}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes

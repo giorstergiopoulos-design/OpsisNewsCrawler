@@ -188,7 +188,7 @@ Build 0 errors / 0 warnings; `dotnet test` 56 passed (test project added to the 
 - ✅ 11. Studied `igoropaniuk/stonks-cli` (MIT, terminal portfolio: positions, P&L, multi-currency, watchlist, charts, news, AI chat) and `karidasd/greek-stocks-ai` (README badge MIT, no licence file: ideas only — RSI, SMA50/200 crosses, news sentiment, fear & greed; data from Yahoo, not usable here). Built: **Portfolio window** (positions with quantity/average price, value and P&L in euro via ECB rates, today, RSI(14), SMA20/50 cross from the stored closes — `QuoteStore` now keeps 130 days). 8 unit tests. Not built: candlestick charts, backtesting, AI chat, fear & greed.
 - ✅ New categories "Defence & Diplomacy" and "Sports" (`TickerMode.Defence/Sports`, defaults, migration adds them to old configs, `Enabled` of default feeds now kept). Feeds checked live through the real RSS provider: 6 + 4. 5 unit tests.
 - ℹ️ Pyth Hermes (oil/gas near-live, from the parallel line) answers HTTP 401 without a key now: paused 12 h, FRED/EIA used.
-- Release: `tools\release.ps1`; README (bilingual, screenshots), CHANGELOG, `docs/RELEASE-0.12.5.md`, `docs/screenshots/{el,en}`.
+- Release: `tools\release.ps1`; README (bilingual, screenshots), CHANGELOG, `docs/releases/RELEASE-<version>.md`, `docs/screenshots/{el,en}`.
 
 ## Round 20 — version 0.12.8 (2026-10-20)
 - ✅ Desktop bar appears while the auto-hiding taskbar (and the bar inside it) is hidden: `TickerWindow.HiddenByTaskbarChanged` → `TickerHost.MiniWanted`; option `MiniWhenTaskbarHidden`. Verified by switching the Windows auto-hide on/off (bar at the configured 300,200 700x60 while hidden, gone when shown).

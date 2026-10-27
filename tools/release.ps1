@@ -61,6 +61,30 @@ $h = (Get-FileHash "$r\Output\OpsisNewsCrawler-Setup.exe" -Algorithm SHA256).Has
 [IO.File]::WriteAllText("$r\Output\OpsisNewsCrawler-Setup.exe.sha256", "$h  OpsisNewsCrawler-Setup.exe`n")
 "setup: $r\Output\OpsisNewsCrawler-Setup.exe  sha256 $h"
 
+# Portable zip: the same files as the installer's program folder without the Opsis plugin copy (needs the .NET 10 Desktop Runtime).
+$ver = (Get-Item "$stage\OpsisNewsCrawler.exe").VersionInfo.ProductVersion.Split('+')[0]
+$portable = "$r\Output\OpsisNewsCrawler-$ver-portable.zip"
+if (Test-Path $portable) { Remove-Item $portable -Force }
+$tmp = "$r\Output\portable-stage\OpsisNewsCrawler-$ver"
+if (Test-Path "$r\Output\portable-stage") { Remove-Item "$r\Output\portable-stage" -Recurse -Force }
+robocopy $stage $tmp /E /XD plugins /NFL /NDL /NJH /NJS | Out-Null
+Compress-Archive -Path "$r\Output\portable-stage\OpsisNewsCrawler-$ver" -DestinationPath $portable
+Remove-Item "$r\Output\portable-stage" -Recurse -Force
+$ph = (Get-FileHash $portable -Algorithm SHA256).Hash.ToLower()
+[IO.File]::WriteAllText("$portable.sha256", "$ph  OpsisNewsCrawler-$ver-portable.zip`n")
+
+# Everything to publish, in one folder (release\<version>-assets): installer, portable zip, their checksums, release notes (el + en).
+$assets = "$r\release\$ver-assets"
+if (Test-Path $assets) { Remove-Item $assets -Recurse -Force }
+New-Item -ItemType Directory -Force $assets | Out-Null
+Copy-Item "$r\Output\OpsisNewsCrawler-Setup.exe", "$r\Output\OpsisNewsCrawler-Setup.exe.sha256", $portable, "$portable.sha256" $assets
+$notes = "$r\docs\releases\RELEASE-$ver.md"
+if (Test-Path $notes) { Copy-Item $notes "$assets\RELEASE-NOTES.md" } else { "note: $notes is missing - write the release notes before publishing" }
+if (Test-Path "$assets\RELEASE-NOTES.md") {
+  Add-Content "$assets\RELEASE-NOTES.md" ("`r`n## SHA-256`r`n`r`n```````r`n$h  OpsisNewsCrawler-Setup.exe`r`n$ph  OpsisNewsCrawler-$ver-portable.zip`r`n```````r`n")
+}
+"assets: $assets"
+
 # Best effort: bring bin\ (what the Run-...bat starts) up to date too; files in use are skipped.
 robocopy $stage "$r\bin" /MIR /NFL /NDL /NJH /NJS /R:1 /W:1 | Out-Null
 if ($LASTEXITCODE -ge 8) { "note: bin\ could not be refreshed completely (program running?) - the installer is fine" }

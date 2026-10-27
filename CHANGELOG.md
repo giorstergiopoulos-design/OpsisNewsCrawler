@@ -1,7 +1,7 @@
 # Changelog
 
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
-Detailed notes per release: `docs/RELEASE-*.md` and the GitHub releases.
+Detailed notes per release: `docs/releases/RELEASE-<version>.md` and the GitHub releases.
 
 ## 0.15.0 — 2026-10-27
 - **The crawler themes are independent of Opsis**: inside Opsis you can now choose any crawler theme (Follow Windows, Light, Dark, Midnight, Forest, Dawn, Contrast, with or without the Windows accent). A new choice "Follow Opsis" uses the Opsis colours; existing installs are switched to it once, so nothing changes until you pick another theme.
@@ -10,7 +10,12 @@ Detailed notes per release: `docs/RELEASE-*.md` and the GitHub releases.
 - **Update notice**: first check 30 s after the start, then every 24 h, ETag so an unchanged answer is free, once per version, not while a full-screen app is in front, and not inside Opsis (Opsis announces).
 - Inside Opsis the plugin only adds the two menu entries; nothing is shown by itself.
 - Fixed: in 0.14.7 twelve language files contained an unescaped quotation mark in the history text and could not be read (menus showed raw keys); a new test checks that every language file is valid and has the same keys and placeholders.
-- 14 languages for all new texts. Tests: 233.
+- 14 languages for all new texts.
+- **Animated icon** (settings header, welcome guide, family window, tray, title bar) now passes six symbols: newspaper, ball, shield, economy, **weather** and **natural-disaster alert**; the program icon (`app.ico`) shows the same six.
+- **Bug audit** (`--audit-settings <report>` changes every check box, drop-down, number box and slider of the settings and reads the result back): 59 controls checked, 51 reach a setting and are shown again after reloading, 4 are input fields of "add" forms (nothing to save), 4 were not reachable. Found and fixed by reading the controls: **no keyboard operation** - the flat buttons could not be reached with Tab, the drop-down list ignored Up/Down/Home/End/F4/Space/Enter, the slider ignored the arrow/Page/Home/End keys, and none of the four showed where the keyboard focus was. Now all four are keyboard-operable with a visible focus ring (checked by the audit's keyboard section: 11 of 11). **Still open / not verified**: layout at 150 % and 200 % system scaling (the bar itself is checked at those heights, the settings window is not), Arabic layout of every settings page, and the settings page hosted inside Opsis.
+- Installer: wizard pictures made from the app artwork at 100/125/150/200 % (`--make-brand-art`); the release script also builds a portable zip, both with `.sha256`, and collects everything in `release\<version>-assets`.
+- Repo: README rewritten (icon, current features, new screenshots in dark and light, SHA-256 verification steps, requirements, third-party notices, the Opsis family), social-preview image (`docs/img/social-preview.png`); removed the abandoned `docs/archive`, the old per-release notes of 0.11-0.14, the zip hand-off note and the outdated screenshots; the CI version check no longer hard-codes 0.11.5.3 (it was failing on every push) and now checks that all versions, the installer, the About text and the changelog agree.
+- Tests: 233.
 
 ## 0.14.7 — 2026-10-23
 - The desktop bar follows the option Keep it above other windows in every case (0.14.5 forced it on top while standing in for a hidden taskbar).
@@ -19,10 +24,9 @@ Detailed notes per release: `docs/RELEASE-*.md` and the GitHub releases.
 - Auto-hide taskbar: detected correctly on Windows 11 (the taskbar is slid down to 1-2 pixel rows, not cloaked), so the bar inside it hides and the desktop bar takes over. Verified live with the Windows auto-hide on.
 
 ## 0.14.5 — 2026-10-23
-- The same story from different publishers (different wording) is shown once (word-set overlap, accents ignored).
-- Feeds use ETag / If-Modified-Since; per-feed health (last success, failures in a row) is tracked in the provider.
-- After resume from sleep, news, quotes and weather refresh after 6 s.
-- Review corrected: exact-title de-duplication already existed. Tests: 119.
+- Standalone theme choices match Opsis: Midnight, Forest, Dawn, Contrast and an option for the Windows accent colour. Inside Opsis the theme controls are hidden (Opsis pushes its theme).
+- Smoother animated icon (header 25 fps, tray 60 ms, 64-96 frames per loop).
+- The desktop bar can stand in for a hidden auto-hide taskbar; `--test-taskbar-hidden` simulates it; runs with their own `--config` no longer collide with the running instance. Tests: 128.
 
 ## 0.14.4 — 2026-10-23
 - The same story from different publishers (different wording) is shown once (word-set overlap, accents ignored).

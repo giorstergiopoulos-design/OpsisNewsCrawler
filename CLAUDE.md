@@ -41,7 +41,7 @@ reposition/refresh without losing the scroll position.
 - Do not scrape sites whose robots.txt/ToS forbid it (see `docs/DATA-SOURCES.md`). Do not add consent-bypass cookies.
 - Do not present delayed data as live. Quotes are labelled delayed.
 - Keep the app version in `src/*/*.csproj`, `OpsisNewsCrawler.iss`, and `OpsisNewsCrawlerPlugin.Version` in sync.
-- Files in `docs/archive/` are historical reference only (an abandoned parallel implementation and old chat notes).
+- Release assets are prepared in `release\<version>-assets` (ignored by git); the coordinator publishes. Per-release notes live in `docs/releases/`.
 
 ## v0.8.0 architecture notes (added 2026-10-13, evening)
 - **Task list**: `docs/TASKS.md` is the live list of requirements (R1–R12, N1–N11, O1–O6) with verified/unverified state. Update it whenever a task changes state.
