@@ -44,4 +44,18 @@ public sealed class LocaleFilesTests
             Assert.True(wanted.SequenceEqual(got), $"{code}:{key} placeholders differ");
         }
     }
+
+    // Keys that are legitimately the same in every language (the product name, the MIT licence text, technical names).
+    private static readonly HashSet<string> SameEverywhere = new() { "app.name", "license.text", "dep.dotnet", "fmt.monitor", "note.hostTheme" };
+
+    [Theory]
+    [InlineData("ar")] [InlineData("de")] [InlineData("es")] [InlineData("fr")] [InlineData("hi")] [InlineData("it")]
+    [InlineData("ja")] [InlineData("ko")] [InlineData("pt")] [InlineData("ru")] [InlineData("tr")] [InlineData("zh")]
+    public void NoEnglishTextLeftInOtherLanguages(string code)
+    {
+        var en = Load("en");
+        var other = Load(code);
+        var untranslated = en.Where(kv => kv.Value.Length > 12 && kv.Value.Any(char.IsLetter) && other[kv.Key] == kv.Value && !SameEverywhere.Contains(kv.Key)).Select(kv => kv.Key).ToList();
+        Assert.True(untranslated.Count == 0, $"{code}: still English: {string.Join(", ", untranslated)}");
+    }
 }

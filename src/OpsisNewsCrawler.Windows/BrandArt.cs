@@ -69,12 +69,9 @@ public static class BrandArt
             }
 
             using var font = new Font("Segoe UI Semibold", w * 0.115f, FontStyle.Regular, GraphicsUnit.Pixel);
-            using var sub = new Font("Segoe UI", w * 0.058f, FontStyle.Regular, GraphicsUnit.Pixel);
             var fmt = new StringFormat { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Far };
             g.DrawString("Opsis", font, Brushes.White, new RectangleF(pad, h * 0.60f, w - 2 * pad, h * 0.12f), fmt);
             g.DrawString("News Crawler", font, Brushes.White, new RectangleF(pad, h * 0.71f, w - 2 * pad, h * 0.12f), fmt);
-            using var muted = new SolidBrush(Color.FromArgb(200, 225, 240));
-            g.DrawString("News · Markets · Weather", sub, muted, new RectangleF(pad, h * 0.845f, w - 2 * pad, h * 0.1f), new StringFormat { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Near });
         }
         return bmp;
     }
