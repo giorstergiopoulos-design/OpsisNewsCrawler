@@ -118,6 +118,7 @@
   "hazard.refresh": "Prüfen alle (Minuten)",
   "hazard.icon": "Höchste aktive Warnung im animierten Symbol anzeigen",
   "hazard.slot": "Naturkatastrophen",
+  "hazard.flow": "Katastrophen-Fluss",
   "hazard.weatherIcon": "Aktuelles Wetter der ersten Stadt im animierten Symbol anzeigen",
   "geo.card": "Beliebigen Ort finden",
   "geo.hint": "Geben Sie einen Ortsnamen ein (Stadt, Dorf, Insel, überall auf der Welt), eine griechische Postleitzahl wie 542 48 oder Koordinaten wie 37.78, 20.89. Das Wetter wird dann für diesen Ort angezeigt.",

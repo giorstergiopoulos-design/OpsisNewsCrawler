@@ -301,7 +301,8 @@ public sealed class SettingsPanel : UserControl
         AddGroup(L("tab.sources"),
             (Loc.T("pk.news.flow"), Combine((null, BuildSources()), (L("tab.readLater"), BuildReadLater()))),
             (Loc.T("pk.markets.flow"), BuildMarkets()),
-            (Loc.T("pk.weather.flow"), BuildWeather()));
+            (Loc.T("pk.weather.flow"), BuildWeather()),
+            (L("hazard.flow"), BuildHazards()));
         var info = new List<(string, Control)>();
         if (showAboutTabs)
         {
@@ -398,7 +399,9 @@ public sealed class SettingsPanel : UserControl
     private static Control Row(string label, Control control, int labelWidth = 300)
     {
         var row = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Margin = new Padding(0, 2, 0, 2) };
-        row.Controls.Add(new Label { Text = label, AutoSize = false, Width = labelWidth, Height = 32, TextAlign = ContentAlignment.MiddleLeft });
+        // The label grows to a second or third line instead of being cut off (long translations), so the row adapts to its content.
+        var needed = TextRenderer.MeasureText(label, new Font("Segoe UI", 9f), new Size(labelWidth, 0), TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix).Height + 10;
+        row.Controls.Add(new Label { Text = label, AutoSize = false, Width = labelWidth, Height = Math.Max(32, needed), TextAlign = ContentAlignment.MiddleLeft });
         row.Controls.Add(control);
         return row;
     }
@@ -936,6 +939,28 @@ public sealed class SettingsPanel : UserControl
         fields.Controls.Add(fieldsFlow);
         flow.Controls.Add(fields);
 
+        // The animated icon can show the current weather of the first city.
+        weatherInIcon = new FlatCheck { Text = L("hazard.weatherIcon") };
+        flow.Controls.Add(weatherInIcon);
+
+        citySearch.TextValueChanged += (_, _) => ShowCities();
+        cityList.ItemChecked += (index, isChecked) =>
+        {
+            if (index < 0 || index >= shownCities.Count) return;
+            var id = shownCities[index].Id;
+            if (isChecked) { if (!workCities.Contains(id)) workCities.Add(id); }
+            else workCities.Remove(id);
+        };
+        all.Click += (_, _) => { foreach (var c in shownCities) if (!workCities.Contains(c.Id)) workCities.Add(c.Id); ShowCities(); };
+        none.Click += (_, _) => { foreach (var c in shownCities) workCities.Remove(c.Id); ShowCities(); };
+        ShowCities();
+        return page;
+    }
+
+    /// <summary>The natural-disasters flow: its own page in the Sources group (where from, how far, how strong, how old, and the animated icon).</summary>
+    private Control BuildHazards()
+    {
+        var page = NewPage(out var flow);
         // Natural disasters: where from, how far, how strong, how old; and whether the animated icon shows them.
         var hazards = new FlatCard(L("hazard.card"));
         var hazardFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
@@ -952,7 +977,7 @@ public sealed class SettingsPanel : UserControl
         hazardRefresh = new FlatNumber { Width = 120 };
         hazardRefresh.Configure(5, 240, 5);
         hazardFlow.Controls.Add(Row(L("hazard.refresh"), hazardRefresh, 260));
-        var kindsRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = true, MaximumSize = new Size(700, 0) };
+        var kindsRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = true, MaximumSize = new Size(470, 0) };
         hazardKindChecks.Clear();
         foreach (var kind in Enum.GetValues<HazardKind>())
         {
@@ -960,8 +985,8 @@ public sealed class SettingsPanel : UserControl
             hazardKindChecks[kind] = check;
             kindsRow.Controls.Add(check);
         }
-        hazardFlow.Controls.Add(Row(L("hazard.kinds"), kindsRow, 260));
-        var sourcesRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = true, MaximumSize = new Size(700, 0) };
+        hazardFlow.Controls.Add(Row(L("hazard.kinds"), kindsRow, 240));
+        var sourcesRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = true, MaximumSize = new Size(470, 0) };
         hazardSourceChecks.Clear();
         foreach (var (source, name) in new[] { (HazardSources.Usgs, "USGS"), (HazardSources.Emsc, "EMSC"), (HazardSources.Gdacs, "GDACS"), (HazardSources.Eonet, "NASA EONET") })
         {
@@ -969,25 +994,11 @@ public sealed class SettingsPanel : UserControl
             hazardSourceChecks[source] = check;
             sourcesRow.Controls.Add(check);
         }
-        hazardFlow.Controls.Add(Row(L("hazard.src"), sourcesRow, 260));
+        hazardFlow.Controls.Add(Row(L("hazard.src"), sourcesRow, 240));
         hazardInIcon = new FlatCheck { Text = L("hazard.icon") };
         hazardFlow.Controls.Add(hazardInIcon);
-        weatherInIcon = new FlatCheck { Text = L("hazard.weatherIcon") };
-        hazardFlow.Controls.Add(weatherInIcon);
         hazards.Controls.Add(hazardFlow);
         flow.Controls.Add(hazards);
-
-        citySearch.TextValueChanged += (_, _) => ShowCities();
-        cityList.ItemChecked += (index, isChecked) =>
-        {
-            if (index < 0 || index >= shownCities.Count) return;
-            var id = shownCities[index].Id;
-            if (isChecked) { if (!workCities.Contains(id)) workCities.Add(id); }
-            else workCities.Remove(id);
-        };
-        all.Click += (_, _) => { foreach (var c in shownCities) if (!workCities.Contains(c.Id)) workCities.Add(c.Id); ShowCities(); };
-        none.Click += (_, _) => { foreach (var c in shownCities) workCities.Remove(c.Id); ShowCities(); };
-        ShowCities();
         return page;
     }
 

@@ -118,6 +118,7 @@
   "hazard.refresh": "Şu aralıkla denetle (dakika)",
   "hazard.icon": "Hareketli simgede en yüksek etkin uyarıyı göster",
   "hazard.slot": "Doğal afetler",
+  "hazard.flow": "Afet akışı",
   "hazard.weatherIcon": "İlk şehrin güncel hava durumunu hareketli simgede göster",
   "geo.card": "Herhangi bir yeri bul",
   "geo.hint": "Bir yer adı (kasaba, köy, ada, dünyanın her yeri), 542 48 gibi bir Yunan posta kodu ya da 37.78, 20.89 gibi koordinatlar yazın. Hava durumu o yer için gösterilir.",

@@ -118,6 +118,7 @@
   "hazard.refresh": "Comprobar cada (minutos)",
   "hazard.icon": "Mostrar la alerta activa más alta en el icono animado",
   "hazard.slot": "Desastres naturales",
+  "hazard.flow": "Flujo de desastres",
   "hazard.weatherIcon": "Mostrar el tiempo actual de la primera ciudad en el icono animado",
   "geo.card": "Encontrar cualquier lugar",
   "geo.hint": "Escriba el nombre de un lugar (ciudad, pueblo, isla, en cualquier parte del mundo), un código postal griego como 542 48, o coordenadas como 37.78, 20.89. El tiempo se muestra entonces para ese lugar.",

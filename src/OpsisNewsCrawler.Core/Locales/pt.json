@@ -118,6 +118,7 @@
   "hazard.refresh": "Verificar a cada (minutos)",
   "hazard.icon": "Mostrar o alerta ativo mais alto no ícone animado",
   "hazard.slot": "Desastres naturais",
+  "hazard.flow": "Fluxo de desastres",
   "hazard.weatherIcon": "Mostrar a meteorologia atual da primeira cidade no ícone animado",
   "geo.card": "Encontrar qualquer lugar",
   "geo.hint": "Escreva o nome de um lugar (cidade, aldeia, ilha, em qualquer parte do mundo), um código postal grego como 542 48 ou coordenadas como 37.78, 20.89. A meteorologia é então mostrada para esse lugar.",

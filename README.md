@@ -68,7 +68,7 @@
 </tr>
 <tr>
 <td><img src="docs/screenshots/el/dark/10-weather-search.png" width="440"/><br/><sub>Καιρός: εύρεση οποιουδήποτε τόπου</sub></td>
-<td><img src="docs/img/icon-live-states.png" width="440"/><br/><sub>Το εικονίδιο με τον ζωντανό καιρό και τις ειδοποιήσεις</sub></td>
+<td><img src="docs/screenshots/el/dark/11-disasters.png" width="440"/><br/><sub>Ροή καταστροφών</sub></td>
 </tr>
 </table>
 
@@ -161,7 +161,7 @@ Dark and light themes (all of them: [`docs/screenshots`](docs/screenshots)).
 </tr>
 <tr>
 <td><img src="docs/screenshots/en/light/10-weather-search.png" width="440"/><br/><sub>Weather: find any place</sub></td>
-<td><img src="docs/img/icon-live-states.png" width="440"/><br/><sub>The icon with live weather and alerts</sub></td>
+<td><img src="docs/screenshots/en/light/11-disasters.png" width="440"/><br/><sub>Disasters flow</sub></td>
 </tr>
 </table>
 

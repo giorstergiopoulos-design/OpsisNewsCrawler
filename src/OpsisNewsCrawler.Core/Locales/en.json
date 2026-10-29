@@ -119,6 +119,7 @@
   "hazard.refresh": "Check every (minutes)",
   "hazard.icon": "Show the highest active alert in the animated icon",
   "hazard.slot": "Natural disasters",
+  "hazard.flow": "Disasters flow",
   "hazard.weatherIcon": "Show the current weather of the first city in the animated icon",
   "geo.card": "Find any place",
   "geo.hint": "Type a place name (town, village, island, anywhere in the world), a Greek postcode such as 542 48, or coordinates such as 37.78, 20.89. The weather is then shown for that place.",

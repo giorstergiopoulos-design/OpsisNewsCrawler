@@ -367,8 +367,24 @@ internal sealed class SuiteCard : Panel
             b.Location = new Point(Loc.IsRtl ? CardWidth - x - size.Width : x, y);
             x += size.Width + 8;
         }
-        Height = y + 32 + 16;
+        NaturalHeight = y + 32 + 16;
+        Height = Math.Max(NaturalHeight, forcedHeight);
+        // the buttons sit at the bottom edge, so the same row of buttons lines up in every card
+        foreach (var b in buttons) b.Top = Height - 16 - b.Height;
         Invalidate();
+    }
+
+    private int forcedHeight;
+
+    /// <summary>Height the card would have for its own content.</summary>
+    public int NaturalHeight { get; private set; }
+
+    /// <summary>Gives the card at least this height (all cards of the window have the same size; the content adapts inside).</summary>
+    public void SetMinimumHeight(int height)
+    {
+        if (forcedHeight == height) return;
+        forcedHeight = height;
+        Relayout();
     }
 
     protected override void OnPaint(PaintEventArgs e)
@@ -570,6 +586,15 @@ internal sealed class SuiteForm : SplashBase
             list.Controls.Add(card);
         }
         list.ResumeLayout();
+        NormaliseCardHeights();
+    }
+
+    /// <summary>Universal card size: every card takes the height of the tallest one.</summary>
+    private void NormaliseCardHeights()
+    {
+        foreach (var c in cards) c.SetMinimumHeight(0);
+        var tallest = cards.Count == 0 ? 0 : cards.Max(c => c.NaturalHeight);
+        foreach (var c in cards) c.SetMinimumHeight(tallest);
     }
 
     /// <summary>Gets the live catalogue, reads the installed state of every app and asks GitHub for the latest versions. All failures are silent.</summary>
@@ -585,12 +610,13 @@ internal sealed class SuiteForm : SplashBase
             var states = await Task.Run(() => cards.Select(c => (Card: c, Info: SuiteDetector.Detect(c.App, probe))).ToList(), cts.Token);
             if (IsDisposed) return;
             foreach (var (card, state) in states) card.SetInstalled(state);
+            NormaliseCardHeights();
 
             var current = catalog!;
             await Task.WhenAll(cards.Where(c => !c.IsSelf && c.Info.Installed).Select(async c =>
             {
                 var (tag, _) = await SuiteDownloader.LatestAsync(current, c.App, cts.Token);
-                if (!IsDisposed && tag is not null) BeginInvoke(new Action(() => c.SetLatest(tag)));
+                if (!IsDisposed && tag is not null) BeginInvoke(new Action(() => { c.SetLatest(tag); NormaliseCardHeights(); }));
             }));
         }
         catch (OperationCanceledException) { }
