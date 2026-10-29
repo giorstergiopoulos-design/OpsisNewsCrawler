@@ -58,6 +58,7 @@ public sealed class SettingsPanel : UserControl
     private FlatText yahooSearch = null!;
     private FlatButton yahooSearchButton = null!, yahooAddButton = null!, yahooRemoveButton = null!;
     private FlatList yahooHitList = null!;
+    private FlatCombo yahooGroup = null!;
     private Label yahooStatus = null!;
     private readonly List<FlatButton> yahooPresetButtons = new();
     private List<YahooHit> yahooHits = new();
@@ -139,6 +140,7 @@ public sealed class SettingsPanel : UserControl
     // Look
     private FlatCombo themeMode = null!;
     private FlatCheck themeAccent = null!;
+    private FlatNumber speedMainB = null!, speedSecond = null!, speedSecondB = null!, speedMini = null!, speedMiniB = null!, speedMonitor = null!, speedMonitorB = null!;
     private Control themeRow = null!;
 
     private static int ThemeIndex(string mode) => mode switch { "light" => 1, "dark" => 2, "host" => 3 + Theme.NamedThemes.Length, _ => Array.IndexOf(Theme.NamedThemes, mode) is >= 0 and var i ? 3 + i : 0 };
@@ -443,6 +445,27 @@ public sealed class SettingsPanel : UserControl
         speed = new FlatNumber();
         speed.Configure(AppConfig.MinScrollSpeed, AppConfig.MaxScrollSpeed, 10);
         flow.Controls.Add(Row(L("lbl.speed"), speed));
+
+        // Each bar, and each half of a split bar, has its own speed; 0 = the same as the speed above.
+        var speedCard = new FlatCard(L("speed.card"));
+        var speedFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        speedFlow.Controls.Add(Note(L("speed.note"), 700));
+        FlatNumber SpeedBox()
+        {
+            var box = new FlatNumber { Width = 120 };
+            box.Configure(0, AppConfig.MaxScrollSpeed, 10);
+            return box;
+        }
+        speedMainB = SpeedBox(); speedSecond = SpeedBox(); speedSecondB = SpeedBox(); speedMini = SpeedBox(); speedMiniB = SpeedBox(); speedMonitor = SpeedBox(); speedMonitorB = SpeedBox();
+        speedFlow.Controls.Add(Row(L("speed.mainB"), speedMainB, 340));
+        speedFlow.Controls.Add(Row(L("speed.second"), speedSecond, 340));
+        speedFlow.Controls.Add(Row(L("speed.secondB"), speedSecondB, 340));
+        speedFlow.Controls.Add(Row(L("speed.mini"), speedMini, 340));
+        speedFlow.Controls.Add(Row(L("speed.miniB"), speedMiniB, 340));
+        speedFlow.Controls.Add(Row(L("speed.monitors"), speedMonitor, 340));
+        speedFlow.Controls.Add(Row(L("speed.monitorsB"), speedMonitorB, 340));
+        speedCard.Controls.Add(speedFlow);
+        flow.Controls.Add(speedCard);
 
         hoverPause = new FlatCheck { Text = L("chk.hoverPause") };
         icons = new FlatCheck { Text = L("chk.icons") };
@@ -878,7 +901,7 @@ public sealed class SettingsPanel : UserControl
 
         var card = new FlatCard(L("tab.weather"));
         var inner = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-        citySearch = new FlatText { Width = 300 };
+        citySearch = new FlatText { Width = 200 };
         var all = new FlatButton { Text = L("btn.selectAll") };
         var none = new FlatButton { Text = L("btn.selectNone") };
         var searchRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
@@ -1277,7 +1300,13 @@ public sealed class SettingsPanel : UserControl
         searchRow2.Controls.Add(yahooSearch);
         searchRow2.Controls.Add(yahooSearchButton);
         catalogFlow.Controls.Add(searchRow2);
-        yahooHitList = new FlatList { Width = 740, Height = 30 * 6 + 4 };
+        // The whole built-in catalogue is listed to pick from; typing filters it at once, and Search asks Yahoo for anything else.
+        yahooGroup = new FlatCombo { Width = 240 };
+        yahooGroup.SetItems(new[] { L("yahoo.group.all") }.Concat(YahooPresets.All.Select(g => L("yahoo.group." + g.Key))), 0);
+        var groupRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
+        groupRow.Controls.Add(yahooGroup);
+        catalogFlow.Controls.Add(groupRow);
+        yahooHitList = new FlatList { Width = 740, Height = 30 * 10 + 4 };
         yahooHitList.SetShowChecks(true);
         catalogFlow.Controls.Add(yahooHitList);
         yahooAddButton = new FlatButton { Text = L("btn.yahooAdd") };
@@ -1299,6 +1328,9 @@ public sealed class SettingsPanel : UserControl
         catalog.Controls.Add(catalogFlow);
         flow.Controls.Add(catalog);
         yahooCatalog = catalog;
+        yahooSearch.TextValueChanged += (_, _) => ShowYahooCatalogue();
+        yahooGroup.SelectedIndexChanged += (_, _) => ShowYahooCatalogue();
+        ShowYahooCatalogue();
         yahooSearchButton.Click += async (_, _) => await RunYahooSearchAsync();
         yahooAddButton.Click += (_, _) =>
             AddYahoo(Enumerable.Range(0, yahooHits.Count).Where(i => yahooHitList.GetChecked(i)).Select(i => (yahooHits[i].Symbol, yahooHits[i].Name, yahooHits[i].Name)));
@@ -1311,14 +1343,14 @@ public sealed class SettingsPanel : UserControl
         // All the shares of one Euronext market: pick the market, search, tick the ones to show.
         var card = new FlatCard(L("card.shares"));
         var inner = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-        marketCombo = new FlatCombo { Width = 360 };
+        marketCombo = new FlatCombo { Width = 300 };
         marketCombo.SetItems(EuronextCatalog.Markets.Select(m => m.DisplayName), 0);
         refreshCatalog = new FlatButton { Text = L("btn.refreshList") };
         var marketRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
         marketRow.Controls.Add(marketCombo);
         marketRow.Controls.Add(refreshCatalog);
         inner.Controls.Add(Row(L("lbl.market"), marketRow, 150));
-        stockSearch = new FlatText { Width = 360 };
+        stockSearch = new FlatText { Width = 240 };
         var selectAll = new FlatButton { Text = L("btn.selectAll") };
         var selectNone = new FlatButton { Text = L("btn.selectNone") };
         var searchRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
@@ -1800,6 +1832,8 @@ public sealed class SettingsPanel : UserControl
             language.SelectSilently(Math.Max(0, langs.ToList().FindIndex(l => l.Code == Loc.Language)));
             refresh.SetValueSilently(c.RefreshIntervalSeconds);
             speed.SetValueSilently(c.ScrollSpeed);
+            speedMainB.SetValueSilently(c.MainSpeedB); speedSecond.SetValueSilently(c.SecondSpeed); speedSecondB.SetValueSilently(c.SecondSpeedB);
+            speedMini.SetValueSilently(c.MiniSpeed); speedMiniB.SetValueSilently(c.MiniSpeedB); speedMonitor.SetValueSilently(c.MonitorSpeed); speedMonitorB.SetValueSilently(c.MonitorSpeedB);
             hoverPause.Checked = c.PauseOnHover;
             icons.Checked = c.ShowIcons;
             preview.Checked = c.ShowPreview;
@@ -2020,9 +2054,21 @@ public sealed class SettingsPanel : UserControl
     private void UpdateYahooUi()
     {
         var on = yahooHistory.Checked;
-        foreach (var c in new Control[] { yahooSearch, yahooSearchButton, yahooAddButton, yahooRemoveButton, yahooHitList }.Concat(yahooPresetButtons)) c.Enabled = on;
+        foreach (var c in new Control[] { yahooSearch, yahooSearchButton, yahooAddButton, yahooRemoveButton, yahooHitList, yahooGroup }.Concat(yahooPresetButtons)) c.Enabled = on;
         if (!on) yahooStatus.Text = L("yahoo.off");
-        else if (yahooStatus.Text == L("yahoo.off")) yahooStatus.Text = "";
+        else if (yahooStatus.Text.Length == 0 || yahooStatus.Text == L("yahoo.off")) yahooStatus.Text = L("yahoo.localHint");
+    }
+
+    /// <summary>Lists the built-in catalogue (the chosen group, filtered by the text typed); the ticked rows are added with the button.</summary>
+    private void ShowYahooCatalogue()
+    {
+        if (yahooHitList is null || yahooHitList.IsDisposed) return;
+        var groupKey = yahooGroup.SelectedIndex > 0 && yahooGroup.SelectedIndex <= YahooPresets.All.Count ? YahooPresets.All[yahooGroup.SelectedIndex - 1].Key : null;
+        var items = YahooPresets.Filter(groupKey, yahooSearch.Value);
+        yahooHits = items.Select(x => new YahooHit(x.Item.Symbol, Loc.IsGreek ? x.Item.NameEl : x.Item.NameEn, L("yahoo.group." + x.GroupKey), "")).ToList();
+        yahooHitList.ClearRows();
+        foreach (var h in yahooHits) yahooHitList.AddRow($"{h.Symbol}  —  {h.Name}   ({h.Type})", false);
+        yahooStatus.Text = yahooHits.Count == 0 ? L("yahoo.none") : L("yahoo.localHint");
     }
 
     private async Task RunYahooSearchAsync()
@@ -2102,6 +2148,9 @@ public sealed class SettingsPanel : UserControl
         c.Language = Loc.Available().ElementAtOrDefault(Math.Max(0, language.SelectedIndex)).Code ?? c.Language;
         c.NewsRefreshSeconds = refresh.Value;
         c.ScrollSpeed = speed.Value;
+        c.MainSpeedB = AppConfig.CleanSpeed(speedMainB.Value); c.SecondSpeed = AppConfig.CleanSpeed(speedSecond.Value); c.SecondSpeedB = AppConfig.CleanSpeed(speedSecondB.Value);
+        c.MiniSpeed = AppConfig.CleanSpeed(speedMini.Value); c.MiniSpeedB = AppConfig.CleanSpeed(speedMiniB.Value);
+        c.MonitorSpeed = AppConfig.CleanSpeed(speedMonitor.Value); c.MonitorSpeedB = AppConfig.CleanSpeed(speedMonitorB.Value);
         c.PauseOnHover = hoverPause.Checked;
         c.ShowIcons = icons.Checked;
         c.ShowPreview = preview.Checked;

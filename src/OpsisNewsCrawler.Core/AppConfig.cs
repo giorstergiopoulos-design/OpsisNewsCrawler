@@ -45,6 +45,18 @@ public sealed class AppConfig
     public bool FollowTaskbar { get; set; } = true;
     public int MaxItemsPerFeed { get; set; } = 8;
     public int ScrollSpeed { get; set; } = 60; // pixels per second
+
+    // Speeds of the other bars and of the second half of a split bar; 0 = the same as ScrollSpeed. Valid values: 0 or MinScrollSpeed..MaxScrollSpeed.
+    public int MainSpeedB { get; set; }
+    public int SecondSpeed { get; set; }
+    public int SecondSpeedB { get; set; }
+    public int MiniSpeed { get; set; }
+    public int MiniSpeedB { get; set; }
+    public int MonitorSpeed { get; set; }
+    public int MonitorSpeedB { get; set; }
+
+    /// <summary>0 stays 0 ("like the main bar"), anything else is kept between the minimum and the maximum speed.</summary>
+    public static int CleanSpeed(int value) => value <= 0 ? 0 : Math.Clamp(value, MinScrollSpeed, MaxScrollSpeed);
     public bool PauseOnHover { get; set; } = true;
     public bool ShowPreview { get; set; } = true;
     public bool ShowIcons { get; set; } = true;
@@ -456,6 +468,8 @@ public sealed class AppConfig
         MutedNewsKeywords = (MutedNewsKeywords ?? new()).Where(k => !string.IsNullOrWhiteSpace(k))
             .Select(k => k.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).Take(100).ToList();
         ScrollSpeed = Math.Clamp(ScrollSpeed, MinScrollSpeed, MaxScrollSpeed);
+        MainSpeedB = CleanSpeed(MainSpeedB); SecondSpeed = CleanSpeed(SecondSpeed); SecondSpeedB = CleanSpeed(SecondSpeedB);
+        MiniSpeed = CleanSpeed(MiniSpeed); MiniSpeedB = CleanSpeed(MiniSpeedB); MonitorSpeed = CleanSpeed(MonitorSpeed); MonitorSpeedB = CleanSpeed(MonitorSpeedB);
         if (!Enum.IsDefined(Mode)) Mode = TickerMode.Economy;
         if (!Enum.IsDefined(Position)) Position = TickerPosition.BottomTaskbar;
         OpacityPercent = Math.Clamp(OpacityPercent, 30, 100);

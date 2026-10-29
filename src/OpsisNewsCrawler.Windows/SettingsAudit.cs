@@ -227,3 +227,78 @@ public static class GeoSnapshot
         while (!task.IsCompleted && DateTime.UtcNow < until) { Application.DoEvents(); Thread.Sleep(30); }
     }
 }
+
+/// <summary><c>--snapshot-tall &lt;png&gt; &lt;tab&gt; --config &lt;file&gt;</c>: one settings page on a tall window, so that cards far down the page are in the picture.</summary>
+public static class TallSnapshot
+{
+    public static void Run(TickerHost host, string png, int tab, int height)
+    {
+        var form = new Form { StartPosition = FormStartPosition.Manual, Location = new Point(-4000, 0), ClientSize = new Size(1180, height), ShowInTaskbar = false };
+        var panel = new SettingsPanel(host, showCloseButton: false) { Dock = DockStyle.Fill };
+        form.Controls.Add(panel);
+        form.Show();
+        Application.DoEvents();
+        panel.LoadFromConfig();
+        panel.SelectTab(tab);
+        for (var i = 0; i < 12; i++) { Application.DoEvents(); Thread.Sleep(40); }
+        using var bmp = new Bitmap(form.ClientSize.Width, form.ClientSize.Height);
+        form.DrawToBitmap(bmp, new Rectangle(Point.Empty, bmp.Size));
+        bmp.Save(png);
+        form.Close();
+    }
+}
+
+/// <summary><c>--audit-layout &lt;report&gt; --config &lt;file&gt;</c>: for every page of the settings, reports the cards wider than the common card width and controls that stick out of their card.</summary>
+public static class LayoutAudit
+{
+    public static void Run(TickerHost host, string report)
+    {
+        var form = new Form { StartPosition = FormStartPosition.Manual, Location = new Point(-4000, 0), ClientSize = new Size(1180, 2600), ShowInTaskbar = false };
+        var panel = new SettingsPanel(host, showCloseButton: false) { Dock = DockStyle.Fill };
+        form.Controls.Add(panel);
+        form.Show();
+        Application.DoEvents();
+        panel.LoadFromConfig();
+        var sb = new System.Text.StringBuilder();
+        for (var tab = 0; tab < panel.TabCount; tab++)
+        {
+            panel.SelectTab(tab);
+            for (var i = 0; i < 6; i++) { Application.DoEvents(); Thread.Sleep(30); }
+            foreach (var card in All(panel).OfType<FlatCard>().Where(c => ShownNow(c)))
+            {
+                // The normal width is 785 (the 780 minimum plus its border); anything wider has content that does not fit.
+                if (card.Width > FlatCard.CardWidth + 10)
+                {
+                    var wide = All(card).Where(c => c.Right > 0).OrderByDescending(c => c.PointToScreen(new Point(c.Width, 0)).X).FirstOrDefault();
+                    var heading = All(card.Parent!).OfType<Label>().FirstOrDefault(l => l.Parent == card)?.Text ?? "";
+                    var rows = All(card).OfType<FlowLayoutPanel>().Where(f => f.Width > FlatCard.CardWidth - 30).Select(f => f.Controls.OfType<Control>().Select(c => c is Label lb ? lb.Text : c.GetType().Name).FirstOrDefault()).Where(s => s != null).Take(3);
+                    sb.AppendLine($"tab {tab}: card '{heading}' is {card.Width}px wide (normal {FlatCard.CardWidth + 5}); wide rows: {string.Join(" | ", rows)}");
+                }
+                foreach (Control inner in Descendants(card))
+                {
+                    var right = inner.PointToScreen(new Point(inner.Width, 0)).X - card.PointToScreen(Point.Empty).X;
+                    if (right > card.Width + 1 && inner.Visible) sb.AppendLine($"tab {tab}: {inner.GetType().Name} '{(inner is Label l ? l.Text : inner.Name)}' ends {right - card.Width}px outside its card");
+                }
+            }
+        }
+        File.WriteAllText(report, sb.Length == 0 ? "no card is wider than the common width; nothing sticks out\n" : sb.ToString());
+        form.Close();
+    }
+
+    private static IEnumerable<Control> All(Control root)
+    {
+        foreach (Control c in root.Controls)
+        {
+            yield return c;
+            foreach (var d in All(c)) yield return d;
+        }
+    }
+
+    private static IEnumerable<Control> Descendants(Control root) => All(root);
+
+    private static bool ShownNow(Control c)
+    {
+        for (Control? x = c; x is not null; x = x.Parent) if (!x.Visible) return false;
+        return true;
+    }
+}

@@ -10,7 +10,11 @@
 - **Πρώτες ύλες**: πετρέλαιο/αέριο από συμβόλαια Yahoo (καθυστέρηση ~15′) όταν η επιλογή Yahoo είναι ενεργή· αλλιώς οι ημερήσιες τιμές με την ημερομηνία τους.
 - Μεταφράσεις στις 14 γλώσσες για κάθε νέο κείμενο, με test.
 
-**Δεν περιλαμβάνεται** (σε επόμενη έκδοση): ταχύτητα ανά μπάρα και ανά μισό split μπάρας, πλήρης αναζήτηση στον κατάλογο Yahoo, ζωντανή επαλήθευση στην επιφάνεια εργασίας του ιδιοκτήτη, έλεγχος στο 150/200 % κλιμάκωση.
+- **Ταχύτητα ανά μπάρα** (κύρια και δεύτερο μισό split, δεύτερη μπάρα, μπάρα επιφάνειας, άλλες οθόνες)· η ροδέλα αλλάζει μόνο τη μπάρα ή το μισό που δείχνει.
+- **Κατάλογος Yahoo**: λίστα με όλα τα ενσωματωμένα προϊόντα (100+ σε 7 ομάδες) για επιλογή, με φίλτρο ομάδας και άμεσο φιλτράρισμα· η Αναζήτηση μένει.
+- **Έλεγχος διάταξης** σε 14 γλώσσες × όλες τις σελίδες· διορθώθηκαν δύο κάρτες που ξεπερνούσαν το πλάτος.
+
+**Δεν έχει ελεγχθεί**: ζωντανή επαλήθευση στην επιφάνεια εργασίας του ιδιοκτήτη, κλιμάκωση 150/200 %.
 
 ## English
 
@@ -22,4 +26,8 @@
 - **Raw materials**: oil and gas from Yahoo futures (~15 min delay) when the Yahoo option is on; otherwise the daily values with their date.
 - Translations in all 14 languages for every new text, with a test.
 
-**Not included** (a later version): speed per bar and per half of a split bar, a full search of the Yahoo catalogue, live verification on the owner's desktop, checks at 150/200 % scaling.
+- **Speed per bar** (main bar and the second half of a split bar, second bar, desktop bar, other monitors); the mouse wheel changes only the bar or half it is over.
+- **Yahoo catalogue**: a list of all built-in instruments (100+ in 7 groups) to pick from, with a group filter and instant filtering; Search stays.
+- **Layout audit** for 14 languages × every page; two cards that were wider than the common width were fixed.
+
+**Not verified**: live check on the owner's desktop, 150/200 % scaling.

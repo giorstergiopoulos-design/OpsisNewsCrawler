@@ -115,6 +115,22 @@ internal static class Program
             return;
         }
 
+        if (Array.IndexOf(args, "--snapshot-tall") is >= 0 and var taAt && taAt + 2 < args.Length)
+        {
+            ApplicationConfiguration.Initialize();
+            var cfgTa = Array.IndexOf(args, "--config");
+            using var taHost = new TickerHost(cfgTa >= 0 && cfgTa + 1 < args.Length ? args[cfgTa + 1] : null);
+            TallSnapshot.Run(taHost, args[taAt + 1], int.Parse(args[taAt + 2]), taAt + 3 < args.Length && int.TryParse(args[taAt + 3], out var tallHeight) ? tallHeight : 2200);
+            return;
+        }
+        if (Array.IndexOf(args, "--audit-layout") is >= 0 and var lyAt && lyAt + 1 < args.Length)
+        {
+            ApplicationConfiguration.Initialize();
+            var cfgLy = Array.IndexOf(args, "--config");
+            using var lyHost = new TickerHost(cfgLy >= 0 && cfgLy + 1 < args.Length ? args[cfgLy + 1] : null);
+            LayoutAudit.Run(lyHost, args[lyAt + 1]);
+            return;
+        }
         if (Array.IndexOf(args, "--snapshot-portfolio") is >= 0 and var pfAt && pfAt + 1 < args.Length)
         {
             ApplicationConfiguration.Initialize();

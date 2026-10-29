@@ -139,6 +139,9 @@ public sealed class TickerWindow : Form
     /// <summary>Raised when the user changes the speed with the mouse wheel (pixels per second).</summary>
     public event Action<double>? ScrollSpeedChanged;
 
+    /// <summary>The wheel was turned over the second half of a split bar (pixels per second).</summary>
+    public event Action<double>? ScrollSpeedBChanged;
+
     /// <summary>Pause scrolling while another application's window is in the foreground.</summary>
     [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public bool PauseOnForeground { get; set; } = true;
@@ -170,6 +173,15 @@ public sealed class TickerWindow : Form
 
     /// <summary>Scroll speed in pixels per second.</summary>
     [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    private double scrollSpeedB;
+
+    /// <summary>Speed of the second half of a split bar; 0 = the same as <see cref="ScrollSpeed"/>.</summary>
+    public double ScrollSpeedB
+    {
+        get => scrollSpeedB;
+        set => scrollSpeedB = value <= 0 ? 0 : Math.Clamp(value, AppConfig.MinScrollSpeed, AppConfig.MaxScrollSpeed);
+    }
+
     public double ScrollSpeed
     {
         get => scrollSpeed;
@@ -644,6 +656,13 @@ public sealed class TickerWindow : Form
     private void OnCanvasMouseWheel(object? sender, MouseEventArgs e)
     {
         if (e.Delta == 0) return;
+        // Over the second half of a split bar only that half changes; everywhere else the first half (or the whole bar) does.
+        if (split && ReferenceEquals(sender, canvasB))
+        {
+            ScrollSpeedB = (scrollSpeedB > 0 ? scrollSpeedB : scrollSpeed) + Math.Sign(e.Delta) * SpeedWheelStep;
+            ScrollSpeedBChanged?.Invoke(scrollSpeedB);
+            return;
+        }
         ScrollSpeed += Math.Sign(e.Delta) * SpeedWheelStep;
         ScrollSpeedChanged?.Invoke(scrollSpeed);
     }
@@ -668,11 +687,11 @@ public sealed class TickerWindow : Form
         if (pausedByForeground || manuallyPaused) return;
         if (PauseOnHover && (canvas.IsMouseInside() || canvasB.IsMouseInside())) return;
 
-        Advance(canvas, dt, () => state.ScrollOffset, state.SetScrollOffset);
-        if (split) Advance(canvasB, dt, () => state.ScrollOffsetB, state.SetScrollOffsetB);
+        Advance(canvas, dt, scrollSpeed, () => state.ScrollOffset, state.SetScrollOffset);
+        if (split) Advance(canvasB, dt, scrollSpeedB > 0 ? scrollSpeedB : scrollSpeed, () => state.ScrollOffsetB, state.SetScrollOffsetB);
     }
 
-    private void Advance(TickerCanvas c, double dt, Func<double> getOffset, Action<double> setOffset)
+    private void Advance(TickerCanvas c, double dt, double speed, Func<double> getOffset, Action<double> setOffset)
     {
         if (!c.IsScrollable())
         {
@@ -684,7 +703,7 @@ public sealed class TickerWindow : Form
             return;
         }
 
-        var next = getOffset() + scrollSpeed * dt;
+        var next = getOffset() + speed * dt;
         var loop = c.GetLoopLength();
         if (next >= loop) next -= loop; // seamless: the strip is drawn twice
         setOffset(next);

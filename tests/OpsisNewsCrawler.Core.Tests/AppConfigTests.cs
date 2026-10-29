@@ -65,3 +65,33 @@ public sealed class AppConfigTests
         }
     }
 }
+
+public sealed class BarSpeedConfigTests
+{
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(-5, 0)]
+    [InlineData(5, 10)]
+    [InlineData(60, 60)]
+    [InlineData(9999, 400)]
+    public void SpeedIsZeroOrWithinTheLimits(int input, int expected) => Assert.Equal(expected, AppConfig.CleanSpeed(input));
+
+    [Fact]
+    public void SavedSpeedsAreCleanedOnLoad()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"opsis-speed-{Guid.NewGuid():N}.json");
+        try
+        {
+            File.WriteAllText(path, System.Text.Json.JsonSerializer.Serialize(new AppConfig { ScrollSpeed = 80, MainSpeedB = 3, SecondSpeed = 120, SecondSpeedB = -1, MiniSpeed = 9999, MonitorSpeed = 40 }));
+            var c = AppConfig.Load(path);
+            Assert.Equal(80, c.ScrollSpeed);
+            Assert.Equal(10, c.MainSpeedB);
+            Assert.Equal(120, c.SecondSpeed);
+            Assert.Equal(0, c.SecondSpeedB);
+            Assert.Equal(400, c.MiniSpeed);
+            Assert.Equal(0, c.MiniSpeedB);
+            Assert.Equal(40, c.MonitorSpeed);
+        }
+        finally { if (File.Exists(path)) File.Delete(path); }
+    }
+}

@@ -122,10 +122,11 @@ public class YahooCatalogTests
     }
 
     [Fact]
-    public void Presets_HaveFourGroupsWithinTheLimit()
+    public void Presets_HaveSevenGroupsAndEachFitsTheLimit()
     {
-        Assert.Equal(4, YahooPresets.All.Count);
-        Assert.True(YahooPresets.All.Sum(g => g.Items.Count) <= YahooAccess.MaxInstruments);
+        Assert.Equal(7, YahooPresets.All.Count);
+        // a "+ group" button adds one whole group, so a group must never be larger than the number of Yahoo instruments allowed
+        Assert.All(YahooPresets.All, g => Assert.True(g.Items.Count <= YahooAccess.MaxInstruments, g.Key));
     }
 }
 
@@ -194,4 +195,37 @@ public class UpdateLogicTests
         }
         finally { File.Delete(path); }
     }
+}
+
+public sealed class YahooCatalogueTests
+{
+    [Fact]
+    public void CatalogueSymbolsAreUniqueAndNamed()
+    {
+        var all = YahooPresets.All.SelectMany(g => g.Items).ToList();
+        Assert.True(all.Count >= 100);
+        Assert.Equal(all.Count, all.Select(i => i.Symbol).Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        Assert.All(all, i => { Assert.False(string.IsNullOrWhiteSpace(i.NameEl)); Assert.False(string.IsNullOrWhiteSpace(i.NameEn)); });
+    }
+
+    [Fact]
+    public void EveryGroupIsListedWithoutAFilter() =>
+        Assert.Equal(YahooPresets.All.Sum(g => g.Items.Count), YahooPresets.Filter(null, "").Count);
+
+    [Theory]
+    [InlineData(null, "gold", "GC=F")]
+    [InlineData(null, "ΧΡΥΣΟΣ", "GC=F")]            // Greek name, capitals, no accent
+    [InlineData(null, "εθνικη", "ETE.AT")]            // accents ignored
+    [InlineData("indices", "dax", "^GDAXI")]
+    [InlineData("crypto", "btc", "BTC-USD")]
+    [InlineData(null, "ΓΕΚ", "GEKTERNA.AT")]
+    public void FilterFindsByNameOrSymbolInEitherLanguage(string? group, string text, string expected) =>
+        Assert.Contains(YahooPresets.Filter(group, text), x => x.Item.Symbol == expected);
+
+    [Fact]
+    public void GroupFilterKeepsOnlyThatGroup() =>
+        Assert.All(YahooPresets.Filter("currencies", ""), x => Assert.Equal("currencies", x.GroupKey));
+
+    [Fact]
+    public void NoMatchGivesNothing() => Assert.Empty(YahooPresets.Filter(null, "zzzzqq"));
 }

@@ -329,14 +329,40 @@ public sealed class TickerHost : IDisposable
             if (Config.HideRead) PushAll();
             w.ShowToast(Loc.T("pk.marked.as.read"));
         };
-        w.ScrollSpeedChanged += speed =>
-        {
-            Config.ScrollSpeed = (int)Math.Round(speed);
-            Window.ScrollSpeed = Config.ScrollSpeed;
-            if (SecondWindow is not null) SecondWindow.ScrollSpeed = Config.ScrollSpeed;
-            foreach (var extra in ExtraWindows) extra.ScrollSpeed = Config.ScrollSpeed;
-            SaveConfig();
-        };
+        // Every bar has its own speed (and so has the second half of a split bar): the wheel changes only the bar it is turned over.
+        w.ScrollSpeedChanged += speed => { SetBarSpeed(w, false, (int)Math.Round(speed)); };
+        w.ScrollSpeedBChanged += speed => { SetBarSpeed(w, true, (int)Math.Round(speed)); };
+    }
+
+    /// <summary>The two speeds of a bar from the settings (0 = like the main bar).</summary>
+    private (int A, int B) SpeedsOf(TickerWindow w)
+    {
+        int Or(int own) => own > 0 ? own : Config.ScrollSpeed;
+        if (ReferenceEquals(w, Window)) return (Config.ScrollSpeed, Config.MainSpeedB);
+        if (ReferenceEquals(w, SecondWindow)) return (Or(Config.SecondSpeed), Config.SecondSpeedB);
+        if (ReferenceEquals(w, miniWeather)) return (Or(Config.MiniSpeed), Config.MiniSpeedB);
+        return (Or(Config.MonitorSpeed), Config.MonitorSpeedB);
+    }
+
+    private void ApplySpeeds(TickerWindow w)
+    {
+        var (a, b) = SpeedsOf(w);
+        w.ScrollSpeed = a;
+        w.ScrollSpeedB = b;
+    }
+
+    private void SetBarSpeed(TickerWindow w, bool secondHalf, int value)
+    {
+        value = AppConfig.CleanSpeed(value);
+        if (ReferenceEquals(w, Window)) { if (secondHalf) Config.MainSpeedB = value; else Config.ScrollSpeed = Math.Max(AppConfig.MinScrollSpeed, value); }
+        else if (ReferenceEquals(w, SecondWindow)) { if (secondHalf) Config.SecondSpeedB = value; else Config.SecondSpeed = value; }
+        else if (ReferenceEquals(w, miniWeather)) { if (secondHalf) Config.MiniSpeedB = value; else Config.MiniSpeed = value; }
+        else { if (secondHalf) Config.MonitorSpeedB = value; else Config.MonitorSpeed = value; }
+        ApplySpeeds(Window);
+        if (SecondWindow is not null) ApplySpeeds(SecondWindow);
+        if (miniWeather is not null) ApplySpeeds(miniWeather);
+        foreach (var extra in ExtraWindows) ApplySpeeds(extra);
+        SaveConfig();
     }
 
     private void OnLanguageChanged()
@@ -505,7 +531,7 @@ public sealed class TickerHost : IDisposable
         w.PauseOnHover = Config.PauseOnHover;
         w.ShowPreview = Config.ShowPreview;
         w.ShowIcons = Config.ShowIcons;
-        w.ScrollSpeed = Config.ScrollSpeed;
+        ApplySpeeds(w);
         w.SetThemeModeName(Config.ThemeMode);
         w.EdgeFade = Config.EdgeFade;
         w.SetShape(Config.BarShape);
