@@ -25,46 +25,46 @@ public sealed class SettingsPanel : UserControl
     private readonly System.Windows.Forms.Timer previewTimer = new() { Interval = 250 };
 
     // General
-    private FlatCombo language = null!;
-    private FlatCombo category = null!;
+    private FlatComboBox language = null!;
+    private FlatComboBox category = null!;
     private FlatNumber refresh = null!;
     private FlatNumber speed = null!;
-    private FlatCheck hoverPause = null!;
-    private FlatCheck startWithWindows = null!;
-    private FlatCheck trayAnimated = null!;
-    private FlatCheck toggleHotkey = null!;
-    private FlatCheck icons = null!;
-    private FlatCheck preview = null!;
-    private FlatCheck pauseOther = null!;
-    private FlatCheck hideRead = null!;
+    private FlatCheckBox hoverPause = null!;
+    private FlatCheckBox startWithWindows = null!;
+    private FlatCheckBox trayAnimated = null!;
+    private FlatCheckBox toggleHotkey = null!;
+    private FlatCheckBox icons = null!;
+    private FlatCheckBox preview = null!;
+    private FlatCheckBox pauseOther = null!;
+    private FlatCheckBox hideRead = null!;
 
     // Bars
-    private FlatCombo defaultBar = null!;
+    private FlatComboBox defaultBar = null!;
     private SlotPicker mainPicker = null!;
     private SlotPicker secondPicker = null!;
     private SlotPicker miniPicker = null!;
-    private readonly Dictionary<string, FlatCheck> weatherFieldChecks = new();
-    private FlatCheck secondEnabled = null!;
-    private readonly List<(Screen Screen, FlatCheck Check, SlotPicker Picker)> monitorRows = new();
-    private FlatCheck autoUpdate = null!;
+    private readonly Dictionary<string, FlatCheckBox> weatherFieldChecks = new();
+    private FlatCheckBox secondEnabled = null!;
+    private readonly List<(Screen Screen, FlatCheckBox Check, SlotPicker Picker)> monitorRows = new();
+    private FlatCheckBox autoUpdate = null!;
     private FlatText citySearch = null!;
     private FlatList cityList = null!;
-    private FlatCheck miniWeather = null!;
+    private FlatCheckBox miniWeather = null!;
     private FlatNumber miniX = null!, miniY = null!, miniW = null!, miniH = null!;
     private FlatButton miniMove = null!;
-    private FlatCheck miniOnTop = null!;
-    private FlatCheck miniWhenHidden = null!;
-    private FlatCheck yahooHistory = null!;
+    private FlatCheckBox miniOnTop = null!;
+    private FlatCheckBox miniWhenHidden = null!;
+    private FlatCheckBox yahooHistory = null!;
     private FlatText yahooSearch = null!;
     private FlatButton yahooSearchButton = null!, yahooAddButton = null!, yahooRemoveButton = null!;
     private FlatList yahooHitList = null!;
-    private FlatCombo yahooGroup = null!;
+    private FlatComboBox yahooGroup = null!;
     private Label yahooStatus = null!;
     private readonly List<FlatButton> yahooPresetButtons = new();
     private List<YahooHit> yahooHits = new();
     private Control yahooCatalog = null!;
-    private FlatCombo miniShape = null!;
-    private FlatCombo barShape = null!;
+    private FlatComboBox miniShape = null!;
+    private FlatComboBox barShape = null!;
     private List<string> workCities = new();
     private List<GreekCity> workCustom = new();
     private FlatText geoQuery = null!;
@@ -72,14 +72,14 @@ public sealed class SettingsPanel : UserControl
     private FlatList geoList = null!;
     private Label geoStatus = null!;
     private List<GeoPlace> geoHits = new();
-    private FlatCombo hazardRegion = null!, hazardMinMagnitude = null!;
+    private FlatComboBox hazardRegion = null!, hazardMinMagnitude = null!;
     private FlatNumber hazardMaxAge = null!, hazardRefresh = null!;
-    private FlatCheck hazardInIcon = null!, weatherInIcon = null!;
-    private readonly Dictionary<HazardKind, FlatCheck> hazardKindChecks = new();
-    private readonly Dictionary<HazardSources, FlatCheck> hazardSourceChecks = new();
+    private FlatCheckBox hazardInIcon = null!, weatherInIcon = null!;
+    private readonly Dictionary<HazardKind, FlatCheckBox> hazardKindChecks = new();
+    private readonly Dictionary<HazardSources, FlatCheckBox> hazardSourceChecks = new();
     private static readonly double[] MagnitudeChoices = { 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5 };
     private List<GreekCity> shownCities = new();
-    private FlatCheck barsEnabled = null!;
+    private FlatCheckBox barsEnabled = null!;
     private Label updateStatus = null!;
     private FlatButton installUpdate = null!;
     private FlatButton openUpdatePage = null!;
@@ -90,15 +90,15 @@ public sealed class SettingsPanel : UserControl
     private Label secondNote = null!;
 
     // Position
-    private FlatCombo position = null!;
-    private FlatCheck followTaskbar = null!;
-    private FlatCheck reserve = null!;
+    private FlatComboBox position = null!;
+    private FlatCheckBox followTaskbar = null!;
+    private FlatCheckBox reserve = null!;
     private FlatNumber posX = null!;
     private FlatNumber posY = null!;
     private FlatNumber posW = null!;
-    private FlatCombo monitor = null!;
+    private FlatComboBox monitor = null!;
     private FlatButton moveWithMouse = null!;
-    private FlatCheck tbAuto = null!;
+    private FlatCheckBox tbAuto = null!;
     private FlatNumber tbLeft = null!;
     private FlatNumber tbRight = null!;
     private FlatCard customCard = null!;
@@ -109,11 +109,11 @@ public sealed class SettingsPanel : UserControl
     private FlatList categoryList = null!;
     private FlatList feedList = null!;
     private FlatText siteBox = null!;
-    private FlatCombo presets = null!;
+    private FlatComboBox presets = null!;
     private Label discoverStatus = null!;
     private FlatNumber newsMaxAge = null!;
-    private FlatCheck newsNewestFirst = null!;
-    private FlatCheck stockNewsOnly = null!;
+    private FlatCheckBox newsNewestFirst = null!;
+    private FlatCheckBox stockNewsOnly = null!;
     private FlatText mutedNewsKeywords = null!;
 
     // Markets
@@ -122,11 +122,11 @@ public sealed class SettingsPanel : UserControl
     private List<QuoteInstrument> alertChoices = new();
     private string alertChoicesSignature = "";
     private FlatList alertList = null!;
-    private FlatCombo alertInstrument = null!;
-    private FlatCombo alertDirection = null!;
+    private FlatComboBox alertInstrument = null!;
+    private FlatComboBox alertDirection = null!;
     private FlatText alertThreshold = null!;
     private readonly Dictionary<QuoteSource, FlatList> watchLists = new();
-    private FlatCombo marketCombo = null!;
+    private FlatComboBox marketCombo = null!;
     private FlatText stockSearch = null!;
     private FlatList stockList = null!;
     private FlatButton refreshCatalog = null!;
@@ -138,8 +138,8 @@ public sealed class SettingsPanel : UserControl
     private string SelectedMic => EuronextCatalog.Markets[Math.Clamp(marketCombo.SelectedIndex, 0, EuronextCatalog.Markets.Count - 1)].Mic;
 
     // Look
-    private FlatCombo themeMode = null!;
-    private FlatCheck themeAccent = null!;
+    private FlatComboBox themeMode = null!;
+    private FlatCheckBox themeAccent = null!;
     private FlatNumber speedMainB = null!, speedSecond = null!, speedSecondB = null!, speedMini = null!, speedMiniB = null!, speedMonitor = null!, speedMonitorB = null!;
     private Control themeRow = null!;
 
@@ -147,24 +147,24 @@ public sealed class SettingsPanel : UserControl
     private static string ThemeNameAt(int index) => index switch { 1 => "light", 2 => "dark", _ when index == 3 + Theme.NamedThemes.Length => "host", >= 3 when index - 3 < Theme.NamedThemes.Length => Theme.NamedThemes[index - 3], _ => "system" };
     private FlatSlider opacity = null!;
     private Label opacityLabel = null!;
-    private FlatCheck edgeFade = null!;
+    private FlatCheckBox edgeFade = null!;
     private FlatSlider windowOpacity = null!;
     private Label windowOpacityLabel = null!;
     private Control windowOpacityRow = null!;
     private Label themeNote = null!;
-    private FlatCombo barColor = null!;
+    private FlatComboBox barColor = null!;
     private FlatSwatch barSwatch = null!;
-    private FlatCombo taskbarColor = null!;
+    private FlatComboBox taskbarColor = null!;
     private FlatSwatch taskbarSwatch = null!;
-    private FlatCombo barBackdrop = null!;
-    private FlatCombo taskbarBackdrop = null!;
+    private FlatComboBox barBackdrop = null!;
+    private FlatComboBox taskbarBackdrop = null!;
 
     // Breaking
-    private FlatCheck breakingEnabled = null!;
-    private FlatCheck breakingSound = null!;
-    private FlatCheck weatherMapOnClick = null!;
-    private FlatCheck weatherAlerts = null!;
-    private FlatCombo alertCity = null!;
+    private FlatCheckBox breakingEnabled = null!;
+    private FlatCheckBox breakingSound = null!;
+    private FlatCheckBox weatherMapOnClick = null!;
+    private FlatCheckBox weatherAlerts = null!;
+    private FlatComboBox alertCity = null!;
     private FlatText keywords = null!;
     private FlatNumber maxAge = null!;
     private FlatNumber duration = null!;
@@ -415,7 +415,7 @@ public sealed class SettingsPanel : UserControl
     {
         var page = NewPage(out var flow);
 
-        language = new FlatCombo { Width = 260 };
+        language = new FlatComboBox { Width = 260 };
         var langs = Loc.Available();
         language.SetItems(langs.Select(l => l.Native), 0);
         language.SelectedIndexChanged += (_, _) =>
@@ -425,19 +425,19 @@ public sealed class SettingsPanel : UserControl
             host.Config.Language = langs[language.SelectedIndex].Code;
             if (!host.LanguageFollowsHost) Loc.SetLanguage(host.Config.Language);
         };
-        barsEnabled = new FlatCheck { Text = L("chk.barsEnabled") };
+        barsEnabled = new FlatCheckBox { Text = L("chk.barsEnabled") };
         flow.Controls.Add(barsEnabled);
-        startWithWindows = new FlatCheck { Text = Loc.T("pk.start.with.windows"), Visible = !host.HostedByOpsis };
+        startWithWindows = new FlatCheckBox { Text = Loc.T("pk.start.with.windows"), Visible = !host.HostedByOpsis };
         flow.Controls.Add(startWithWindows);
-        trayAnimated = new FlatCheck { Text = L("chk.trayAnimated"), Visible = !host.HostedByOpsis };
+        trayAnimated = new FlatCheckBox { Text = L("chk.trayAnimated"), Visible = !host.HostedByOpsis };
         flow.Controls.Add(trayAnimated);
-        toggleHotkey = new FlatCheck { Text = Loc.T("pk.hot.key.ctrl.alt"), Visible = !host.HostedByOpsis };
+        toggleHotkey = new FlatCheckBox { Text = Loc.T("pk.hot.key.ctrl.alt"), Visible = !host.HostedByOpsis };
         flow.Controls.Add(toggleHotkey);
         var languageRow = Row(L("lbl.language"), language);
         languageRow.Visible = !host.LanguageFollowsHost;
         flow.Controls.Add(languageRow);
 
-        category = new FlatCombo { Width = 320 };
+        category = new FlatComboBox { Width = 320 };
         flow.Controls.Add(Row(L("lbl.category"), category));
         refresh = new FlatNumber();
         refresh.Configure(AppConfig.MinRefreshSeconds, AppConfig.MaxRefreshSeconds, 30);
@@ -467,11 +467,11 @@ public sealed class SettingsPanel : UserControl
         speedCard.Controls.Add(speedFlow);
         flow.Controls.Add(speedCard);
 
-        hoverPause = new FlatCheck { Text = L("chk.hoverPause") };
-        icons = new FlatCheck { Text = L("chk.icons") };
-        preview = new FlatCheck { Text = L("chk.preview") };
-        pauseOther = new FlatCheck { Text = L("chk.pauseOther") };
-        hideRead = new FlatCheck { Text = L("chk.hideRead") };
+        hoverPause = new FlatCheckBox { Text = L("chk.hoverPause") };
+        icons = new FlatCheckBox { Text = L("chk.icons") };
+        preview = new FlatCheckBox { Text = L("chk.preview") };
+        pauseOther = new FlatCheckBox { Text = L("chk.pauseOther") };
+        hideRead = new FlatCheckBox { Text = L("chk.hideRead") };
         foreach (var c in new Control[] { hoverPause, icons, preview, pauseOther, hideRead }) flow.Controls.Add(c);
 
         var reset = new FlatButton { Text = L("btn.resetRead") };
@@ -494,7 +494,7 @@ public sealed class SettingsPanel : UserControl
     // ---- dependencies ----------------------------------------------------------------------------
 
     private Label webViewStatus = null!;
-    private FlatCheck webViewCheck = null!;
+    private FlatCheckBox webViewCheck = null!;
     private FlatButton webViewInstall = null!;
 
     private Control BuildDependencies()
@@ -505,11 +505,11 @@ public sealed class SettingsPanel : UserControl
         var inner = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
 
         // .NET: the program is running, so it is there (shown ticked, nothing to choose).
-        var dotNet = new FlatCheck { Text = L("dep.dotnet") + "  —  " + Dependencies.DotNetVersion + "  (" + L("dep.installed") + ")", Checked = true, Enabled = false };
+        var dotNet = new FlatCheckBox { Text = L("dep.dotnet") + "  —  " + Dependencies.DotNetVersion + "  (" + L("dep.installed") + ")", Checked = true, Enabled = false };
         inner.Controls.Add(dotNet);
 
         // Present: ticked and locked, like .NET. Missing: unticked, with an install button.
-        webViewCheck = new FlatCheck { Enabled = false };
+        webViewCheck = new FlatCheckBox { Enabled = false };
         webViewStatus = new Label { AutoSize = true, Margin = new Padding(0, 4, 0, 0), Tag = "muted" };
         inner.Controls.Add(webViewCheck);
         webViewInstall = new FlatButton { Text = L("btn.installDep"), Margin = new Padding(0, 4, 0, 0) };
@@ -550,7 +550,7 @@ public sealed class SettingsPanel : UserControl
         var updates = new FlatCard(L("card.updates"));
         var updFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
         updFlow.Controls.Add(Note(L("note.updates"), 700));
-        autoUpdate = new FlatCheck { Text = L("chk.autoUpdate") };
+        autoUpdate = new FlatCheckBox { Text = L("chk.autoUpdate") };
         updFlow.Controls.Add(autoUpdate);
         var checkNow = new FlatButton { Text = L("btn.checkNow") };
         installUpdate = new FlatButton { Text = L("btn.installUpdate"), Visible = false };
@@ -589,7 +589,7 @@ public sealed class SettingsPanel : UserControl
 
         var second = new FlatCard(L("card.secondBar"));
         var secondFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-        secondEnabled = new FlatCheck { Text = L("chk.secondEnabled") };
+        secondEnabled = new FlatCheckBox { Text = L("chk.secondEnabled") };
         secondFlow.Controls.Add(secondEnabled);
         secondPicker = new SlotPicker();
         secondFlow.Controls.Add(secondPicker.Build());
@@ -614,7 +614,7 @@ public sealed class SettingsPanel : UserControl
         for (var i = 0; i < others.Count; i++)
         {
             var s = others[i];
-            var check = new FlatCheck { Text = Loc.T("fmt.monitor", Array.IndexOf(Screen.AllScreens, s) + 1, s.Bounds.Width, s.Bounds.Height) };
+            var check = new FlatCheckBox { Text = Loc.T("fmt.monitor", Array.IndexOf(Screen.AllScreens, s) + 1, s.Bounds.Width, s.Bounds.Height) };
             var picker = new SlotPicker();
             monitorFlow.Controls.Add(check);
             monitorFlow.Controls.Add(picker.Build());
@@ -632,7 +632,7 @@ public sealed class SettingsPanel : UserControl
 
         var def = new FlatCard(L("card.defaultBar"));
         var defFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-        defaultBar = new FlatCombo { Width = 470 };
+        defaultBar = new FlatComboBox { Width = 470 };
         defaultBar.SetItems(new[] { L("defaultbar.above"), L("defaultbar.inside"), L("defaultbar.other") }, 0);
         defFlow.Controls.Add(Row(L("lbl.defaultBar"), defaultBar, 200));
         defFlow.Controls.Add(Note(L("note.defaultBar"), 600));
@@ -646,14 +646,14 @@ public sealed class SettingsPanel : UserControl
         };
 
 
-        position = new FlatCombo { Width = 470 };
+        position = new FlatComboBox { Width = 470 };
         position.SetItems(new[] { L("pos.bottom"), L("pos.top"), L("pos.center"), L("pos.custom"), L("pos.taskbar") }, 0);
-        followTaskbar = new FlatCheck { Text = L("chk.followTaskbar") };
-        reserve = new FlatCheck { Text = L("chk.reserve") };
+        followTaskbar = new FlatCheckBox { Text = L("chk.followTaskbar") };
+        reserve = new FlatCheckBox { Text = L("chk.reserve") };
         var placement = new FlatCard(Loc.T("pk.exact.placement.and.behaviour"));
         var placementFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
         placementFlow.Controls.Add(Row(L("lbl.position"), position, 200));
-        barShape = new FlatCombo { Width = 470 };
+        barShape = new FlatComboBox { Width = 470 };
         barShape.SetItems(new[] { L("shape.rect"), L("shape.rounded"), L("shape.pill") }, 0);
         placementFlow.Controls.Add(Row(L("lbl.barShape"), barShape, 270));
         placementFlow.Controls.Add(followTaskbar);
@@ -669,7 +669,7 @@ public sealed class SettingsPanel : UserControl
         posY.Configure(-20000, 20000, 10);
         posW = new FlatNumber();
         posW.Configure(200, 20000, 50);
-        monitor = new FlatCombo { Width = 340 };
+        monitor = new FlatComboBox { Width = 340 };
         monitor.SetItems(Screen.AllScreens.Select((s, i) => L("fmt.monitor").Replace("{0}", (i + 1).ToString()).Replace("{1}", s.Bounds.Width.ToString()).Replace("{2}", s.Bounds.Height.ToString())), -1);
         cf.Controls.Add(Row(L("lbl.x"), posX, 240));
         cf.Controls.Add(Row(L("lbl.y"), posY, 240));
@@ -682,7 +682,7 @@ public sealed class SettingsPanel : UserControl
 
         taskbarCard = new FlatCard(L("card.taskbar"));
         var tf = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-        tbAuto = new FlatCheck { Text = L("chk.tbAuto") };
+        tbAuto = new FlatCheckBox { Text = L("chk.tbAuto") };
         tbLeft = new FlatNumber();
         tbLeft.Configure(0, 8000, 10);
         tbRight = new FlatNumber();
@@ -753,9 +753,9 @@ public sealed class SettingsPanel : UserControl
         newsMaxAge = new FlatNumber();
         newsMaxAge.Configure(1, 720, 24);
         newsOptions.Controls.Add(newsMaxAge);
-        newsNewestFirst = new FlatCheck { Text = Loc.T("pk.newest.stories.first"), AutoSize = true, Margin = new Padding(8, 5, 0, 0) };
+        newsNewestFirst = new FlatCheckBox { Text = Loc.T("pk.newest.stories.first"), AutoSize = true, Margin = new Padding(8, 5, 0, 0) };
         newsOptions.Controls.Add(newsNewestFirst);
-        stockNewsOnly = new FlatCheck { Text = Loc.T("pk.only.news.about.my"), AutoSize = true, Margin = new Padding(0, 5, 0, 0) };
+        stockNewsOnly = new FlatCheckBox { Text = Loc.T("pk.only.news.about.my"), AutoSize = true, Margin = new Padding(0, 5, 0, 0) };
         right.Controls.Add(newsOptions);
         right.Controls.Add(stockNewsOnly);
         right.Controls.Add(new Label { Text = Loc.T("pk.mute.words.phrases.separate"), AutoSize = true, Margin = new Padding(0, 8, 0, 3) });
@@ -776,7 +776,7 @@ public sealed class SettingsPanel : UserControl
 
         right.Controls.Add(new Label { Text = L("lbl.presets"), AutoSize = true, Margin = new Padding(0, 10, 0, 4) });
         var presetRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
-        presets = new FlatCombo { Width = 300 };
+        presets = new FlatComboBox { Width = 300 };
         presets.SetItems(AppConfig.PresetFeeds.Select(p => p.Name), -1);
         var addPreset = new FlatButton { Text = L("btn.addPreset") };
         addPreset.Click += (_, _) => AddPreset();
@@ -847,7 +847,7 @@ public sealed class SettingsPanel : UserControl
         var page = NewPage(out var flow);
         var mini = new FlatCard(Loc.T("pk.desktop.bar"));
         var miniFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-        miniWeather = new FlatCheck { Text = Loc.T("pk.show.a.bar.on") };
+        miniWeather = new FlatCheckBox { Text = Loc.T("pk.show.a.bar.on") };
         miniFlow.Controls.Add(miniWeather);
         miniPicker = new SlotPicker();
         miniFlow.Controls.Add(miniPicker.Build());
@@ -880,12 +880,12 @@ public sealed class SettingsPanel : UserControl
             host.CenterMiniWeather();
             LoadMiniBounds();
         };
-        miniOnTop = new FlatCheck { Text = L("chk.miniOnTop") };
+        miniOnTop = new FlatCheckBox { Text = L("chk.miniOnTop") };
         miniFlow.Controls.Add(miniOnTop);
-        miniShape = new FlatCombo { Width = 300 };
+        miniShape = new FlatComboBox { Width = 300 };
         miniShape.SetItems(new[] { L("shape.rect"), L("shape.rounded"), L("shape.pill") }, 0);
         miniFlow.Controls.Add(Row(L("lbl.miniShape"), miniShape, 200));
-        miniWhenHidden = new FlatCheck { Text = L("chk.miniWhenHidden") };
+        miniWhenHidden = new FlatCheckBox { Text = L("chk.miniWhenHidden") };
         miniFlow.Controls.Add(miniWhenHidden);
         miniFlow.Controls.Add(Note(Loc.T("pk.a.free.bar.on"), 600));
         mini.Controls.Add(miniFlow);
@@ -944,7 +944,7 @@ public sealed class SettingsPanel : UserControl
         geoAddButton.Click += async (_, _) => await AddGeoPlacesAsync();
         geoCleanupButton.Click += (_, _) => CleanupGeoPlaces();
 
-        weatherMapOnClick = new FlatCheck { Text = Loc.T("pk.click.a.city.on") };
+        weatherMapOnClick = new FlatCheckBox { Text = Loc.T("pk.click.a.city.on") };
         flow.Controls.Add(weatherMapOnClick);
         flow.Controls.Add(Note(Loc.T("pk.the.map.openstreetmap.needs"), 640));
 
@@ -954,7 +954,7 @@ public sealed class SettingsPanel : UserControl
         weatherFieldChecks.Clear();
         foreach (var id in WeatherInfo.FieldIds)
         {
-            var check = new FlatCheck { Text = Loc.T("weather." + (id == "feels" ? "feels" : id)) };
+            var check = new FlatCheckBox { Text = Loc.T("weather." + (id == "feels" ? "feels" : id)) };
             weatherFieldChecks[id] = check;
             fieldsFlow.Controls.Add(check);
         }
@@ -963,7 +963,7 @@ public sealed class SettingsPanel : UserControl
         flow.Controls.Add(fields);
 
         // The animated icon can show the current weather of the first city.
-        weatherInIcon = new FlatCheck { Text = L("hazard.weatherIcon") };
+        weatherInIcon = new FlatCheckBox { Text = L("hazard.weatherIcon") };
         flow.Controls.Add(weatherInIcon);
 
         citySearch.TextValueChanged += (_, _) => ShowCities();
@@ -988,10 +988,10 @@ public sealed class SettingsPanel : UserControl
         var hazards = new FlatCard(L("hazard.card"));
         var hazardFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
         hazardFlow.Controls.Add(Note(L("hazard.note"), 700));
-        hazardRegion = new FlatCombo { Width = 300 };
+        hazardRegion = new FlatComboBox { Width = 300 };
         hazardRegion.SetItems(new[] { L("hazard.region.greece"), L("hazard.region.europe"), L("hazard.region.world") }, 0);
         hazardFlow.Controls.Add(Row(L("hazard.region"), hazardRegion, 260));
-        hazardMinMagnitude = new FlatCombo { Width = 120 };
+        hazardMinMagnitude = new FlatComboBox { Width = 120 };
         hazardMinMagnitude.SetItems(MagnitudeChoices.Select(m => m.ToString("0.0", System.Globalization.CultureInfo.CurrentCulture)), 3);
         hazardFlow.Controls.Add(Row(L("hazard.minmag"), hazardMinMagnitude, 260));
         hazardMaxAge = new FlatNumber { Width = 120 };
@@ -1004,7 +1004,7 @@ public sealed class SettingsPanel : UserControl
         hazardKindChecks.Clear();
         foreach (var kind in Enum.GetValues<HazardKind>())
         {
-            var check = new FlatCheck { Text = HazardText.KindName(kind), Margin = new Padding(0, 4, 16, 4) };
+            var check = new FlatCheckBox { Text = HazardText.KindName(kind), Margin = new Padding(0, 4, 16, 4) };
             hazardKindChecks[kind] = check;
             kindsRow.Controls.Add(check);
         }
@@ -1013,12 +1013,12 @@ public sealed class SettingsPanel : UserControl
         hazardSourceChecks.Clear();
         foreach (var (source, name) in new[] { (HazardSources.Usgs, "USGS"), (HazardSources.Emsc, "EMSC"), (HazardSources.Gdacs, "GDACS"), (HazardSources.Eonet, "NASA EONET") })
         {
-            var check = new FlatCheck { Text = name, Margin = new Padding(0, 4, 16, 4) };
+            var check = new FlatCheckBox { Text = name, Margin = new Padding(0, 4, 16, 4) };
             hazardSourceChecks[source] = check;
             sourcesRow.Controls.Add(check);
         }
         hazardFlow.Controls.Add(Row(L("hazard.src"), sourcesRow, 240));
-        hazardInIcon = new FlatCheck { Text = L("hazard.icon") };
+        hazardInIcon = new FlatCheckBox { Text = L("hazard.icon") };
         hazardFlow.Controls.Add(hazardInIcon);
         hazards.Controls.Add(hazardFlow);
         flow.Controls.Add(hazards);
@@ -1283,7 +1283,7 @@ public sealed class SettingsPanel : UserControl
         flow.Controls.Add(openAnalysis);
         var historyCard = new FlatCard(L("card.history"));
         var historyFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-        yahooHistory = new FlatCheck { Text = L("chk.yahooHistory") };
+        yahooHistory = new FlatCheckBox { Text = L("chk.yahooHistory") };
         historyFlow.Controls.Add(yahooHistory);
         historyFlow.Controls.Add(Note(L("note.yahooHistory"), 700));
         historyCard.Controls.Add(historyFlow);
@@ -1301,7 +1301,7 @@ public sealed class SettingsPanel : UserControl
         searchRow2.Controls.Add(yahooSearchButton);
         catalogFlow.Controls.Add(searchRow2);
         // The whole built-in catalogue is listed to pick from; typing filters it at once, and Search asks Yahoo for anything else.
-        yahooGroup = new FlatCombo { Width = 240 };
+        yahooGroup = new FlatComboBox { Width = 240 };
         yahooGroup.SetItems(new[] { L("yahoo.group.all") }.Concat(YahooPresets.All.Select(g => L("yahoo.group." + g.Key))), 0);
         var groupRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
         groupRow.Controls.Add(yahooGroup);
@@ -1343,7 +1343,7 @@ public sealed class SettingsPanel : UserControl
         // All the shares of one Euronext market: pick the market, search, tick the ones to show.
         var card = new FlatCard(L("card.shares"));
         var inner = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-        marketCombo = new FlatCombo { Width = 300 };
+        marketCombo = new FlatComboBox { Width = 300 };
         marketCombo.SetItems(EuronextCatalog.Markets.Select(m => m.DisplayName), 0);
         refreshCatalog = new FlatButton { Text = L("btn.refreshList") };
         var marketRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
@@ -1404,8 +1404,8 @@ public sealed class SettingsPanel : UserControl
             if (index >= 0 && index < workAlerts.Count) workAlerts[index].Enabled = isChecked;
         };
         alertFlow.Controls.Add(alertList);
-        alertInstrument = new FlatCombo { Width = 250 };
-        alertDirection = new FlatCombo { Width = 80 };
+        alertInstrument = new FlatComboBox { Width = 250 };
+        alertDirection = new FlatComboBox { Width = 80 };
         alertDirection.SetItems(new[] { "≥", "≤" }, 0);
         alertThreshold = new FlatText { Width = 100 };
         var addAlert = new FlatButton { Text = L("btn.new") };
@@ -1621,11 +1621,11 @@ public sealed class SettingsPanel : UserControl
     private Control BuildLook()
     {
         var page = NewPage(out var flow);
-        themeMode = new FlatCombo { Width = 300 };
+        themeMode = new FlatComboBox { Width = 300 };
         themeMode.SetItems(new[] { L("theme.system"), L("theme.light"), L("theme.dark") }.Concat(Theme.NamedThemes).Concat(host.HostedByOpsis ? new[] { L("theme.host") } : Array.Empty<string>()).ToArray(), 0);
         themeRow = Row(L("lbl.theme"), themeMode, 240);
         flow.Controls.Add(themeRow);
-        themeAccent = new FlatCheck { Text = L("chk.themeAccent") };
+        themeAccent = new FlatCheckBox { Text = L("chk.themeAccent") };
         flow.Controls.Add(themeAccent);
 
         opacity = new FlatSlider { Width = 300 };
@@ -1637,7 +1637,7 @@ public sealed class SettingsPanel : UserControl
         flow.Controls.Add(Row(L("lbl.transparency"), op, 240));
         opacity.ValueChanged += (_, _) => opacityLabel.Text = $"{opacity.Value} %";
 
-        barColor = new FlatCombo { Width = 470 };
+        barColor = new FlatComboBox { Width = 470 };
         barColor.SetItems(new[] { L("color.theme"), L("color.lightblue"), L("color.accent"), L("color.custom") }, 0);
         barSwatch = new FlatSwatch();
         var barColorRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
@@ -1645,7 +1645,7 @@ public sealed class SettingsPanel : UserControl
         barColorRow.Controls.Add(barSwatch);
         flow.Controls.Add(Row(L("lbl.barColor"), barColorRow, 240));
 
-        taskbarColor = new FlatCombo { Width = 470 };
+        taskbarColor = new FlatComboBox { Width = 470 };
         taskbarColor.SetItems(new[] { L("color.taskbar"), L("color.lightblue"), L("color.accent"), L("color.custom") }, 0);
         taskbarSwatch = new FlatSwatch();
         var taskbarColorRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
@@ -1653,10 +1653,10 @@ public sealed class SettingsPanel : UserControl
         taskbarColorRow.Controls.Add(taskbarSwatch);
         flow.Controls.Add(Row(L("lbl.taskbarBarColor"), taskbarColorRow, 240));
         var materials = new[] { L("backdrop.acrylic"), L("backdrop.blur"), L("backdrop.gradient") };
-        barBackdrop = new FlatCombo { Width = 470 };
+        barBackdrop = new FlatComboBox { Width = 470 };
         barBackdrop.SetItems(materials, 0);
         flow.Controls.Add(Row(L("lbl.barBackdrop"), barBackdrop, 240));
-        taskbarBackdrop = new FlatCombo { Width = 470 };
+        taskbarBackdrop = new FlatComboBox { Width = 470 };
         taskbarBackdrop.SetItems(materials, 1);
         flow.Controls.Add(Row(L("lbl.taskbarBackdrop"), taskbarBackdrop, 240));
         flow.Controls.Add(Note(L("note.backdrop"), 640));
@@ -1678,7 +1678,7 @@ public sealed class SettingsPanel : UserControl
         };
         flow.Controls.Add(windowOpacityRow);
 
-        edgeFade = new FlatCheck { Text = L("chk.edgeFade") };
+        edgeFade = new FlatCheckBox { Text = L("chk.edgeFade") };
         flow.Controls.Add(edgeFade);
         flow.Controls.Add(Note(L("note.transparency"), 640));
         themeNote = Note("", 640);
@@ -1689,9 +1689,9 @@ public sealed class SettingsPanel : UserControl
     private Control BuildBreaking()
     {
         var page = NewPage(out var flow);
-        breakingEnabled = new FlatCheck { Text = L("chk.breakingEnabled") };
+        breakingEnabled = new FlatCheckBox { Text = L("chk.breakingEnabled") };
         flow.Controls.Add(breakingEnabled);
-        breakingSound = new FlatCheck { Text = Loc.T("pk.alert.sound.when.something") };
+        breakingSound = new FlatCheckBox { Text = Loc.T("pk.alert.sound.when.something") };
         flow.Controls.Add(breakingSound);
         keywords = new FlatText { Width = 520 };
         flow.Controls.Add(Row(L("lbl.keywords"), keywords, 330));
@@ -1706,9 +1706,9 @@ public sealed class SettingsPanel : UserControl
         // Severe weather for the user's area.
         var weatherCard = new FlatCard(Loc.T("pk.severe.weather.in.my"));
         var weatherFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-        weatherAlerts = new FlatCheck { Text = Loc.T("pk.warn.me.about.severe") };
+        weatherAlerts = new FlatCheckBox { Text = Loc.T("pk.warn.me.about.severe") };
         weatherFlow.Controls.Add(weatherAlerts);
-        alertCity = new FlatCombo { Width = 360 };
+        alertCity = new FlatComboBox { Width = 360 };
         FillAlertCities(null);
         weatherFlow.Controls.Add(Row(Loc.T("pk.my.area"), alertCity, 200));
         weatherFlow.Controls.Add(Note(Loc.T("pk.every.30.minutes.the"), 640));
@@ -1952,10 +1952,10 @@ public sealed class SettingsPanel : UserControl
         {
             switch (control)
             {
-                case FlatCheck check:
+                case FlatCheckBox check:
                     check.CheckedChanged += (_, _) => MarkDirty();
                     break;
-                case FlatCombo combo:
+                case FlatComboBox combo:
                     combo.SelectedIndexChanged += (_, _) => MarkDirty();
                     break;
                 case FlatNumber number:
@@ -2370,8 +2370,8 @@ public sealed class SettingsPanel : UserControl
     /// <summary>Two drop-downs that say what a bar shows: the first part (or the whole bar) and an optional second part (the bar is then split in the middle).</summary>
     private sealed class SlotPicker
     {
-        private readonly FlatCombo a = new() { Width = 380 };
-        private readonly FlatCombo b = new() { Width = 380 };
+        private readonly FlatComboBox a = new() { Width = 380 };
+        private readonly FlatComboBox b = new() { Width = 380 };
         private List<BarSlot> choices = new();
         private BarSlots current = new(new BarSlot(SlotKind.News), null);
         private bool suppress;

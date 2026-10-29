@@ -115,8 +115,8 @@ internal sealed class WelcomeForm : SplashBase
     private readonly FlatButton back = new() { IsNavigation = true };
     private readonly FlatButton next = new() { IsNavigation = true };
     private readonly FlatButton skip = new() { IsNavigation = true };
-    private readonly FlatCheck dontShow = new();
-    private readonly FlatCheck showFamily = new() { Checked = true };
+    private readonly FlatCheckBox dontShow = new();
+    private readonly FlatCheckBox showFamily = new() { Checked = true };
     private int page;
     private bool reachedLast;
 

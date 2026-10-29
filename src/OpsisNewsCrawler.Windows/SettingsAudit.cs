@@ -29,7 +29,7 @@ public static class SettingsAudit
         var apply = typeof(SettingsPanel).GetMethod("ApplySettings", BindingFlags.NonPublic | BindingFlags.Instance)
                     ?? throw new InvalidOperationException("ApplySettings not found");
         var fields = typeof(SettingsPanel).GetFields(BindingFlags.NonPublic | BindingFlags.Instance)
-            .Where(f => f.FieldType.Name is "FlatCheck" or "FlatCombo" or "FlatNumber" or "FlatSlider" && !Skipped.Contains(f.Name))
+            .Where(f => f.FieldType.Name is "FlatCheckBox" or "FlatComboBox" or "FlatNumber" or "FlatSlider" && !Skipped.Contains(f.Name))
             .OrderBy(f => f.Name, StringComparer.Ordinal).ToList();
 
         int noEffect = 0, notShown = 0, ok = 0, skipped = 0;
@@ -101,12 +101,12 @@ public static class SettingsAudit
     {
         switch (control)
         {
-            case FlatCheck check:
+            case FlatCheckBox check:
             {
                 var original = check.Checked;
                 return (() => check.Checked.ToString(), () => check.Checked = !original, () => check.Checked = original);
             }
-            case FlatCombo combo:
+            case FlatComboBox combo:
             {
                 var original = combo.SelectedIndex;
                 var count = (int?)combo.GetType().GetProperty("Count")?.GetValue(combo) ?? 0;
@@ -148,7 +148,7 @@ public static class SettingsAudit
             report.AppendLine($"{(ok ? "OK  " : "FAIL")}      {name}");
         }
 
-        using var combo = new FlatCombo();
+        using var combo = new FlatComboBox();
         combo.SetItems(new[] { "a", "b", "c" }, 0);
         Key(combo, Keys.Down);
         Check("combo: Down selects the next item", combo.SelectedIndex == 1);
@@ -175,7 +175,7 @@ public static class SettingsAudit
 
         using var button = new FlatButton();
         Check("button: reachable with Tab", Selectable(button) && button.TabStop);
-        using var check = new FlatCheck();
+        using var check = new FlatCheckBox();
         Check("check box: reachable with Tab", Selectable(check) && check.TabStop);
         return failed;
     }

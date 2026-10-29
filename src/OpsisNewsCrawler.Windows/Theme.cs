@@ -11,6 +11,20 @@ public static class Theme
 {
     public static event Action? Changed;
 
+    static Theme() => OpsisTheme.Use(new SharedTokens());
+
+    /// <summary>What the shared controls of Opsis.UI read: always the current values of this class (no copy).</summary>
+    private sealed class SharedTokens : IOpsisTheme
+    {
+        public bool IsDark => Theme.IsDark;
+        public Color Background => Theme.Background;
+        public Color Surface => Theme.Surface;
+        public Color Border => Theme.Border;
+        public Color Text => Theme.Text;
+        public Color TextMuted => Theme.TextMuted;
+        public Color Accent => Theme.Accent;
+    }
+
     public static bool IsDark { get; private set; } = true;
     public static Color Background { get; private set; } = Color.FromArgb(24, 24, 28);
     public static Color Surface { get; private set; } = Color.FromArgb(36, 36, 42);
@@ -141,7 +155,7 @@ public static class Theme
                 card.ForeColor = Text;
                 foreach (Control child in card.Controls) ApplyCore(child, Surface);
                 return;
-            case FlatNumber or FlatText or FlatButton or FlatCheck or FlatCombo or FlatSlider or FlatSwatch:
+            case FlatNumber or FlatText or FlatButton or FlatCheckBox or FlatComboBox or FlatSlider or FlatSwatch:
                 c.BackColor = back; // drawn by themselves; they use the parent's colour for their corners
                 c.ForeColor = Text;
                 return;

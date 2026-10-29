@@ -3,6 +3,11 @@
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
 Detailed notes per release: `docs/releases/RELEASE-<version>.md` and the GitHub releases.
 
+## 0.17.0 — 2026-10-29
+- **Shared controls**: the buttons, check boxes, sliders, drop-down lists and the drop-down menu look now come from the new shared library **Opsis.UI** (`libs\Opsis.UI.dll`, source in the Opsis.UI repository) that Opsis and Opsis Appearance will use too; the Crawler's own copies are gone. Colours come from theme tokens (`IOpsisTheme`), which the Crawler's `Theme` supplies live.
+- Better controls everywhere: check boxes support the "mixed" state, a focus ring for the keyboard, scale their box, tick and corners with the monitor DPI and mirror for right-to-left languages; sliders take the focus on click, answer Home / End / PageUp / PageDown, the wheel (while focused), and raise the change event only when the value really changes; drop-down lists open with F4 / Alt+Down / Space and mirror for Arabic.
+- 33 tests of the library (painting on the parent colour, DPI sizes, RTL, keys, events) and pictures of every control at 100 / 150 / 200 % in both themes. Crawler tests: 353.
+
 ## 0.16.2 — 2026-10-29
 - **Security audit** (report in `docs/SECURITY.md`, trust model and open items included). Fixed: downloads of updates and of family setups now stop unless the *final* address after redirects is GitHub or its CDN; the checksum file is read with a 4 KB limit; the update setup is saved as `.part` and renamed only after the SHA-256 matches; the WebView2 bootstrapper must be signed by exactly "Microsoft Corporation" (path passed in an environment variable, temp folder removed afterwards); asset names must be plain file names; "Open" in the family window starts only an existing .exe; the GDACS feed is parsed without DTDs (entity-expansion attack) and geocoding / feed discovery answers have size caps; `crawler.log` no longer contains the Windows account name. No vulnerable NuGet packages.
 - Open: no code-signing certificate, plugin DLL integrity is the host's job (Opsis), the update trust root is GitHub itself.

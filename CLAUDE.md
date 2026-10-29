@@ -79,3 +79,7 @@ Fourteen UI languages like Opsis: `Core/Locales/<code>.json` (el, en generated b
 - **Market analysis window** (`Windows/AnalysisForm.cs`, `AnalysisCharts.cs`; tray and Sources > Markets flow): candlesticks, back-test, fear & greed, assistant. Logic in `Core/Analysis.cs` (`Backtest`, `FearGreed`), candles in `QuoteStore` (`Candle`, `Candles()`, `RecordCandle()`, file `quotes-cache-ohlc.json`; Athens gives exact OHLC from the trade file, other sources are sampled), `Core/AiAssistant.cs` (Anthropic Messages API with the user's own key; key encrypted with DPAPI in `Windows/SecretStore.cs`, never exported).
 - Test aids: `--snapshot-analysis <png> <page 0-3>`; the env variable `OPSISNEWSCRAWLER_DATA` redirects the price cache folder (screenshots with made-up data).
 - Tray: one Pause/Resume item (standalone and in the Opsis plugin menu), Close/Open in the plugin menu.
+
+## 0.17.0 additions
+- **Shared controls**: FlatButton / FlatCheckBox / FlatSlider / FlatComboBox / FlatTabs / FlatMenuRenderer / FlatDraw live in the separate repository `C:\w\Opsis.UI`; the Crawler references the committed `libs\Opsis.UI.dll` (named in `libs\Opsis.UI.version.txt`) from App, Windows and OpsisPlugin (every output project needs the Reference, or deps.json misses it). Do not re-add copies here: fix them in Opsis.UI, rebuild, copy the DLL. `Theme` hands live tokens to the library (`OpsisTheme.Use` in its static constructor). The remaining Flat* controls (FlatNumber, FlatText, FlatList, FlatCard, FlatSwatch, FlatStrip, FlatProgress) stay here for now.
+

@@ -22,14 +22,14 @@ internal sealed class AnalysisForm : Form
     private bool syncing;
 
     // chart page
-    private FlatCombo chartInstrument = null!, chartRange = null!;
+    private FlatComboBox chartInstrument = null!, chartRange = null!;
     private CandleChart chart = null!;
     private Label chartInfo = null!;
-    private FlatCheck chartBands = null!;
-    private FlatCheck chartMacd = null!;
+    private FlatCheckBox chartBands = null!;
+    private FlatCheckBox chartMacd = null!;
 
     // back-test page
-    private FlatCombo btInstrument = null!, btStrategy = null!;
+    private FlatComboBox btInstrument = null!, btStrategy = null!;
     private FlatNumber btFast = null!, btSlow = null!, btBuy = null!, btSell = null!;
     private Label btSummary = null!, btNote = null!;
     private LineChart btChart = null!;
@@ -44,8 +44,8 @@ internal sealed class AnalysisForm : Form
     private TextBox transcript = null!;
     private FlatText question = null!, keyBox = null!;
     private FlatButton sendButton = null!, saveKey = null!, removeKey = null!;
-    private FlatCheck shareData = null!;
-    private FlatCombo modelBox = null!;
+    private FlatCheckBox shareData = null!;
+    private FlatComboBox modelBox = null!;
     private Panel keyPanel = null!, askPanel = null!;
     private readonly List<AiMessage> conversation = new();
     private CancellationTokenSource? askCts;
@@ -124,7 +124,7 @@ internal sealed class AnalysisForm : Form
 
     private List<Item> itemsPrevious = new();
 
-    private Item? Selected(FlatCombo combo) => combo.SelectedIndex >= 0 && combo.SelectedIndex < items.Count ? items[combo.SelectedIndex] : null;
+    private Item? Selected(FlatComboBox combo) => combo.SelectedIndex >= 0 && combo.SelectedIndex < items.Count ? items[combo.SelectedIndex] : null;
 
     private IReadOnlyList<Candle> CandlesOf(Item? item) => item is null ? Array.Empty<Candle>() : host.QuoteService.Store.Candles(item.Code);
 
@@ -175,13 +175,13 @@ internal sealed class AnalysisForm : Form
     private Control BuildChartPage()
     {
         var page = NewPage();
-        chartInstrument = new FlatCombo { Width = 420 };
-        chartRange = new FlatCombo { Width = 170 };
+        chartInstrument = new FlatComboBox { Width = 420 };
+        chartRange = new FlatComboBox { Width = 170 };
         chartRange.SetItems(new[] { Loc.T("analysis.range.30"), Loc.T("analysis.range.60"), Loc.T("analysis.range.130"), Loc.T("analysis.range.all") }, 1);
         chartInfo = Muted("");
-        chartBands = new FlatCheck { Text = Loc.T("analysis.bollinger"), Margin = new Padding(8, 6, 0, 0) };
+        chartBands = new FlatCheckBox { Text = Loc.T("analysis.bollinger"), Margin = new Padding(8, 6, 0, 0) };
         chartBands.CheckedChanged += (_, _) => FillChart();
-        chartMacd = new FlatCheck { Text = Loc.T("analysis.macd"), Margin = new Padding(8, 6, 0, 0) };
+        chartMacd = new FlatCheckBox { Text = Loc.T("analysis.macd"), Margin = new Padding(8, 6, 0, 0) };
         chartMacd.CheckedChanged += (_, _) => FillChart();
         chart = new CandleChart { Dock = DockStyle.Fill };
         chartInstrument.SelectedIndexChanged += (_, _) => { if (!syncing) FillChart(); };
@@ -212,8 +212,8 @@ internal sealed class AnalysisForm : Form
     private Control BuildBacktestPage()
     {
         var page = NewPage();
-        btInstrument = new FlatCombo { Width = 420 };
-        btStrategy = new FlatCombo { Width = 300 };
+        btInstrument = new FlatComboBox { Width = 420 };
+        btStrategy = new FlatComboBox { Width = 300 };
         btStrategy.SetItems(new[] { Loc.T("bt.sma"), Loc.T("bt.rsi"), Loc.T("bt.macd") }, 0);
         btFast = new FlatNumber(); btFast.Configure(2, 100, 1); btFast.SetValueSilently(20);
         btSlow = new FlatNumber(); btSlow.Configure(3, 250, 1); btSlow.SetValueSilently(50);
@@ -345,9 +345,9 @@ internal sealed class AnalysisForm : Form
         saveKey = new FlatButton { Text = Loc.T("ai.saveKey") };
         saveKey.SetPrimary(true);
         removeKey = new FlatButton { Text = Loc.T("ai.removeKey") };
-        modelBox = new FlatCombo { Width = 220 };
+        modelBox = new FlatComboBox { Width = 220 };
         modelBox.SetItems(AiAssistant.Models, Math.Max(0, Array.IndexOf(AiAssistant.Models, host.Config.AiModel)));
-        shareData = new FlatCheck { Text = Loc.T("ai.share"), Checked = host.Config.AiShareData };
+        shareData = new FlatCheckBox { Text = Loc.T("ai.share"), Checked = host.Config.AiShareData };
         keyPanel = new Panel { Dock = DockStyle.Top, AutoSize = true };
         keyPanel.Controls.Add(Bar(Labelled(Loc.T("ai.keyLabel"), keyBox), saveKey, removeKey, Labelled(Loc.T("ai.model"), modelBox)));
         var privacy = Muted(Loc.T("ai.privacy"));

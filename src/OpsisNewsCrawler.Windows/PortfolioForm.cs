@@ -224,7 +224,7 @@ internal sealed class PositionDialog : Form
     private readonly FlatList list = new();
     private readonly FlatText quantity = new();
     private readonly FlatText avgCost = new();
-    private readonly FlatCombo currency = new();
+    private readonly FlatComboBox currency = new();
     private readonly List<QuoteInstrument> all;
     private List<QuoteInstrument> shown = new();
 
