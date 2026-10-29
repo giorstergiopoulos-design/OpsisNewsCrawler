@@ -135,6 +135,7 @@ internal sealed class TickerCanvas : Control
 
     private int IconSize => IconGeometry.ItemIconSize(fontScale);
     private int WeatherIconSize => (int)Math.Round(22 * fontScale);
+    private int ContinentIconSize => (int)Math.Round(24 * fontScale);
     private Bitmap? buffer;
     private int loop;
     private int textHeight = 16;
@@ -150,6 +151,7 @@ internal sealed class TickerCanvas : Control
 
     /// <summary>A weather item (it has a city key but no link) was clicked.</summary>
     public event Action<NewsItem>? WeatherClicked;
+    public event Action<NewsItem>? HazardClicked;
 
     /// <summary>Right mouse button released over the strip (used to open the settings).</summary>
     public event Action<NewsItem?>? ContextClicked;
@@ -320,10 +322,11 @@ internal sealed class TickerCanvas : Control
             var host = !isQuote && Uri.TryCreate(item.Url, UriKind.Absolute, out var uri) ? uri.Host : "";
             var source = uppercase ? UpperNoAccents(item.Source) : item.Source;
             var title = uppercase ? UpperNoAccents(item.Title) : item.Title;
-            var sourceWidth = Measure(source + ":", sourceFont);
-            var titleWidth = Measure(title, titleFont);
-            var iconWidth = item.Kind == NewsItemKind.Weather ? WeatherIconSize + IconGap : showIcons && !isQuote ? IconSize + IconGap : 0;
-            var width = iconWidth + sourceWidth + SourceTitleGap + titleWidth + ItemGap;
+            var isContinent = item.Kind == NewsItemKind.Continent;
+            var sourceWidth = isContinent ? 0 : Measure(source + ":", sourceFont);
+            var titleWidth = isContinent ? Measure(title, sourceFont) : Measure(title, titleFont);
+            var iconWidth = isContinent ? ContinentIconSize + IconGap : item.Kind == NewsItemKind.Weather ? WeatherIconSize + IconGap : showIcons && !isQuote ? IconSize + IconGap : 0;
+            var width = iconWidth + sourceWidth + (isContinent ? 0 : SourceTitleGap) + titleWidth + ItemGap;
             entries.Add(new Entry(item, host, source, title, x, sourceWidth, width));
             x += width;
         }
@@ -371,7 +374,7 @@ internal sealed class TickerCanvas : Control
         hoverIndex = index;
         hoverCopy = copy;
 
-        var clickable = index >= 0 && (!string.IsNullOrEmpty(entries[index].Item.Url) || entries[index].Item.Breaking || entries[index].Item.Kind == NewsItemKind.Weather && !string.IsNullOrEmpty(entries[index].Item.Key));
+        var clickable = index >= 0 && (!string.IsNullOrEmpty(entries[index].Item.Url) || entries[index].Item.Breaking || entries[index].Item.Kind is NewsItemKind.Weather or NewsItemKind.Hazard && !string.IsNullOrEmpty(entries[index].Item.Key));
         Cursor = clickable ? Cursors.Hand : Cursors.Default;
         Invalidate();
 
@@ -421,6 +424,12 @@ internal sealed class TickerCanvas : Control
             if (!string.IsNullOrEmpty(item.Key)) WeatherClicked?.Invoke(item);
             return;
         }
+        if (item.Kind == NewsItemKind.Hazard && !string.IsNullOrEmpty(item.Key) && HazardClicked is not null)
+        {
+            HazardClicked.Invoke(item);       // the detail card; its link opens the official page
+            return;
+        }
+        if (item.Kind == NewsItemKind.Continent) return;
         // An alert without a link (severe weather, price limit) is clickable too: the click dismisses it.
         if (!string.IsNullOrEmpty(item.Url) || item.Breaking) ItemClicked?.Invoke(item);
     }
@@ -646,6 +655,14 @@ internal sealed class TickerCanvas : Control
             return;
         }
         float x = left;
+        if (entry.Item.Kind == NewsItemKind.Continent)
+        {
+            HazardIcons.DrawContinent(g, new Rectangle(left, (Height - ContinentIconSize) / 2, ContinentIconSize, ContinentIconSize), (Continent)entry.Item.Icon);
+            x += ContinentIconSize + IconGap;
+            using var nameBrush = new SolidBrush(titleColor);
+            g.DrawString(entry.Title, sourceFont, nameBrush, x, textY, TextFormat);
+            return;
+        }
         if (entry.Item.Kind == NewsItemKind.Weather)
         {
             WeatherIcons.Draw(g, new Rectangle(left, (Height - WeatherIconSize) / 2, WeatherIconSize, WeatherIconSize), entry.Item.Icon, darkSurface);
@@ -671,6 +688,14 @@ internal sealed class TickerCanvas : Control
     {
         var contentWidth = entry.Width - ItemGap;
         var x = (float)(Width - logicalLeft); // right edge of the entry
+        if (entry.Item.Kind == NewsItemKind.Continent)
+        {
+            HazardIcons.DrawContinent(g, new Rectangle((int)x - ContinentIconSize, (Height - ContinentIconSize) / 2, ContinentIconSize, ContinentIconSize), (Continent)entry.Item.Icon);
+            x -= ContinentIconSize + IconGap;
+            using var nameBrush = new SolidBrush(titleColor);
+            g.DrawString(entry.Title, sourceFont, nameBrush, new RectangleF(x - contentWidth, textY, contentWidth, textHeight + 2), TextFormatRtl);
+            return;
+        }
         var isWeather = entry.Item.Kind == NewsItemKind.Weather;
         var iconSize = isWeather ? WeatherIconSize : IconSize;
         var hasIcon = isWeather || showIcons && !isQuote;
@@ -697,7 +722,8 @@ internal sealed class TickerCanvas : Control
     {
         if (entry.Item.Kind == NewsItemKind.Hazard)
         {
-            DrawHazardIcon(g, rect, entry.Item.Icon);
+            var (kind, level) = HazardText.DecodeIcon(entry.Item.Icon);
+            HazardIcons.Draw(g, rect, kind, level);
             return;
         }
         var icon = entry.Host.Length > 0 ? FaviconCache.TryGetFor(entry.Host, darkSurface) : null;
@@ -721,26 +747,6 @@ internal sealed class TickerCanvas : Control
             using var center = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
             g.DrawString(char.ToUpperInvariant(letter).ToString(), badgeFont, Brushes.White, rect, center);
         }
-    }
-
-    /// <summary>A warning triangle: yellow, orange or red by the level of the event.</summary>
-    private static void DrawHazardIcon(Graphics g, Rectangle rect, int level)
-    {
-        var (top, bottom) = level switch
-        {
-            >= 3 => (Color.FromArgb(255, 110, 90), Color.FromArgb(205, 40, 40)),
-            2 => (Color.FromArgb(255, 170, 70), Color.FromArgb(230, 105, 35)),
-            _ => (Color.FromArgb(255, 225, 110), Color.FromArgb(225, 175, 40)),
-        };
-        var r = Rectangle.Inflate(rect, -1, -1);
-        using var path = new GraphicsPath();
-        path.AddPolygon(new[] { new PointF(r.Left + r.Width / 2f, r.Top), new PointF(r.Right, r.Bottom), new PointF(r.Left, r.Bottom) });
-        using (var fill = new LinearGradientBrush(r, top, bottom, 90f)) g.FillPath(fill, path);
-        using (var edge = new Pen(Color.FromArgb(230, 255, 255, 255), Math.Max(1f, r.Width / 14f)) { LineJoin = LineJoin.Round }) g.DrawPath(edge, path);
-        using var mark = new Pen(Color.White, Math.Max(1.5f, r.Width / 8f)) { StartCap = LineCap.Round, EndCap = LineCap.Round };
-        var cx = r.Left + r.Width / 2f;
-        g.DrawLine(mark, cx, r.Top + r.Height * 0.38f, cx, r.Top + r.Height * 0.66f);
-        g.FillEllipse(Brushes.White, cx - r.Width / 14f, r.Top + r.Height * 0.76f, r.Width / 7f, r.Width / 7f);
     }
 
     /// <summary>Multiplies the pixels near the left and right end by a ramp 0..1 (the frame is premultiplied, so this is a true fade).</summary>

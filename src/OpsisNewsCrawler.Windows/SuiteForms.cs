@@ -674,6 +674,10 @@ internal sealed class SuiteForm : SplashBase
             }
         }
         catch (OperationCanceledException) { }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            Log.Write($"family install step failed: {ex.GetType().Name}: {ex.Message}");   // async void: nothing may escape
+        }
         finally
         {
             if (!IsDisposed)

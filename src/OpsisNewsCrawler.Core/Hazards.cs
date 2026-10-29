@@ -15,7 +15,8 @@ public enum HazardSources { None = 0, Usgs = 1, Emsc = 2, Gdacs = 4, Eonet = 8, 
 /// magnitudes (<see cref="MagnitudeMin"/>..<see cref="MagnitudeMax"/> show how much they differ). <see cref="Level"/>: 1 = information, 2 = orange, 3 = red.
 /// </summary>
 public sealed record HazardEvent(string Id, HazardKind Kind, string Place, double Lat, double Lon, DateTimeOffset Time, string Url,
-    double? Magnitude, double? MagnitudeMin, double? MagnitudeMax, int Level, IReadOnlyList<string> Sources, double? DepthKm = null)
+    double? Magnitude, double? MagnitudeMin, double? MagnitudeMax, int Level, IReadOnlyList<string> Sources, double? DepthKm = null,
+    IReadOnlyDictionary<string, string>? SourceUrls = null)
 {
     public int SourceCount => Sources.Count;
 }
@@ -30,56 +31,82 @@ public static class HazardFeeds
 
     public static int EarthquakeLevel(double magnitude) => magnitude >= 7.0 ? 3 : magnitude >= 5.5 ? 2 : 1;
 
-    public static IReadOnlyList<HazardEvent> ParseUsgs(string json)
+    // Every parser works item by item: one broken item (no time, no coordinates, a wrong type) is counted in "skipped" and never costs the items
+    // after it. Items that are left out on purpose (not an earthquake, closed, not an emergency) are not counted as skipped.
+    private static readonly Type[] ItemErrors = { typeof(JsonException), typeof(InvalidOperationException), typeof(KeyNotFoundException), typeof(IndexOutOfRangeException), typeof(FormatException), typeof(ArgumentOutOfRangeException), typeof(OverflowException) };
+
+    private static bool IsItemError(Exception ex) => ItemErrors.Any(t => t.IsInstanceOfType(ex)) || ex is System.Xml.XmlException;
+
+    public static IReadOnlyList<HazardEvent> ParseUsgs(string json) => ParseUsgs(json, out _);
+
+    public static IReadOnlyList<HazardEvent> ParseUsgs(string json, out int skipped)
     {
         var list = new List<HazardEvent>();
+        var bad = 0;
         try
         {
             using var doc = JsonDocument.Parse(json);
-            if (doc.RootElement.ValueKind != JsonValueKind.Object || !doc.RootElement.TryGetProperty("features", out var features) || features.ValueKind != JsonValueKind.Array) return list;
+            if (doc.RootElement.ValueKind != JsonValueKind.Object || !doc.RootElement.TryGetProperty("features", out var features) || features.ValueKind != JsonValueKind.Array) { skipped = 0; return list; }
             foreach (var f in features.EnumerateArray())
             {
-                var props = f.GetProperty("properties");
-                if (props.TryGetProperty("type", out var type) && type.ValueKind == JsonValueKind.String && type.GetString() != "earthquake") continue;
-                if (!Num(props, "mag", out var mag)) continue;
-                var c = f.GetProperty("geometry").GetProperty("coordinates");
-                var lon = c[0].GetDouble();
-                var lat = c[1].GetDouble();
-                var depth = c.GetArrayLength() > 2 ? c[2].GetDouble() : (double?)null;
-                var ms = props.GetProperty("time").GetInt64();
-                list.Add(new HazardEvent("usgs:" + f.GetProperty("id").GetString(), HazardKind.Earthquake, Str(props, "place") ?? "", lat, lon,
-                    DateTimeOffset.FromUnixTimeMilliseconds(ms), Str(props, "url") ?? "", mag, mag, mag, EarthquakeLevel(mag), new[] { "USGS" }, depth));
+                try
+                {
+                    var props = f.GetProperty("properties");
+                    if (props.TryGetProperty("type", out var type) && type.ValueKind == JsonValueKind.String && type.GetString() != "earthquake") continue;
+                    if (!Num(props, "mag", out var mag)) { bad++; continue; }
+                    var c = f.GetProperty("geometry").GetProperty("coordinates");
+                    var lon = c[0].GetDouble();
+                    var lat = c[1].GetDouble();
+                    var depth = c.GetArrayLength() > 2 ? c[2].GetDouble() : (double?)null;
+                    var ms = props.GetProperty("time").GetInt64();
+                    var url = Str(props, "url") ?? "";
+                    list.Add(new HazardEvent("usgs:" + f.GetProperty("id").GetString(), HazardKind.Earthquake, Str(props, "place") ?? "", lat, lon,
+                        DateTimeOffset.FromUnixTimeMilliseconds(ms), url, mag, mag, mag, EarthquakeLevel(mag), new[] { "USGS" }, depth, Links("USGS", url)));
+                }
+                catch (Exception ex) when (IsItemError(ex)) { bad++; }
             }
         }
-        catch (Exception ex) when (ex is JsonException or InvalidOperationException or KeyNotFoundException or IndexOutOfRangeException or FormatException) { }
+        catch (Exception ex) when (IsItemError(ex)) { }
+        skipped = bad;
         return list;
     }
 
-    public static IReadOnlyList<HazardEvent> ParseEmsc(string json)
+    public static IReadOnlyList<HazardEvent> ParseEmsc(string json) => ParseEmsc(json, out _);
+
+    public static IReadOnlyList<HazardEvent> ParseEmsc(string json, out int skipped)
     {
         var list = new List<HazardEvent>();
+        var bad = 0;
         try
         {
             using var doc = JsonDocument.Parse(json);
-            if (doc.RootElement.ValueKind != JsonValueKind.Object || !doc.RootElement.TryGetProperty("features", out var features) || features.ValueKind != JsonValueKind.Array) return list;
+            if (doc.RootElement.ValueKind != JsonValueKind.Object || !doc.RootElement.TryGetProperty("features", out var features) || features.ValueKind != JsonValueKind.Array) { skipped = 0; return list; }
             foreach (var f in features.EnumerateArray())
             {
-                var p = f.GetProperty("properties");
-                if (!Num(p, "mag", out var mag) || !Num(p, "lat", out var lat) || !Num(p, "lon", out var lon)) continue;
-                if (!DateTimeOffset.TryParse(Str(p, "time"), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var time)) continue;
-                var unid = Str(p, "unid") ?? f.GetProperty("id").GetString() ?? "";
-                list.Add(new HazardEvent("emsc:" + unid, HazardKind.Earthquake, Title(Str(p, "flynn_region") ?? ""), lat, lon, time,
-                    "https://www.emsc-csem.org/Earthquake_information/earthquake.php?id=" + Uri.EscapeDataString(unid), mag, mag, mag, EarthquakeLevel(mag), new[] { "EMSC" },
-                    Num(p, "depth", out var depth) ? depth : null));
+                try
+                {
+                    var p = f.GetProperty("properties");
+                    if (!Num(p, "mag", out var mag) || !Num(p, "lat", out var lat) || !Num(p, "lon", out var lon)) { bad++; continue; }
+                    if (!DateTimeOffset.TryParse(Str(p, "time"), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var time)) { bad++; continue; }
+                    var unid = Str(p, "unid") ?? f.GetProperty("id").GetString() ?? "";
+                    var url = "https://www.emsc-csem.org/Earthquake_information/earthquake.php?id=" + Uri.EscapeDataString(unid);
+                    list.Add(new HazardEvent("emsc:" + unid, HazardKind.Earthquake, Title(Str(p, "flynn_region") ?? ""), lat, lon, time,
+                        url, mag, mag, mag, EarthquakeLevel(mag), new[] { "EMSC" }, Num(p, "depth", out var depth) ? depth : null, Links("EMSC", url)));
+                }
+                catch (Exception ex) when (IsItemError(ex)) { bad++; }
             }
         }
-        catch (Exception ex) when (ex is JsonException or InvalidOperationException or KeyNotFoundException or FormatException) { }
+        catch (Exception ex) when (IsItemError(ex)) { }
+        skipped = bad;
         return list;
     }
 
-    public static IReadOnlyList<HazardEvent> ParseGdacs(string xml)
+    public static IReadOnlyList<HazardEvent> ParseGdacs(string xml) => ParseGdacs(xml, out _);
+
+    public static IReadOnlyList<HazardEvent> ParseGdacs(string xml, out int skipped)
     {
         var list = new List<HazardEvent>();
+        var bad = 0;
         try
         {
             using var reader = System.Xml.XmlReader.Create(new StringReader(xml.TrimStart('﻿')),
@@ -87,55 +114,75 @@ public static class HazardFeeds
             var doc = XDocument.Load(reader);
             foreach (var item in doc.Descendants().Where(e => e.Name.LocalName == "item"))
             {
-                string? V(string local) => item.Elements().FirstOrDefault(e => e.Name.LocalName == local)?.Value;
-                var type = V("eventtype");
-                if (type is null) continue;
-                var kind = type switch { "EQ" => HazardKind.Earthquake, "TC" => HazardKind.Storm, "FL" => HazardKind.Flood, "VO" => HazardKind.Volcano, "WF" => HazardKind.Wildfire, "DR" => HazardKind.Drought, "TS" => HazardKind.Tsunami, _ => HazardKind.Other };
-                var point = item.Elements().FirstOrDefault(e => e.Name.LocalName == "Point");
-                if (point is null) continue;
-                var lat = double.Parse(point.Elements().First(e => e.Name.LocalName == "lat").Value, CultureInfo.InvariantCulture);
-                var lon = double.Parse(point.Elements().First(e => e.Name.LocalName == "long").Value, CultureInfo.InvariantCulture);
-                var level = V("alertlevel") switch { "Red" => 3, "Orange" => 2, _ => 1 };
-                var sev = item.Elements().FirstOrDefault(e => e.Name.LocalName == "severity");
-                double? magnitude = kind == HazardKind.Earthquake && double.TryParse((string?)sev?.Attribute("value"), NumberStyles.Float, CultureInfo.InvariantCulture, out var m) ? m : null;
-                if (!DateTimeOffset.TryParse(V("fromdate") ?? V("pubDate"), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var time)) continue;
-                var country = V("country") ?? "";
-                var name = V("eventname");
-                var place = !string.IsNullOrWhiteSpace(name) ? (country.Length > 0 ? name + ", " + country : name) : country;
-                if (place.Length == 0) place = (V("title") ?? "").Split(" in ").LastOrDefault() ?? "";
-                list.Add(new HazardEvent("gdacs:" + type + (V("eventid") ?? ""), kind, place, lat, lon, time, V("link")?.Replace("http://", "https://") ?? "",
-                    magnitude, magnitude, magnitude, level, new[] { "GDACS" }));
+                try
+                {
+                    string? V(string local) => item.Elements().FirstOrDefault(e => e.Name.LocalName == local)?.Value;
+                    var type = V("eventtype");
+                    if (type is null) { bad++; continue; }
+                    var kind = type switch { "EQ" => HazardKind.Earthquake, "TC" => HazardKind.Storm, "FL" => HazardKind.Flood, "VO" => HazardKind.Volcano, "WF" => HazardKind.Wildfire, "DR" => HazardKind.Drought, "TS" => HazardKind.Tsunami, _ => HazardKind.Other };
+                    var point = item.Elements().FirstOrDefault(e => e.Name.LocalName == "Point");
+                    var latText = point?.Elements().FirstOrDefault(e => e.Name.LocalName == "lat")?.Value;
+                    var lonText = point?.Elements().FirstOrDefault(e => e.Name.LocalName == "long")?.Value;   // a missing <long> is one bad item, not the end of the list
+                    if (latText is null || lonText is null) { bad++; continue; }
+                    var lat = double.Parse(latText, CultureInfo.InvariantCulture);
+                    var lon = double.Parse(lonText, CultureInfo.InvariantCulture);
+                    var level = V("alertlevel") switch { "Red" => 3, "Orange" => 2, _ => 1 };
+                    var sev = item.Elements().FirstOrDefault(e => e.Name.LocalName == "severity");
+                    double? magnitude = kind == HazardKind.Earthquake && double.TryParse((string?)sev?.Attribute("value"), NumberStyles.Float, CultureInfo.InvariantCulture, out var m) ? m : null;
+                    if (!DateTimeOffset.TryParse(V("fromdate") ?? V("pubDate"), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var time)) { bad++; continue; }
+                    var country = V("country") ?? "";
+                    var name = V("eventname");
+                    var place = !string.IsNullOrWhiteSpace(name) ? (country.Length > 0 ? name + ", " + country : name) : country;
+                    if (place.Length == 0) place = (V("title") ?? "").Split(" in ").LastOrDefault() ?? "";
+                    var url = V("link")?.Replace("http://", "https://") ?? "";
+                    list.Add(new HazardEvent("gdacs:" + type + (V("eventid") ?? ""), kind, place, lat, lon, time, url,
+                        magnitude, magnitude, magnitude, level, new[] { "GDACS" }, null, Links("GDACS", url)));
+                }
+                catch (Exception ex) when (IsItemError(ex)) { bad++; }
             }
         }
-        catch (Exception ex) when (ex is System.Xml.XmlException or FormatException or InvalidOperationException) { }
+        catch (Exception ex) when (IsItemError(ex)) { }
+        skipped = bad;
         return list;
     }
 
-    public static IReadOnlyList<HazardEvent> ParseEonet(string json)
+    public static IReadOnlyList<HazardEvent> ParseEonet(string json) => ParseEonet(json, out _);
+
+    public static IReadOnlyList<HazardEvent> ParseEonet(string json, out int skipped)
     {
         var list = new List<HazardEvent>();
+        var bad = 0;
         try
         {
             using var doc = JsonDocument.Parse(json);
-            if (doc.RootElement.ValueKind != JsonValueKind.Object || !doc.RootElement.TryGetProperty("events", out var events) || events.ValueKind != JsonValueKind.Array) return list;
+            if (doc.RootElement.ValueKind != JsonValueKind.Object || !doc.RootElement.TryGetProperty("events", out var events) || events.ValueKind != JsonValueKind.Array) { skipped = 0; return list; }
             foreach (var e in events.EnumerateArray())
             {
-                if (e.TryGetProperty("closed", out var closed) && closed.ValueKind == JsonValueKind.String) continue;
-                var category = e.TryGetProperty("categories", out var cats) && cats.GetArrayLength() > 0 ? Str(cats[0], "id") : null;
-                var kind = category switch { "wildfires" => HazardKind.Wildfire, "floods" => HazardKind.Flood, "severeStorms" => HazardKind.Storm, "volcanoes" => HazardKind.Volcano, "drought" => HazardKind.Drought, _ => HazardKind.Other };
-                if (category is "seaLakeIce" or "snow" or "manmade" or "dustHaze" or "waterColor" or "tempExtremes") continue;   // not an emergency
-                if (!e.TryGetProperty("geometry", out var geo) || geo.ValueKind != JsonValueKind.Array || geo.GetArrayLength() == 0) continue;
-                var last = geo[geo.GetArrayLength() - 1];
-                if (last.GetProperty("coordinates").ValueKind != JsonValueKind.Array || last.GetProperty("type").GetString() != "Point") continue;
-                var c = last.GetProperty("coordinates");
-                if (!DateTimeOffset.TryParse(Str(last, "date"), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var time)) continue;
-                list.Add(new HazardEvent("eonet:" + Str(e, "id"), kind, Str(e, "title") ?? "", c[1].GetDouble(), c[0].GetDouble(), time, Str(e, "link") ?? "",
-                    null, null, null, 1, new[] { "NASA EONET" }));
+                try
+                {
+                    if (e.TryGetProperty("closed", out var closed) && closed.ValueKind == JsonValueKind.String) continue;
+                    var category = e.TryGetProperty("categories", out var cats) && cats.GetArrayLength() > 0 ? Str(cats[0], "id") : null;
+                    var kind = category switch { "wildfires" => HazardKind.Wildfire, "floods" => HazardKind.Flood, "severeStorms" => HazardKind.Storm, "volcanoes" => HazardKind.Volcano, "drought" => HazardKind.Drought, _ => HazardKind.Other };
+                    if (category is "seaLakeIce" or "snow" or "manmade" or "dustHaze" or "waterColor" or "tempExtremes") continue;   // not an emergency
+                    if (!e.TryGetProperty("geometry", out var geo) || geo.ValueKind != JsonValueKind.Array || geo.GetArrayLength() == 0) { bad++; continue; }
+                    var last = geo[geo.GetArrayLength() - 1];
+                    if (last.GetProperty("coordinates").ValueKind != JsonValueKind.Array || last.GetProperty("type").GetString() != "Point") continue;
+                    var c = last.GetProperty("coordinates");
+                    if (!DateTimeOffset.TryParse(Str(last, "date"), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var time)) { bad++; continue; }
+                    var url = Str(e, "link") ?? "";
+                    list.Add(new HazardEvent("eonet:" + Str(e, "id"), kind, Str(e, "title") ?? "", c[1].GetDouble(), c[0].GetDouble(), time, url,
+                        null, null, null, 1, new[] { "NASA EONET" }, null, Links("NASA EONET", url)));
+                }
+                catch (Exception ex) when (IsItemError(ex)) { bad++; }
             }
         }
-        catch (Exception ex) when (ex is JsonException or InvalidOperationException or KeyNotFoundException or IndexOutOfRangeException or FormatException) { }
+        catch (Exception ex) when (IsItemError(ex)) { }
+        skipped = bad;
         return list;
     }
+
+    private static IReadOnlyDictionary<string, string>? Links(string source, string url) =>
+        string.IsNullOrWhiteSpace(url) ? null : new Dictionary<string, string> { [source] = url };
 
     private static string Title(string upper) =>
         string.Join(' ', upper.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(w => char.ToUpperInvariant(w[0]) + w[1..]));
@@ -192,6 +239,14 @@ public static class HazardMerge
         return a.Kind == HazardKind.Earthquake ? km <= SameQuakeKm && dt <= SameQuakeTime : km <= SameEventKm && dt <= SameEventTime;
     }
 
+    private static IReadOnlyDictionary<string, string>? MergeLinks(List<HazardEvent> g)
+    {
+        var all = new Dictionary<string, string>();
+        foreach (var e in g)
+            if (e.SourceUrls is not null) foreach (var (k, v) in e.SourceUrls) all.TryAdd(k, v);
+        return all.Count == 0 ? null : all;
+    }
+
     private static HazardEvent Merge(List<HazardEvent> g)
     {
         if (g.Count == 1) return g[0];
@@ -207,7 +262,8 @@ public static class HazardMerge
         {
             Place = place, Magnitude = mean, MagnitudeMin = mags.Count == 0 ? null : mags.Min(), MagnitudeMax = mags.Count == 0 ? null : mags.Max(),
             Level = level, Sources = sources, Time = g.Min(e => e.Time), DepthKm = g.Any(e => e.DepthKm.HasValue) ? depth : null,
-            Id = best.Id
+            Id = best.Id,
+            SourceUrls = MergeLinks(g)
         };
     }
 }
@@ -241,6 +297,8 @@ public sealed record HazardFilter(string Region, double MinMagnitude, int MaxAge
 /// <summary>Downloads the feeds (each one on its own: one that fails never hides the others) and combines them.</summary>
 public sealed class HazardService
 {
+    private delegate IReadOnlyList<HazardEvent> ParseWithCount(string text, out int skipped);
+
     private readonly HttpClient http;
     public HazardService(HttpMessageHandler? handler = null)
     {
@@ -253,15 +311,20 @@ public sealed class HazardService
     /// <summary>Names of the sources that did not answer in the last run.</summary>
     public IReadOnlyList<string> LastFailed { get; private set; } = Array.Empty<string>();
 
+    /// <summary>How many items of the feeds could not be read in the last run (each one is left out, the rest is kept). 0 with an empty list = nothing happening; above 0 = a partial list.</summary>
+    public int LastSkipped { get; private set; }
+
     public async Task<IReadOnlyList<HazardEvent>> FetchAsync(HazardSources sources, CancellationToken ct)
     {
         var failed = new List<string>();
-        async Task<IReadOnlyList<HazardEvent>> One(string name, string url, Func<string, IReadOnlyList<HazardEvent>> parse)
+        var skippedTotal = 0;
+        async Task<IReadOnlyList<HazardEvent>> One(string name, string url, ParseWithCount parse)
         {
             try
             {
                 var text = await http.GetStringAsync(url, ct).ConfigureAwait(false);
-                var parsed = parse(text);
+                var parsed = parse(text, out var skipped);
+                if (skipped > 0) Interlocked.Add(ref skippedTotal, skipped);
                 if (parsed.Count == 0 && text.Length < 200) { lock (failed) failed.Add(name); }
                 return parsed;
             }
@@ -279,6 +342,7 @@ public sealed class HazardService
         if (sources.HasFlag(HazardSources.Eonet)) tasks.Add(One("NASA EONET", HazardFeeds.EonetUrl, HazardFeeds.ParseEonet));
         var all = (await Task.WhenAll(tasks).ConfigureAwait(false)).SelectMany(x => x);
         LastFailed = failed.ToList();
+        LastSkipped = skippedTotal;
         return HazardMerge.Combine(all);
     }
 }
@@ -314,8 +378,17 @@ public static class HazardText
         f ??= (k, a) => Loc.T(k, a);
         var summary = f("hazard.sourcesList", new object[] { string.Join(", ", e.Sources) });
         if (e.DepthKm is { } d && d > 0) summary += " · " + f("hazard.depth", new object[] { Math.Round(d).ToString("0", CultureInfo.InvariantCulture) });
-        return new NewsItem(Title(e, now, f, zone), e.Url, KindName(e.Kind, t), e.Time, summary, null, NewsItemKind.Hazard, Trend: e.Level >= 3 ? -1 : 0, Icon: e.Level, Key: e.Id);
+        return new NewsItem(Title(e, now, f, zone), e.Url, KindName(e.Kind, t), e.Time, summary, null, NewsItemKind.Hazard, Trend: e.Level >= 3 ? -1 : 0, Icon: IconCode(e.Kind, e.Level), Key: e.Id);
     }
+
+    /// <summary>The icon of a bar item: the kind in the upper bits, the level (1-3) in the lower four.</summary>
+    public static int IconCode(HazardKind kind, int level) => ((int)kind << 4) | Math.Clamp(level, 0, 15);
+
+    public static (HazardKind Kind, int Level) DecodeIcon(int icon) => (Enum.IsDefined((HazardKind)(icon >> 4)) ? (HazardKind)(icon >> 4) : HazardKind.Other, icon & 15);
+
+    /// <summary>The heading before the events of a continent in the World list.</summary>
+    public static NewsItem ContinentItem(Continent c, Func<string, string>? t = null) =>
+        new(Continents.Name(c, t), "", "", DateTimeOffset.MinValue, null, null, NewsItemKind.Continent, Icon: (int)c, Key: "continent:" + Continents.Key(c));
 
     /// <summary>The short line for the tooltip of the tray icon: "Earthquake M5.7 Crete".</summary>
     public static string Tip(HazardEvent e, Func<string, string>? t = null)

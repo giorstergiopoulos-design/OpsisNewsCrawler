@@ -2632,9 +2632,10 @@ public sealed class SettingsPanel : UserControl
                 ? Loc.T("feed.allOk", feeds.Count)
                 : Loc.T("feed.some", feeds.Count - bad.Count, feeds.Count, string.Join(", ", bad));
         }
-        catch (Exception ex) when (ex is OperationCanceledException or InvalidOperationException)
+        catch (Exception ex)
         {
-            if (!IsDisposed) discoverStatus.Text = ex.Message;
+            Log.Write($"feed test failed: {ex.GetType().Name}: {ex.Message}");
+            if (!IsDisposed) discoverStatus.Text = ex is OperationCanceledException or InvalidOperationException ? ex.Message : Loc.T("feed.fail", ex.GetType().Name);
         }
     }
 
@@ -2701,6 +2702,12 @@ public sealed class SettingsPanel : UserControl
             foreach (var f in found.Take(3)) AddFeed(cat, f.Name, f.Url);
             discoverStatus.Text = Loc.T("msg.added", Math.Min(3, found.Count));
             siteBox.Value = "";
+        }
+        catch (Exception ex)
+        {
+            // an async void handler must never let an exception out: it would end the program
+            Log.Write($"add feed from site failed: {ex.GetType().Name}: {ex.Message}");
+            if (!IsDisposed) discoverStatus.Text = L("msg.noRss");
         }
         finally
         {

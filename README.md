@@ -86,7 +86,7 @@
    Get-Content .\OpsisNewsCrawler-Setup.exe.sha256
    ```
    Οι δύο γραμμές πρέπει να ξεκινούν με το ίδιο 64ψήφιο αποτέλεσμα. Αν διαφέρουν, μην τρέξετε το αρχείο.
-3. Τρέξτε τον installer (δεν χρειάζονται δικαιώματα διαχειριστή). Ο οδηγός ρωτά για τρόπο εγκατάστασης (plugin του Opsis ή ξεχωριστή εφαρμογή), προεπιλεγμένη μπάρα και εξαρτήσεις.
+3. Τρέξτε τον installer (ζητά δικαιώματα διαχειριστή: το πρόγραμμα μπαίνει στο Program Files, οι ρυθμίσεις μένουν στο `%AppData%\OpsisNewsCrawler`· μια παλιότερη εγκατάσταση ανά χρήστη αφαιρείται αυτόματα). Ο οδηγός ρωτά για τρόπο εγκατάστασης (plugin του Opsis ή ξεχωριστή εφαρμογή), προεπιλεγμένη μπάρα και εξαρτήσεις.
 
 Φορητή έκδοση (`…-portable.zip`): αποσυμπιέστε και τρέξτε `OpsisNewsCrawler.exe` (χωρίς plugin του Opsis· οι ρυθμίσεις μένουν στο `%AppData%\OpsisNewsCrawler`).
 
@@ -181,7 +181,7 @@ Dark and light themes (all of them: [`docs/screenshots`](docs/screenshots)).
    Get-Content .\OpsisNewsCrawler-Setup.exe.sha256
    ```
    Both lines must start with the same 64-digit value. If they differ, do not run the file.
-3. Run the installer (no administrator rights needed). The wizard asks how to install (Opsis plugin or separate app), the default bar and the dependencies.
+3. Run the installer (it asks for administrator rights: the program goes to Program Files, the settings stay in `%AppData%\OpsisNewsCrawler`; an earlier per-user installation is removed automatically). The wizard asks how to install (Opsis plugin or separate app), the default bar and the dependencies.
 
 Portable (`…-portable.zip`): unzip and run `OpsisNewsCrawler.exe` (no Opsis plugin; settings stay in `%AppData%\OpsisNewsCrawler`).
 

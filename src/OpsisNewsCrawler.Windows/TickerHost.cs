@@ -313,6 +313,7 @@ public sealed class TickerHost : IDisposable
         };
         w.SettingsRequested += () => SettingsRequested?.Invoke();
         w.WeatherRequested += ShowWeatherMap;
+        w.HazardRequested += ShowHazardDetail;
         w.ItemSaveRequested += item =>
         {
             var added = ReadLater.Add(item);
@@ -619,6 +620,8 @@ public sealed class TickerHost : IDisposable
         CloseLivePreview();
         weatherMap?.Close();
         weatherMap = null;
+        hazardDetail?.Close();
+        hazardDetail = null;
         refreshTimer.Stop();
         quoteTimer.Stop();
         weatherTimer.Stop();
@@ -685,6 +688,8 @@ public sealed class TickerHost : IDisposable
         CloseLivePreview();
         weatherMap?.Close();
         weatherMap = null;
+        hazardDetail?.Close();
+        hazardDetail = null;
         refreshTimer.Stop();
         quoteTimer.Stop();
         alertTimer.Stop();
@@ -1102,6 +1107,20 @@ public sealed class TickerHost : IDisposable
         shown.Show();
     }
 
+    // ---- detail card of a disaster (click on the disaster line) ---------------------------------
+
+    private HazardDetailForm? hazardDetail;
+
+    private void ShowHazardDetail(NewsItem item, Rectangle barBounds)
+    {
+        if (disposed || hazardEvents.FirstOrDefault(e => e.Id == item.Key) is not { } hazard) return;
+        hazardDetail?.Close();
+        hazardDetail = new HazardDetailForm(hazard, barBounds);
+        var shown = hazardDetail;
+        shown.FormClosed += (_, _) => { if (ReferenceEquals(hazardDetail, shown)) hazardDetail = null; };
+        shown.Show();
+    }
+
     private void StartBreaking()
     {
         breakingActive = true;
@@ -1233,6 +1252,7 @@ public sealed class TickerHost : IDisposable
     private readonly System.Windows.Forms.Timer hazardTimer = new() { Interval = 15 * 60 * 1000 };
     private IReadOnlyList<HazardEvent> hazardEvents = Array.Empty<HazardEvent>();
     private IReadOnlyList<string> hazardFailed = Array.Empty<string>();
+    private int hazardSkipped;
     private bool refreshingHazards;
     private bool hasHazards;
     private DateTimeOffset? hazardDataAt;
@@ -1249,10 +1269,24 @@ public sealed class TickerHost : IDisposable
     {
         if (!hasHazards) return new[] { Placeholder(Loc.T("ph.loadingWeather")) };
         var now = DateTimeOffset.Now;
-        var items = VisibleHazards().Take(15).Select(e => HazardText.ToItem(e, now)).ToList();
-        var notice = hazardFailed.Count > 0 ? Placeholder(Loc.T("hazard.failed", string.Join(", ", hazardFailed))) : null;
-        if (items.Count == 0) return new[] { notice ?? Placeholder(Loc.T("hazard.none")) };
-        return notice is null ? items : new[] { notice }.Concat(items).ToList();
+        var visible = VisibleHazards();
+        var items = new List<NewsItem>();
+        if (Config.HazardRegion == "world")
+        {
+            // The whole world: one block per continent, each starting with the picture and the name of the continent.
+            foreach (var (continent, events) in HazardWorld.Group(visible.Take(60)))
+            {
+                items.Add(HazardText.ContinentItem(continent));
+                items.AddRange(events.Take(8).Select(e => HazardText.ToItem(e, now)));
+            }
+        }
+        else items.AddRange(visible.Take(15).Select(e => HazardText.ToItem(e, now)));
+        var notices = new List<NewsItem>();
+        if (hazardFailed.Count > 0) notices.Add(Placeholder(Loc.T("hazard.failed", string.Join(", ", hazardFailed))));
+        // A partial list (some items of a feed could not be read) is told apart from a list that is empty because nothing is happening.
+        if (hazardSkipped > 0) notices.Add(Placeholder(Loc.T("hazard.partial", hazardSkipped)));
+        if (items.Count == 0) return new[] { notices.FirstOrDefault() ?? Placeholder(Loc.T("hazard.none")) };
+        return notices.Count == 0 ? items : notices.Concat(items).ToList();
     }
 
     private async Task RefreshHazardsAsync()
@@ -1263,11 +1297,13 @@ public sealed class TickerHost : IDisposable
         {
             var events = await hazardService.FetchAsync((HazardSources)Config.HazardSources, cts.Token);
             var failed = hazardService.LastFailed;
+            var skipped = hazardService.LastSkipped;
             void Apply()
             {
                 if (disposed) return;
                 hasHazards = true;
                 hazardFailed = failed;
+                hazardSkipped = skipped;
                 if (events.Count > 0 || failed.Count == 0) { hazardEvents = events; hazardDataAt = DateTimeOffset.Now; }
                 UpdateLiveIcon();
                 PushAll();
@@ -1610,6 +1646,10 @@ public sealed class TickerHost : IDisposable
         catch (OperationCanceledException)
         {
         }
+        catch (Exception ex)
+        {
+            Log.Write($"history backfill failed: {ex.GetType().Name}: {ex.Message}");   // async void: nothing may escape
+        }
         finally
         {
             backfilling = false;
@@ -1686,6 +1726,8 @@ public sealed class TickerHost : IDisposable
         CloseLivePreview();
         weatherMap?.Close();
         weatherMap = null;
+        hazardDetail?.Close();
+        hazardDetail = null;
         portfolio?.Close();
         portfolio = null;
         news.Dispose();

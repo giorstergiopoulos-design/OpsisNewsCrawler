@@ -99,3 +99,26 @@ public static class LiveIconSnapshot
         LiveIconState.Set(1, 0, "");
     }
 }
+
+/// <summary>A picture of every disaster icon (8 kinds x 3 levels) and of the 7 continents, for a visual check (--snapshot-hazard-icons).</summary>
+public static class HazardIconSheet
+{
+    public static void Save(string png)
+    {
+        const int cell = 64, pad = 12;
+        var kinds = Enum.GetValues<HazardKind>();
+        var width = pad + (Math.Max(kinds.Length, Continents.Order.Count) * (cell + pad));
+        using var bmp = new Bitmap(width, pad + 4 * (cell + pad) + 40);
+        using var g = Graphics.FromImage(bmp);
+        g.Clear(Color.FromArgb(24, 24, 28));
+        for (var level = 1; level <= 3; level++)
+            for (var i = 0; i < kinds.Length; i++)
+                HazardIcons.Draw(g, new Rectangle(pad + i * (cell + pad), pad + (level - 1) * (cell + pad), cell, cell), kinds[i], level);
+        for (var i = 0; i < Continents.Order.Count; i++)
+            HazardIcons.DrawContinent(g, new Rectangle(pad + i * (cell + pad), pad + 3 * (cell + pad), cell, cell), Continents.Order[i]);
+        // the sizes the bar uses
+        for (var i = 0; i < kinds.Length; i++)
+            HazardIcons.Draw(g, new Rectangle(pad + i * (cell + pad), pad + 4 * (cell + pad), 22, 22), kinds[i], 2);
+        bmp.Save(png, System.Drawing.Imaging.ImageFormat.Png);
+    }
+}

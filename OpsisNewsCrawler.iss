@@ -9,7 +9,7 @@
 ; The wizard looks for Opsis (uninstall entry, default folders) and proposes the integrated install when it finds it.
 ; Test switches: /MODE=integrated | /MODE=separate (silent installs), /PLUGINROOT=<folder> (instead of %AppData%\Opsis\plugins).
 #define MyAppName "Opsis News Crawler"
-#define MyAppVersion "0.17.0"
+#define MyAppVersion "0.18.0"
 #ifndef BinDir
 #define BinDir "bin"
 #endif
@@ -33,7 +33,9 @@ OutputDir=Output
 OutputBaseFilename=OpsisNewsCrawler-Setup
 Compression=lzma2
 SolidCompression=yes
-PrivilegesRequired=lowest
+; Machine-wide: the program lives in Program Files (writable by administrators only), the settings stay per user in %AppData%\OpsisNewsCrawler.
+; An earlier per-user installation (%LocalAppData%\Programs) is removed first, see RemovePerUserInstall.
+PrivilegesRequired=admin
 ArchitecturesInstallIn64BitMode=x64compatible
 ; Entry in Windows "Apps / Installed apps" with an Uninstall button
 UninstallDisplayName={#MyAppName}
@@ -67,6 +69,7 @@ Name: "hindi"; MessagesFile: "installer\Hindi.isl"
 
 [CustomMessages]
 english.DeleteSettings=Also delete the Opsis News Crawler settings (config.json)?
+english.OldInstallRemains=An earlier per-user copy of Opsis News Crawler could not be removed (is it running?). Close it and run setup again.
 english.StartWithWindows=Start with Windows
 english.DesktopShortcut=Desktop shortcut
 english.UninstallShortcut=Uninstall {#MyAppName}
@@ -86,6 +89,7 @@ english.BarInside=The bar built into the taskbar (in the empty space after the a
 english.BarHelp=You can change this later in the settings, and you can show both bars at the same time (Bars tab).
 english.RestartOpsis=Restart Opsis - Desktop Customization: the "News Crawler" page appears in its sidebar.
 greek.DeleteSettings=Να διαγραφούν και οι ρυθμίσεις του Opsis News Crawler (config.json);
+greek.OldInstallRemains=Δεν ήταν δυνατή η αφαίρεση προηγούμενου αντιγράφου του Opsis News Crawler (ανά χρήστη). Κλείστε το (τρέχει;) και ξαναεκτελέστε την εγκατάσταση.
 greek.StartWithWindows=Εκκίνηση με τα Windows
 greek.DesktopShortcut=Συντόμευση στην επιφάνεια εργασίας
 greek.UninstallShortcut=Απεγκατάσταση {#MyAppName}
@@ -105,6 +109,7 @@ greek.BarInside=Η μπάρα ενσωματωμένη στη γραμμή ερ�
 greek.BarHelp=Μπορείτε να το αλλάξετε αργότερα στις ρυθμίσεις και να εμφανίζονται και οι δύο μπάρες μαζί (καρτέλα Μπάρες).
 greek.RestartOpsis=Επανεκκινήστε το Opsis - Desktop Customization: η σελίδα «News Crawler» θα εμφανιστεί στο πλευρικό του μενού.
 german.DeleteSettings=Auch die Einstellungen von Opsis News Crawler (config.json) löschen?
+german.OldInstallRemains=Eine frühere benutzerbezogene Kopie von Opsis News Crawler konnte nicht entfernt werden (läuft sie noch?). Beenden Sie sie und starten Sie das Setup erneut.
 german.StartWithWindows=Mit Windows starten
 german.DesktopShortcut=Desktopverknüpfung
 german.UninstallShortcut={#MyAppName} deinstallieren
@@ -124,6 +129,7 @@ german.BarInside=Die in die Taskleiste eingebaute Leiste (im freien Platz nach d
 german.BarHelp=Sie können dies später in den Einstellungen ändern und beide Leisten gleichzeitig anzeigen (Tab Leisten).
 german.RestartOpsis=Starten Sie Opsis - Desktop Customization neu: Die Seite „News Crawler“ erscheint in der Seitenleiste.
 french.DeleteSettings=Supprimer aussi les paramètres d'Opsis News Crawler (config.json) ?
+french.OldInstallRemains=Une copie précédente d’Opsis News Crawler installée pour l’utilisateur n’a pas pu être supprimée (est-elle en cours d’exécution ?). Fermez-la et relancez l’installation.
 french.StartWithWindows=Démarrer avec Windows
 french.DesktopShortcut=Raccourci sur le Bureau
 french.UninstallShortcut=Désinstaller {#MyAppName}
@@ -143,6 +149,7 @@ french.BarInside=La barre intégrée à la barre des tâches (dans l'espace libr
 french.BarHelp=Vous pourrez le modifier plus tard dans les paramètres et afficher les deux barres en même temps (onglet Barres).
 french.RestartOpsis=Redémarrez Opsis - Desktop Customization : la page « News Crawler » apparaît dans sa barre latérale.
 spanish.DeleteSettings=¿Eliminar también la configuración de Opsis News Crawler (config.json)?
+spanish.OldInstallRemains=No se pudo eliminar una copia anterior de Opsis News Crawler instalada por usuario (¿se está ejecutando?). Ciérrela y vuelva a ejecutar la instalación.
 spanish.StartWithWindows=Iniciar con Windows
 spanish.DesktopShortcut=Acceso directo en el escritorio
 spanish.UninstallShortcut=Desinstalar {#MyAppName}
@@ -162,6 +169,7 @@ spanish.BarInside=La barra integrada en la barra de tareas (en el espacio libre 
 spanish.BarHelp=Puede cambiarlo más tarde en la configuración y mostrar ambas barras a la vez (pestaña Barras).
 spanish.RestartOpsis=Reinicie Opsis - Desktop Customization: la página «News Crawler» aparecerá en su barra lateral.
 korean.DeleteSettings=Opsis News Crawler 설정(config.json)도 삭제하시겠습니까?
+korean.OldInstallRemains=이전의 사용자별 Opsis News Crawler를 제거하지 못했습니다(실행 중인가요?). 종료한 후 설치를 다시 실행하세요.
 korean.StartWithWindows=Windows와 함께 시작
 korean.DesktopShortcut=바탕 화면 바로 가기
 korean.UninstallShortcut={#MyAppName} 제거
@@ -181,6 +189,7 @@ korean.BarInside=작업 표시줄에 내장된 바 (앱 뒤의 빈 공간)
 korean.BarHelp=나중에 설정에서 변경할 수 있으며 두 바를 동시에 표시할 수도 있습니다(바 탭).
 korean.RestartOpsis=Opsis - Desktop Customization을(를) 다시 시작하세요. 사이드바에 "News Crawler" 페이지가 나타납니다.
 chinese.DeleteSettings=是否同时删除 Opsis News Crawler 的设置 (config.json)？
+chinese.OldInstallRemains=无法删除之前按用户安装的 Opsis News Crawler（它是否正在运行？）。请先关闭它，然后重新运行安装程序。
 chinese.StartWithWindows=随 Windows 启动
 chinese.DesktopShortcut=桌面快捷方式
 chinese.UninstallShortcut=卸载 {#MyAppName}
@@ -200,6 +209,7 @@ chinese.BarInside=嵌入任务栏的栏（位于应用之后的空白区域）
 chinese.BarHelp=以后可在设置中更改，也可以同时显示两栏（“栏”选项卡）。
 chinese.RestartOpsis=请重新启动 Opsis - Desktop Customization：侧边栏中会出现“News Crawler”页面。
 italian.DeleteSettings=Eliminare anche le impostazioni di Opsis News Crawler (config.json)?
+italian.OldInstallRemains=Non è stato possibile rimuovere una copia precedente di Opsis News Crawler installata per utente (è in esecuzione?). Chiudetela e riavviate l’installazione.
 italian.StartWithWindows=Avvia con Windows
 italian.DesktopShortcut=Collegamento sul desktop
 italian.UninstallShortcut=Disinstalla {#MyAppName}
@@ -219,6 +229,7 @@ italian.BarInside=La barra integrata nella barra delle applicazioni (nello spazi
 italian.BarHelp=Puoi cambiarlo più tardi nelle impostazioni e mostrare entrambe le barre insieme (scheda Barre).
 italian.RestartOpsis=Riavvia Opsis - Desktop Customization: la pagina «News Crawler» comparirà nella barra laterale.
 russian.DeleteSettings=Удалить также настройки Opsis News Crawler (config.json)?
+russian.OldInstallRemains=Не удалось удалить прежнюю копию Opsis News Crawler, установленную для пользователя (она запущена?). Закройте её и запустите установку снова.
 russian.StartWithWindows=Запускать вместе с Windows
 russian.DesktopShortcut=Ярлык на рабочем столе
 russian.UninstallShortcut=Удалить {#MyAppName}
@@ -238,6 +249,7 @@ russian.BarInside=Панель, встроенная в панель задач 
 russian.BarHelp=Позже это можно изменить в настройках, а также показывать обе панели одновременно (вкладка «Панели»).
 russian.RestartOpsis=Перезапустите Opsis - Desktop Customization: страница «News Crawler» появится в его боковой панели.
 japanese.DeleteSettings=Opsis News Crawler の設定 (config.json) も削除しますか?
+japanese.OldInstallRemains=以前にユーザー単位でインストールされた Opsis News Crawler を削除できませんでした（実行中ではありませんか？）。終了してからセットアップをもう一度実行してください。
 japanese.StartWithWindows=Windows と同時に起動
 japanese.DesktopShortcut=デスクトップにショートカットを作成
 japanese.UninstallShortcut={#MyAppName} をアンインストール
@@ -257,6 +269,7 @@ japanese.BarInside=タスクバーに組み込まれたバー (アプリの後�
 japanese.BarHelp=後から設定で変更でき、両方のバーを同時に表示することもできます ([バー] タブ)。
 japanese.RestartOpsis=Opsis - Desktop Customization を再起動してください。サイドバーに「News Crawler」ページが表示されます。
 portuguese.DeleteSettings=Eliminar também as definições do Opsis News Crawler (config.json)?
+portuguese.OldInstallRemains=Não foi possível remover uma cópia anterior do Opsis News Crawler instalada por utilizador (está em execução?). Feche-a e execute a instalação novamente.
 portuguese.StartWithWindows=Iniciar com o Windows
 portuguese.DesktopShortcut=Atalho no ambiente de trabalho
 portuguese.UninstallShortcut=Desinstalar {#MyAppName}
@@ -276,6 +289,7 @@ portuguese.BarInside=A barra integrada na barra de tarefas (no espaço livre dep
 portuguese.BarHelp=Pode alterá-lo mais tarde nas definições e mostrar ambas as barras em simultâneo (separador Barras).
 portuguese.RestartOpsis=Reinicie o Opsis - Desktop Customization: a página «News Crawler» aparece na barra lateral.
 turkish.DeleteSettings=Opsis News Crawler ayarları (config.json) da silinsin mi?
+turkish.OldInstallRemains=Opsis News Crawler’ın önceki kullanıcı başına kopyası kaldırılamadı (çalışıyor olabilir mi?). Kapatın ve kurulumu yeniden çalıştırın.
 turkish.StartWithWindows=Windows ile başlat
 turkish.DesktopShortcut=Masaüstü kısayolu
 turkish.UninstallShortcut={#MyAppName} programını kaldır
@@ -295,6 +309,7 @@ turkish.BarInside=Görev çubuğuna yerleşik çubuk (uygulamalardan sonraki bo�
 turkish.BarHelp=Bunu daha sonra ayarlardan değiştirebilir ve iki çubuğu aynı anda gösterebilirsiniz (Çubuklar sekmesi).
 turkish.RestartOpsis=Opsis - Desktop Customization'ı yeniden başlatın: “News Crawler” sayfası kenar çubuğunda görünür.
 arabic.DeleteSettings=هل تريد حذف إعدادات Opsis News Crawler (config.json) أيضًا؟
+arabic.OldInstallRemains=تعذّرت إزالة نسخة سابقة من Opsis News Crawler مثبّتة لكل مستخدم (هل هي قيد التشغيل؟). أغلقها ثم شغّل التثبيت مرة أخرى.
 arabic.StartWithWindows=التشغيل مع Windows
 arabic.DesktopShortcut=اختصار على سطح المكتب
 arabic.UninstallShortcut=إلغاء تثبيت {#MyAppName}
@@ -314,6 +329,7 @@ arabic.BarInside=الشريط المدمج في شريط المهام (في ال
 arabic.BarHelp=يمكنك تغيير ذلك لاحقًا من الإعدادات وعرض الشريطين معًا (علامة التبويب الأشرطة).
 arabic.RestartOpsis=أعد تشغيل Opsis - Desktop Customization: ستظهر صفحة «News Crawler» في الشريط الجانبي.
 hindi.DeleteSettings=क्या Opsis News Crawler की सेटिंग्स (config.json) भी हटानी हैं?
+hindi.OldInstallRemains=Opsis News Crawler की पिछली प्रति-उपयोगकर्ता कॉपी हटाई नहीं जा सकी (क्या वह चल रही है?). उसे बंद करें और सेटअप फिर चलाएँ।
 hindi.StartWithWindows=Windows के साथ शुरू करें
 hindi.DesktopShortcut=डेस्कटॉप शॉर्टकट
 hindi.UninstallShortcut={#MyAppName} अनइंस्टॉल करें
@@ -354,7 +370,7 @@ Type: files; Name: "{app}\OpsisNewsCrawler.MotionDeskPlugin.*"
 
 [Registry]
 ; Start with Windows (removed again by the uninstaller)
-Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "{#MyAppName}"; ValueData: """{app}\{#MyAppExe}"""; Tasks: startup; Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "{#MyAppName}"; ValueData: """{app}\{#MyAppExe}"""; Tasks: startup; Flags: uninsdeletevalue
 ; Clean up the start-up entry of the very first versions (they were called DeskTicker)
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueName: "DeskTicker"; Flags: deletevalue
 ; Clean up the plugin-path entry written by an earlier build of this installer
@@ -412,12 +428,34 @@ begin
   Result := not IsIntegrated();
 end;
 
+// Where Opsis is installed (empty when unknown): its uninstall entry, machine-wide first.
+function OpsisInstallDir(): String;
+var
+  Key, Dir: String;
+begin
+  Result := '';
+  Key := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{{#OpsisAppId}}_is1';
+  if RegQueryStringValue(HKLM64, Key, 'InstallLocation', Dir) or RegQueryStringValue(HKLM32, Key, 'InstallLocation', Dir) then
+    Result := RemoveBackslashUnlessRoot(Dir);
+  if (Result = '') and FileExists(ExpandConstant('{autopf}\Opsis - Desktop Customization\Opsis.exe')) then
+    Result := ExpandConstant('{autopf}\Opsis - Desktop Customization');
+end;
+
+// The plugin folder. Opsis loads plugins without asking only from a protected folder: <Opsis folder>\plugins when Opsis is in Program Files.
+// Otherwise the per-user folder is used, and Opsis asks the user once to approve the exact files.
 function PluginDir(): String;
 var
-  Root: String;
+  Root, Opsis: String;
 begin
   Root := ExpandConstant('{param:PLUGINROOT|}');
-  if Root = '' then Root := ExpandConstant('{userappdata}\Opsis\plugins');
+  if Root = '' then
+  begin
+    Opsis := OpsisInstallDir();
+    if (Opsis <> '') and (Pos(Lowercase(ExpandConstant('{autopf}')), Lowercase(Opsis)) = 1) then
+      Root := AddBackslash(Opsis) + 'plugins'
+    else
+      Root := ExpandConstant('{userappdata}\Opsis\plugins');
+  end;
   Result := AddBackslash(Root) + '{#PluginFolder}';
 end;
 
@@ -486,6 +524,36 @@ begin
   else if N = 'arabic' then Result := 'ar'
   else if N = 'hindi' then Result := 'hi'
   else Result := 'en';
+end;
+
+// Earlier builds were installed per user (%LocalAppData%\Programs\Opsis News Crawler, uninstall entry and start-up entry in HKCU).
+// Setup now installs machine-wide: the per-user copy is removed first (its settings in %AppData%\OpsisNewsCrawler are kept), so there are no
+// duplicate shortcuts, start-up entries or tray icons. If the old program is still running its uninstaller stops, and setup says so.
+procedure RemovePerUserInstall;
+var
+  Key, Cmd, Exe: String;
+  ResultCode: Integer;
+begin
+  Key := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{{B7E3C9A2-5D41-4F68-9A0E-3C1D7F52A8B4}_is1';
+  if RegQueryStringValue(HKCU, Key, 'UninstallString', Cmd) then
+  begin
+    Exe := RemoveQuotes(Cmd);
+    if FileExists(Exe) then
+      Exec(Exe, '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  end;
+  RegDeleteValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', '{#MyAppName}');
+  RegDeleteValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', 'DeskTicker');
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  Key: String;
+begin
+  Result := '';
+  RemovePerUserInstall;
+  Key := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{{B7E3C9A2-5D41-4F68-9A0E-3C1D7F52A8B4}_is1';
+  if RegKeyExists(HKCU, Key) then
+    Result := CustomMessage('OldInstallRemains');
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);

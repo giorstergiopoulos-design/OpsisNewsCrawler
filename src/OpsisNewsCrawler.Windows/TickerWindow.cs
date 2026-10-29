@@ -116,6 +116,7 @@ public sealed class TickerWindow : Form
 
     /// <summary>A city of the weather line was clicked: the item and the bounds of this bar.</summary>
     public event Action<NewsItem, Rectangle>? WeatherRequested;
+    public event Action<NewsItem, Rectangle>? HazardRequested;
 
     /// <summary>The user Ctrl+clicked an article: save it to the read-later list.</summary>
     public event Action<NewsItem>? ItemSaveRequested;
@@ -311,6 +312,7 @@ public sealed class TickerWindow : Form
         {
             c.HoverChanged += OnHoverChanged;
             c.WeatherClicked += item => WeatherRequested?.Invoke(item, Bounds);
+            c.HazardClicked += item => HazardRequested?.Invoke(item, Bounds);
             c.ItemClicked += item =>
             {
                 if ((ModifierKeys & Keys.Control) != 0 && item.Kind == NewsItemKind.News)

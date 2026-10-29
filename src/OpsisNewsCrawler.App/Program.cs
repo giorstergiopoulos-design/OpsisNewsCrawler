@@ -1,4 +1,4 @@
-using OpsisNewsCrawler.Core;
+﻿using OpsisNewsCrawler.Core;
 using OpsisNewsCrawler.Windows;
 
 namespace OpsisNewsCrawler.App;
@@ -112,6 +112,20 @@ internal static class Program
         {
             ApplicationConfiguration.Initialize();
             LiveIconSnapshot.Save(args[liAt + 1]);
+            return;
+        }
+
+        if (Array.IndexOf(args, "--snapshot-hazard-bar") is >= 0 and var hbAt && hbAt + 1 < args.Length)
+        {
+            ApplicationConfiguration.Initialize();
+            HazardBarSnapshot.Save(args[hbAt + 1]);
+            return;
+        }
+
+        if (Array.IndexOf(args, "--snapshot-hazard-icons") is >= 0 and var hiAt && hiAt + 1 < args.Length)
+        {
+            ApplicationConfiguration.Initialize();
+            HazardIconSheet.Save(args[hiAt + 1]);
             return;
         }
 

@@ -14,7 +14,7 @@
     },
     {
       "id": "newscrawler", "name": "Opsis News Crawler", "repo": "OpsisNewsCrawler", "installerAsset": "^OpsisNewsCrawler-Setup\\.exe$", "checksumAsset": "OpsisNewsCrawler-Setup.exe.sha256",
-      "uninstallDisplayName": "Opsis News Crawler", "paths": ["%LocalAppData%\\Programs\\Opsis News Crawler\\OpsisNewsCrawler.exe", "%ProgramFiles%\\Opsis News Crawler\\OpsisNewsCrawler.exe", "%AppData%\\Opsis\\plugins\\Opsis - Desktop Customization\\OpsisNewsCrawler.OpsisPlugin.dll"],
+      "uninstallDisplayName": "Opsis News Crawler", "paths": ["%ProgramFiles%\\Opsis News Crawler\\OpsisNewsCrawler.exe", "%ProgramFiles%\\Opsis - Desktop Customization\\plugins\\Opsis - Desktop Customization\\OpsisNewsCrawler.OpsisPlugin.dll", "%LocalAppData%\\Programs\\Opsis News Crawler\\OpsisNewsCrawler.exe", "%AppData%\\Opsis\\plugins\\Opsis - Desktop Customization\\OpsisNewsCrawler.OpsisPlugin.dll"],
       "tagline": { "en": "News and markets ticker inside your taskbar", "el": "Ειδήσεις και αγορές σε μπάρα μέσα στη γραμμή εργασιών" },
       "capabilities": {
         "en": ["Scrolling headlines from many sources and categories", "Breaking-news mode with sound and live video link", "Prices, portfolio and price alerts; weather and severe-weather warnings", "Transparent bar in the free part of the taskbar or on the desktop", "Standalone app or Opsis plugin"],
@@ -23,7 +23,7 @@
     },
     {
       "id": "appearance", "name": "Opsis Appearance", "repo": "OpsisAppearance", "installerAsset": "^OpsisAppearance-Setup\\.exe$", "checksumAsset": "OpsisAppearance-Setup.exe.sha256",
-      "uninstallDisplayName": "Opsis Appearance", "paths": ["%LocalAppData%\\Programs\\Opsis Appearance\\OpsisAppearance.exe", "%AppData%\\Opsis\\plugins\\Opsis Appearance\\OpsisAppearancePlugin.dll"],
+      "uninstallDisplayName": "Opsis Appearance", "paths": ["%ProgramFiles%\\Opsis Appearance\\OpsisAppearance.exe", "%LocalAppData%\\Programs\\Opsis Appearance\\OpsisAppearance.exe", "%AppData%\\Opsis\\plugins\\Opsis Appearance\\OpsisAppearancePlugin.dll"],
       "tagline": { "en": "Change the look of Windows itself", "el": "Αλλάξτε την εμφάνιση των ίδιων των Windows" },
       "capabilities": {
         "en": ["Automatic light/dark theme at sunrise/sunset, accent from your wallpaper", "Translucent and rounded taskbar, Mica/Acrylic for every window", "Theme Manager with import/export of full themes", "Wallpaper slideshow and Explorer/taskbar behaviour settings", "Restore point and backup vault before intrusive changes"],
@@ -59,7 +59,7 @@
     },
     {
       "id": "waveframe", "name": "Waveframe", "repo": "waveframe", "installerAsset": "^Waveframe\\.Setup\\..*\\.exe$", "checksumAsset": null,
-      "uninstallDisplayName": "Waveframe", "paths": ["%LocalAppData%\\Programs\\waveframe\\Waveframe.exe"],
+      "uninstallDisplayName": "Waveframe", "paths": ["%ProgramFiles%\\waveframe\\Waveframe.exe", "%LocalAppData%\\Programs\\waveframe\\Waveframe.exe"],
       "tagline": { "en": "Real-time audio enhancer and player", "el": "Βελτιωτής και player ήχου σε πραγματικό χρόνο" },
       "capabilities": {
         "en": ["Web Audio equalizer and effects in real time", "Loudness measurement (LUFS) and normalisation", "Sleep timer; export of equalizer settings to Equalizer APO", "Light on resources: Electron with a built-in self-test"],
