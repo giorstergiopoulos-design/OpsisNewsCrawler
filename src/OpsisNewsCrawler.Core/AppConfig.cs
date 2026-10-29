@@ -56,6 +56,20 @@ public sealed class AppConfig
     public int MonitorSpeedB { get; set; }
 
     /// <summary>0 stays 0 ("like the main bar"), anything else is kept between the minimum and the maximum speed.</summary>
+    /// <summary>
+    /// Copies every plain setting (numbers, switches, text, enums) from <paramref name="from"/> to <paramref name="to"/>; lists and objects are left alone.
+    /// The settings window uses it to find the default value of the controls of one card without touching the lists the user is editing.
+    /// </summary>
+    public static void CopyScalars(AppConfig from, AppConfig to)
+    {
+        foreach (var p in typeof(AppConfig).GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
+        {
+            if (!p.CanRead || !p.CanWrite || p.GetIndexParameters().Length != 0) continue;
+            if (!(p.PropertyType.IsValueType || p.PropertyType == typeof(string))) continue;
+            p.SetValue(to, p.GetValue(from));
+        }
+    }
+
     public static int CleanSpeed(int value) => value <= 0 ? 0 : Math.Clamp(value, MinScrollSpeed, MaxScrollSpeed);
     public bool PauseOnHover { get; set; } = true;
     public bool ShowPreview { get; set; } = true;

@@ -15,7 +15,11 @@ public static class SettingsAudit
     // Controls that act outside the settings file (registry, files): not changed by the audit.
     private static readonly HashSet<string> Skipped = new(StringComparer.Ordinal) { "startWithWindows" };
 
-    public static void Run(TickerHost host, string reportPath)
+    // Helper controls of forms (add a price alert, pick a market, pick a preset): they edit a list or a temporary choice, not a stored setting.
+    private static readonly HashSet<string> UiOnly = new(StringComparer.Ordinal) { "alertDirection", "alertInstrument", "marketCombo", "presets" };
+
+    /// <summary>Runs the audit and writes the report; returns true when nothing is wrong (used as the exit code of the command and by CI).</summary>
+    public static bool Run(TickerHost host, string reportPath)
     {
         var report = new StringBuilder();
         var panel = new SettingsPanel(host, showCloseButton: false);
@@ -32,10 +36,16 @@ public static class SettingsAudit
             .Where(f => f.FieldType.Name is "FlatCheckBox" or "FlatComboBox" or "FlatNumber" or "FlatSlider" && !Skipped.Contains(f.Name))
             .OrderBy(f => f.Name, StringComparer.Ordinal).ToList();
 
-        int noEffect = 0, notShown = 0, ok = 0, skipped = 0;
+        int noEffect = 0, notShown = 0, ok = 0, skipped = 0, errors = 0;
         foreach (var field in fields)
         {
             var control = field.GetValue(panel);
+            if (UiOnly.Contains(field.Name))
+            {
+                skipped++;
+                report.AppendLine($"UI-ONLY   {field.Name} (helper control of a form, no stored setting)");
+                continue;
+            }
             if (control is not Control c || !c.Enabled)
             {
                 skipped++;
@@ -46,7 +56,7 @@ public static class SettingsAudit
             {
                 panel.LoadFromConfig();
                 var before = Snapshot(host.Config);
-                var (describe, change, back) = Prepare(control);
+                var (describe, change, back) = Prepare(control, field.Name);
                 if (change is null) { skipped++; report.AppendLine($"SKIP      {field.Name} (no safe change)"); continue; }
 
                 change();
@@ -85,6 +95,7 @@ public static class SettingsAudit
             catch (Exception ex) when (ex is TargetInvocationException or InvalidOperationException or ArgumentException or NullReferenceException)
             {
                 var inner = ex is TargetInvocationException { InnerException: { } i } ? i : ex;
+                errors++;
                 report.AppendLine($"ERROR     {field.Name}: {inner.GetType().Name}: {inner.Message}");
             }
         }
@@ -95,9 +106,10 @@ public static class SettingsAudit
         report.Insert(0, $"Settings audit of {fields.Count} controls: {ok} ok, {noEffect} change nothing, {notShown} not shown again, {skipped} skipped; keyboard checks failed: {kbdFailed}{Environment.NewLine}{Environment.NewLine}");
         File.WriteAllText(reportPath, report.ToString());
         form.Close();
+        return noEffect == 0 && notShown == 0 && errors == 0 && kbdFailed == 0;
     }
 
-    private static (Func<string> Describe, Action? Change, Action Back) Prepare(object control)
+    private static (Func<string> Describe, Action? Change, Action Back) Prepare(object control, string name)
     {
         switch (control)
         {
@@ -117,7 +129,8 @@ public static class SettingsAudit
             case FlatNumber number:
             {
                 var original = number.Value;
-                var next = original < Max(number) ? original + 1 : original - 1;
+                // the speed boxes accept 0 (= like the main bar) or 10 and more: a step of one would be corrected by the settings code
+                var next = name.StartsWith("speed", StringComparison.Ordinal) ? (original == 30 ? 40 : 30) : original < Max(number) ? original + 1 : original - 1;
                 return (() => number.Value.ToString(), () => number.Value = next, () => number.Value = original);
             }
             case FlatSlider slider:
@@ -251,7 +264,8 @@ public static class TallSnapshot
 /// <summary><c>--audit-layout &lt;report&gt; --config &lt;file&gt;</c>: for every page of the settings, reports the cards wider than the common card width and controls that stick out of their card.</summary>
 public static class LayoutAudit
 {
-    public static void Run(TickerHost host, string report)
+    /// <summary>Writes the report; returns true when no card is wider than the common width and nothing sticks out of a card.</summary>
+    public static bool Run(TickerHost host, string report)
     {
         var form = new Form { StartPosition = FormStartPosition.Manual, Location = new Point(-4000, 0), ClientSize = new Size(1180, 2600), ShowInTaskbar = false };
         var panel = new SettingsPanel(host, showCloseButton: false) { Dock = DockStyle.Fill };
@@ -283,6 +297,7 @@ public static class LayoutAudit
         }
         File.WriteAllText(report, sb.Length == 0 ? "no card is wider than the common width; nothing sticks out\n" : sb.ToString());
         form.Close();
+        return sb.Length == 0;
     }
 
     private static IEnumerable<Control> All(Control root)

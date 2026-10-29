@@ -43,20 +43,16 @@ public static class Theme
 
     private static bool followAccent;
 
-    /// <summary>The theme names that are the same as in Opsis (full palettes with their own accent).</summary>
-    public static readonly string[] NamedThemes = { "Midnight", "Forest", "Dawn", "Contrast" };
+    /// <summary>The theme names that are the same as in Opsis (full palettes with their own accent): the shared theme file of Opsis.UI.</summary>
+    public static readonly string[] NamedThemes = OpsisThemes.Named.ToArray();
 
     private sealed record Palette(bool Dark, Color Background, Color Surface, Color Border, Color Text, Color Muted, Color Accent);
 
-    // Same colours as Opsis' UiPalette (Background, Surface, Border, TextPrimary, TextMuted, AccentCyan).
-    private static Palette? Named(string name) => name switch
-    {
-        "Midnight" => new Palette(true, Color.FromArgb(11, 16, 32), Color.FromArgb(22, 31, 58), Color.FromArgb(45, 58, 96), Color.FromArgb(232, 238, 255), Color.FromArgb(120, 134, 170), Color.FromArgb(110, 168, 255)),
-        "Forest" => new Palette(true, Color.FromArgb(13, 20, 16), Color.FromArgb(24, 38, 30), Color.FromArgb(48, 72, 58), Color.FromArgb(232, 245, 236), Color.FromArgb(122, 148, 132), Color.FromArgb(72, 214, 140)),
-        "Dawn" => new Palette(false, Color.FromArgb(251, 246, 240), Color.FromArgb(245, 236, 226), Color.FromArgb(224, 208, 190), Color.FromArgb(44, 32, 24), Color.FromArgb(146, 124, 106), Color.FromArgb(214, 96, 40)),
-        "Contrast" => new Palette(true, Color.Black, Color.FromArgb(14, 14, 14), Color.White, Color.White, Color.FromArgb(200, 200, 200), Color.FromArgb(255, 221, 0)),
-        _ => null
-    };
+    // The palettes live in Opsis.UI (OpsisThemes), the same file for Opsis, the Crawler and Appearance.
+    private static Palette? Named(string name) =>
+        Array.Exists(NamedThemes, n => n == name) && OpsisThemes.TryGet(name) is { } p
+            ? new Palette(p.IsDark, p.Background, p.Surface, p.Border, p.Text, p.TextMuted, p.Accent)
+            : null;
 
     /// <summary>
     /// "system", "light", "dark" or one of <see cref="NamedThemes"/>. <paramref name="useWindowsAccent"/> takes the accent colour from Windows

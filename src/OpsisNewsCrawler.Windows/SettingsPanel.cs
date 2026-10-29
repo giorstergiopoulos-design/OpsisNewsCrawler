@@ -346,6 +346,8 @@ public sealed class SettingsPanel : UserControl
         Controls.Add(bar);
         built = true;
 
+        DescribeToggles();
+        EnableCardResets();
         LoadFromConfig();
         AttachDirtyTracking();
         Theme.Apply(this);
@@ -425,13 +427,13 @@ public sealed class SettingsPanel : UserControl
             host.Config.Language = langs[language.SelectedIndex].Code;
             if (!host.LanguageFollowsHost) Loc.SetLanguage(host.Config.Language);
         };
-        barsEnabled = new FlatCheckBox { Text = L("chk.barsEnabled") };
+        barsEnabled = new FlatToggle { RowWidth = 600, Text = L("chk.barsEnabled") };
         flow.Controls.Add(barsEnabled);
-        startWithWindows = new FlatCheckBox { Text = Loc.T("pk.start.with.windows"), Visible = !host.HostedByOpsis };
+        startWithWindows = new FlatToggle { RowWidth = 600, Text = Loc.T("pk.start.with.windows"), Visible = !host.HostedByOpsis };
         flow.Controls.Add(startWithWindows);
-        trayAnimated = new FlatCheckBox { Text = L("chk.trayAnimated"), Visible = !host.HostedByOpsis };
+        trayAnimated = new FlatToggle { RowWidth = 600, Text = L("chk.trayAnimated"), Visible = !host.HostedByOpsis };
         flow.Controls.Add(trayAnimated);
-        toggleHotkey = new FlatCheckBox { Text = Loc.T("pk.hot.key.ctrl.alt"), Visible = !host.HostedByOpsis };
+        toggleHotkey = new FlatToggle { RowWidth = 600, Text = Loc.T("pk.hot.key.ctrl.alt"), Visible = !host.HostedByOpsis };
         flow.Controls.Add(toggleHotkey);
         var languageRow = Row(L("lbl.language"), language);
         languageRow.Visible = !host.LanguageFollowsHost;
@@ -467,11 +469,11 @@ public sealed class SettingsPanel : UserControl
         speedCard.Controls.Add(speedFlow);
         flow.Controls.Add(speedCard);
 
-        hoverPause = new FlatCheckBox { Text = L("chk.hoverPause") };
-        icons = new FlatCheckBox { Text = L("chk.icons") };
-        preview = new FlatCheckBox { Text = L("chk.preview") };
-        pauseOther = new FlatCheckBox { Text = L("chk.pauseOther") };
-        hideRead = new FlatCheckBox { Text = L("chk.hideRead") };
+        hoverPause = new FlatToggle { RowWidth = 600, Text = L("chk.hoverPause") };
+        icons = new FlatToggle { RowWidth = 600, Text = L("chk.icons") };
+        preview = new FlatToggle { RowWidth = 600, Text = L("chk.preview") };
+        pauseOther = new FlatToggle { RowWidth = 600, Text = L("chk.pauseOther") };
+        hideRead = new FlatToggle { RowWidth = 600, Text = L("chk.hideRead") };
         foreach (var c in new Control[] { hoverPause, icons, preview, pauseOther, hideRead }) flow.Controls.Add(c);
 
         var reset = new FlatButton { Text = L("btn.resetRead") };
@@ -550,7 +552,7 @@ public sealed class SettingsPanel : UserControl
         var updates = new FlatCard(L("card.updates"));
         var updFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
         updFlow.Controls.Add(Note(L("note.updates"), 700));
-        autoUpdate = new FlatCheckBox { Text = L("chk.autoUpdate") };
+        autoUpdate = new FlatToggle { RowWidth = 600, Text = L("chk.autoUpdate") };
         updFlow.Controls.Add(autoUpdate);
         var checkNow = new FlatButton { Text = L("btn.checkNow") };
         installUpdate = new FlatButton { Text = L("btn.installUpdate"), Visible = false };
@@ -589,7 +591,7 @@ public sealed class SettingsPanel : UserControl
 
         var second = new FlatCard(L("card.secondBar"));
         var secondFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-        secondEnabled = new FlatCheckBox { Text = L("chk.secondEnabled") };
+        secondEnabled = new FlatToggle { RowWidth = 600, Text = L("chk.secondEnabled") };
         secondFlow.Controls.Add(secondEnabled);
         secondPicker = new SlotPicker();
         secondFlow.Controls.Add(secondPicker.Build());
@@ -648,8 +650,8 @@ public sealed class SettingsPanel : UserControl
 
         position = new FlatComboBox { Width = 470 };
         position.SetItems(new[] { L("pos.bottom"), L("pos.top"), L("pos.center"), L("pos.custom"), L("pos.taskbar") }, 0);
-        followTaskbar = new FlatCheckBox { Text = L("chk.followTaskbar") };
-        reserve = new FlatCheckBox { Text = L("chk.reserve") };
+        followTaskbar = new FlatToggle { RowWidth = 600, Text = L("chk.followTaskbar") };
+        reserve = new FlatToggle { RowWidth = 600, Text = L("chk.reserve") };
         var placement = new FlatCard(Loc.T("pk.exact.placement.and.behaviour"));
         var placementFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
         placementFlow.Controls.Add(Row(L("lbl.position"), position, 200));
@@ -682,7 +684,7 @@ public sealed class SettingsPanel : UserControl
 
         taskbarCard = new FlatCard(L("card.taskbar"));
         var tf = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-        tbAuto = new FlatCheckBox { Text = L("chk.tbAuto") };
+        tbAuto = new FlatToggle { RowWidth = 600, Text = L("chk.tbAuto") };
         tbLeft = new FlatNumber();
         tbLeft.Configure(0, 8000, 10);
         tbRight = new FlatNumber();
@@ -847,7 +849,7 @@ public sealed class SettingsPanel : UserControl
         var page = NewPage(out var flow);
         var mini = new FlatCard(Loc.T("pk.desktop.bar"));
         var miniFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-        miniWeather = new FlatCheckBox { Text = Loc.T("pk.show.a.bar.on") };
+        miniWeather = new FlatToggle { RowWidth = 600, Text = Loc.T("pk.show.a.bar.on") };
         miniFlow.Controls.Add(miniWeather);
         miniPicker = new SlotPicker();
         miniFlow.Controls.Add(miniPicker.Build());
@@ -880,12 +882,12 @@ public sealed class SettingsPanel : UserControl
             host.CenterMiniWeather();
             LoadMiniBounds();
         };
-        miniOnTop = new FlatCheckBox { Text = L("chk.miniOnTop") };
+        miniOnTop = new FlatToggle { RowWidth = 600, Text = L("chk.miniOnTop") };
         miniFlow.Controls.Add(miniOnTop);
         miniShape = new FlatComboBox { Width = 300 };
         miniShape.SetItems(new[] { L("shape.rect"), L("shape.rounded"), L("shape.pill") }, 0);
         miniFlow.Controls.Add(Row(L("lbl.miniShape"), miniShape, 200));
-        miniWhenHidden = new FlatCheckBox { Text = L("chk.miniWhenHidden") };
+        miniWhenHidden = new FlatToggle { RowWidth = 600, Text = L("chk.miniWhenHidden") };
         miniFlow.Controls.Add(miniWhenHidden);
         miniFlow.Controls.Add(Note(Loc.T("pk.a.free.bar.on"), 600));
         mini.Controls.Add(miniFlow);
@@ -944,7 +946,7 @@ public sealed class SettingsPanel : UserControl
         geoAddButton.Click += async (_, _) => await AddGeoPlacesAsync();
         geoCleanupButton.Click += (_, _) => CleanupGeoPlaces();
 
-        weatherMapOnClick = new FlatCheckBox { Text = Loc.T("pk.click.a.city.on") };
+        weatherMapOnClick = new FlatToggle { RowWidth = 600, Text = Loc.T("pk.click.a.city.on") };
         flow.Controls.Add(weatherMapOnClick);
         flow.Controls.Add(Note(Loc.T("pk.the.map.openstreetmap.needs"), 640));
 
@@ -963,7 +965,7 @@ public sealed class SettingsPanel : UserControl
         flow.Controls.Add(fields);
 
         // The animated icon can show the current weather of the first city.
-        weatherInIcon = new FlatCheckBox { Text = L("hazard.weatherIcon") };
+        weatherInIcon = new FlatToggle { RowWidth = 600, Text = L("hazard.weatherIcon") };
         flow.Controls.Add(weatherInIcon);
 
         citySearch.TextValueChanged += (_, _) => ShowCities();
@@ -1018,7 +1020,7 @@ public sealed class SettingsPanel : UserControl
             sourcesRow.Controls.Add(check);
         }
         hazardFlow.Controls.Add(Row(L("hazard.src"), sourcesRow, 240));
-        hazardInIcon = new FlatCheckBox { Text = L("hazard.icon") };
+        hazardInIcon = new FlatToggle { RowWidth = 600, Text = L("hazard.icon") };
         hazardFlow.Controls.Add(hazardInIcon);
         hazards.Controls.Add(hazardFlow);
         flow.Controls.Add(hazards);
@@ -1283,7 +1285,7 @@ public sealed class SettingsPanel : UserControl
         flow.Controls.Add(openAnalysis);
         var historyCard = new FlatCard(L("card.history"));
         var historyFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-        yahooHistory = new FlatCheckBox { Text = L("chk.yahooHistory") };
+        yahooHistory = new FlatToggle { RowWidth = 600, Text = L("chk.yahooHistory") };
         historyFlow.Controls.Add(yahooHistory);
         historyFlow.Controls.Add(Note(L("note.yahooHistory"), 700));
         historyCard.Controls.Add(historyFlow);
@@ -1625,7 +1627,7 @@ public sealed class SettingsPanel : UserControl
         themeMode.SetItems(new[] { L("theme.system"), L("theme.light"), L("theme.dark") }.Concat(Theme.NamedThemes).Concat(host.HostedByOpsis ? new[] { L("theme.host") } : Array.Empty<string>()).ToArray(), 0);
         themeRow = Row(L("lbl.theme"), themeMode, 240);
         flow.Controls.Add(themeRow);
-        themeAccent = new FlatCheckBox { Text = L("chk.themeAccent") };
+        themeAccent = new FlatToggle { RowWidth = 600, Text = L("chk.themeAccent") };
         flow.Controls.Add(themeAccent);
 
         opacity = new FlatSlider { Width = 300 };
@@ -1678,7 +1680,7 @@ public sealed class SettingsPanel : UserControl
         };
         flow.Controls.Add(windowOpacityRow);
 
-        edgeFade = new FlatCheckBox { Text = L("chk.edgeFade") };
+        edgeFade = new FlatToggle { RowWidth = 600, Text = L("chk.edgeFade") };
         flow.Controls.Add(edgeFade);
         flow.Controls.Add(Note(L("note.transparency"), 640));
         themeNote = Note("", 640);
@@ -1689,9 +1691,9 @@ public sealed class SettingsPanel : UserControl
     private Control BuildBreaking()
     {
         var page = NewPage(out var flow);
-        breakingEnabled = new FlatCheckBox { Text = L("chk.breakingEnabled") };
+        breakingEnabled = new FlatToggle { RowWidth = 600, Text = L("chk.breakingEnabled") };
         flow.Controls.Add(breakingEnabled);
-        breakingSound = new FlatCheckBox { Text = Loc.T("pk.alert.sound.when.something") };
+        breakingSound = new FlatToggle { RowWidth = 600, Text = Loc.T("pk.alert.sound.when.something") };
         flow.Controls.Add(breakingSound);
         keywords = new FlatText { Width = 520 };
         flow.Controls.Add(Row(L("lbl.keywords"), keywords, 330));
@@ -1706,7 +1708,7 @@ public sealed class SettingsPanel : UserControl
         // Severe weather for the user's area.
         var weatherCard = new FlatCard(Loc.T("pk.severe.weather.in.my"));
         var weatherFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-        weatherAlerts = new FlatCheckBox { Text = Loc.T("pk.warn.me.about.severe") };
+        weatherAlerts = new FlatToggle { RowWidth = 600, Text = Loc.T("pk.warn.me.about.severe") };
         weatherFlow.Controls.Add(weatherAlerts);
         alertCity = new FlatComboBox { Width = 360 };
         FillAlertCities(null);
@@ -1989,6 +1991,94 @@ public sealed class SettingsPanel : UserControl
                     break;
             }
         }
+    }
+
+    // ---- Windows 11 style rows: a sentence under the label of the main switches, and "Reset" on every card ----------------------
+
+    private void DescribeToggles()
+    {
+        foreach (var (toggle, key) in new (FlatToggle?, string)[]
+                 {
+                     (barsEnabled as FlatToggle, "desc.barsEnabled"), (startWithWindows as FlatToggle, "desc.startWithWindows"), (trayAnimated as FlatToggle, "desc.trayAnimated"),
+                     (hoverPause as FlatToggle, "desc.hoverPause"), (hideRead as FlatToggle, "desc.hideRead"), (tbAuto as FlatToggle, "desc.tbAuto"),
+                     (themeAccent as FlatToggle, "desc.themeAccent"), (edgeFade as FlatToggle, "desc.edgeFade"), (breakingSound as FlatToggle, "desc.breakingSound")
+                 })
+            if (toggle is not null) toggle.Description = L(key);
+        if (status is not null) status.Tag = "muted";
+    }
+
+    private static bool IsSettingControl(Control c) => c is FlatCheckBox or FlatComboBox or FlatNumber or FlatSlider or FlatText;
+
+    private void EnableCardResets()
+    {
+        foreach (var card in Descendants(tabs).OfType<FlatCard>())
+        {
+            if (!Descendants(card).Any(IsSettingControl)) continue;
+            card.ShowReset = true;
+            card.ResetRequested += (_, _) => ResetCard(card);
+        }
+    }
+
+    private static object? CaptureValue(Control c) => c switch
+    {
+        FlatCheckBox check => check.Checked,
+        FlatComboBox combo => combo.SelectedIndex,
+        FlatNumber number => number.Value,
+        FlatSlider slider => slider.Value,
+        FlatText text => text.Value,
+        _ => null
+    };
+
+    private static void RestoreValue(Control c, object? value)
+    {
+        switch (c)
+        {
+            case FlatCheckBox check when value is bool b: check.Checked = b; break;
+            case FlatComboBox combo when value is int i: combo.SelectedIndex = i; break;
+            case FlatNumber number when value is int n: number.Value = n; break;
+            case FlatSlider slider when value is int s: slider.Value = s; break;
+            case FlatText text when value is string v: text.Value = v; break;
+        }
+    }
+
+    /// <summary>
+    /// "Reset" of one card: its controls get the default values, every other control keeps what it shows now. Nothing is saved until the user presses Apply.
+    /// The defaults are found by loading a default configuration into the panel for a moment (the plain settings of the real configuration are put back
+    /// right after), so the card, its labels and the other pages stay consistent with the settings code.
+    /// </summary>
+    private void ResetCard(FlatCard card)
+    {
+        var controls = Descendants(tabs).Where(IsSettingControl).ToList();
+        var inCard = Descendants(card).Where(IsSettingControl).ToHashSet();
+        var before = controls.ToDictionary(c => c, CaptureValue);
+        var listsCategories = workCategories; var listsWatch = workWatch; var listsAlerts = workAlerts; var listsLive = workLive;
+        var saved = new AppConfig();
+        AppConfig.CopyScalars(host.Config, saved);
+        try
+        {
+            AppConfig.CopyScalars(new AppConfig(), host.Config);
+            LoadFromConfig();
+            var defaults = controls.Where(inCard.Contains).ToDictionary(c => c, CaptureValue);
+            loading = true;
+            try
+            {
+                foreach (var c in controls) RestoreValue(c, inCard.Contains(c) ? defaults[c] : before[c]);
+                workCategories = listsCategories; workWatch = listsWatch; workAlerts = listsAlerts; workLive = listsLive;
+                RebuildCategoryLists(host.Config.ActiveCategory);
+                RebuildWatchLists();
+                RefreshAlertChoices();
+                ShowAlerts();
+                RebuildLiveList();
+            }
+            finally { loading = false; }
+        }
+        finally
+        {
+            AppConfig.CopyScalars(saved, host.Config);
+        }
+        hasUnsavedChanges = true;
+        if (status is not null && !status.IsDisposed) status.Text = L("card.resetDone");
+        Theme.Apply(this);
     }
 
     private static IEnumerable<Control> Descendants(Control root)

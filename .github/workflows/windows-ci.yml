@@ -19,6 +19,16 @@ jobs:
         run: dotnet build OpsisNewsCrawler.sln --configuration Release --no-restore
       - name: Run core tests
         run: dotnet test tests/OpsisNewsCrawler.Core.Tests/OpsisNewsCrawler.Core.Tests.csproj --configuration Release
+      - name: Settings and layout audit (en, el, de, ar)
+        shell: pwsh
+        run: ./tools/ci-audit.ps1 -Out "$env:RUNNER_TEMP/opsis-ci-audit"
+      - name: Upload audit reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-reports
+          path: ${{ runner.temp }}/opsis-ci-audit/*.txt
+          if-no-files-found: ignore
       - name: Verify release versions
         shell: pwsh
         run: |

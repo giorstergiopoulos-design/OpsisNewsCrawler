@@ -1,1 +1,1 @@
-Opsis.UI aaff7f8 (0.1.0), built 2026-10-29
+Opsis.UI 6fe27e8 (0.2.1, AssemblyVersion 0.1.0.0), built 2026-10-29

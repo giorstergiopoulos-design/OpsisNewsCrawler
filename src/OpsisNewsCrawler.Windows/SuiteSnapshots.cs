@@ -100,6 +100,25 @@ public static class LiveIconSnapshot
     }
 }
 
+/// <summary><c>--snapshot-hazard-card &lt;png&gt;</c>: opens the detail card of a sample earthquake (live map, needs internet), saves a picture of it and closes it.</summary>
+public static class HazardCardSnapshot
+{
+    public static string Save(string png)
+    {
+        var t = DateTimeOffset.Now.AddHours(-3);
+        var quake = new HazardEvent("usgs:test", HazardKind.Earthquake, "Crete, Greece", 35.2, 25.0, t, "https://earthquake.usgs.gov/earthquakes/eventpage/test", 5.7, 5.5, 5.9, 2,
+            new[] { "USGS", "EMSC" }, 12, new Dictionary<string, string> { ["USGS"] = "https://earthquake.usgs.gov/earthquakes/eventpage/test", ["EMSC"] = "https://www.emsc-csem.org/Earthquake_information/earthquake.php?id=test" });
+        using var card = new HazardDetailForm(quake, new Rectangle(0, 900, 1600, 40)) { StartPosition = FormStartPosition.Manual };
+        card.Location = new Point(-3000, 0);
+        card.Show();
+        string? problem = null;
+        var task = card.SaveSnapshotAsync(png, 6000).ContinueWith(x => problem = x.IsFaulted ? x.Exception!.GetBaseException().Message : x.Result, TaskScheduler.FromCurrentSynchronizationContext());
+        while (!task.IsCompleted) { Application.DoEvents(); Thread.Sleep(50); }
+        card.Close();
+        return problem ?? "ok";
+    }
+}
+
 /// <summary>A picture of every disaster icon (8 kinds x 3 levels) and of the 7 continents, for a visual check (--snapshot-hazard-icons).</summary>
 public static class HazardIconSheet
 {

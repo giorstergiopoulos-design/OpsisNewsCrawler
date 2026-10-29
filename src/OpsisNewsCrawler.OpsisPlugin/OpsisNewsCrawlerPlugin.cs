@@ -157,8 +157,28 @@ internal sealed class TickerController
         _fallbackSettings.ShowSettings();
     }
 
-    public void Start() => Host.Start();
-    public void Stop() => _host?.Stop();
+    private readonly InstanceGuard _guard = new();
+
+    /// <summary>True when the stand-alone program is running: the plugin then starts no second bar (one crawler, one settings file).</summary>
+    public bool StandaloneRunning { get; private set; }
+
+    public void Start()
+    {
+        if (!_guard.TryAcquire())
+        {
+            StandaloneRunning = true;
+            Log.Write("Plugin: the stand-alone Opsis News Crawler is running; the plugin does not start a second bar.");
+            return;
+        }
+        StandaloneRunning = false;
+        Host.Start();
+    }
+
+    public void Stop()
+    {
+        _host?.Stop();
+        _guard.Release();
+    }
     public void Pause() => _host?.Pause();
     public void Resume() => _host?.Resume();
     public void Refresh() => _host?.Refresh();

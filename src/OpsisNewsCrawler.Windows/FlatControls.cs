@@ -288,6 +288,25 @@ internal sealed class FlatCard : Panel
 {
     private readonly Label heading = new() { AutoSize = true, Font = new Font("Segoe UI", 9f, FontStyle.Bold) };
     private readonly Panel body = new() { Dock = DockStyle.Fill, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, BackColor = Color.Transparent };
+    private readonly Label resetLink = new() { AutoSize = true, Cursor = Cursors.Hand, Visible = false, Font = new Font("Segoe UI", 8.5f, FontStyle.Underline) };
+
+    /// <summary>Raised when the user clicks "Reset" in the heading of the card (only shown when <see cref="ShowReset"/> is true).</summary>
+    public event EventHandler? ResetRequested;
+
+    /// <summary>Shows the "Reset" link at the end of the heading.</summary>
+    public bool ShowReset
+    {
+        get => resetLink.Visible;
+        set { resetLink.Text = Loc.T("card.reset"); resetLink.Visible = value; PlaceReset(); }
+    }
+
+    private void PlaceReset()
+    {
+        // Placed from the common card width and anchored to the right edge: its position never depends on the current width, so it cannot make an
+        // auto-sized card grow. The heading stays at the left also in right-to-left languages, so the link stays at the right.
+        resetLink.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+        resetLink.Location = new Point(Math.Max(0, CardWidth - resetLink.PreferredSize.Width - 18), 12);
+    }
 
     /// <summary>The common width of all cards (px). Content that is wider makes its card grow, so keep controls inside it.</summary>
     public const int CardWidth = 780;
@@ -303,7 +322,9 @@ internal sealed class FlatCard : Panel
         heading.Text = Loc.Upper(title);
         heading.Location = new Point(18, 12);
         base.Controls.Add(heading);
+        base.Controls.Add(resetLink);
         base.Controls.Add(body);
+        resetLink.Click += (_, _) => ResetRequested?.Invoke(this, EventArgs.Empty);
     }
 
     public new Control.ControlCollection Controls => body.Controls;
@@ -319,6 +340,8 @@ internal sealed class FlatCard : Panel
         g.DrawPath(pen, path);
         heading.ForeColor = Theme.Accent;
         heading.BackColor = Theme.Surface;
+        resetLink.ForeColor = Theme.TextMuted;
+        resetLink.BackColor = Theme.Surface;
     }
 }
 

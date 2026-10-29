@@ -91,7 +91,7 @@ internal static class Program
             ApplicationConfiguration.Initialize();
             var cfgAu = Array.IndexOf(args, "--config");
             using var auHost = new TickerHost(cfgAu >= 0 && cfgAu + 1 < args.Length ? args[cfgAu + 1] : null);
-            SettingsAudit.Run(auHost, args[auAt + 1]);
+            Environment.ExitCode = SettingsAudit.Run(auHost, args[auAt + 1]) ? 0 : 1;   // CI fails on a finding
             return;
         }
         if (Array.IndexOf(args, "--make-brand-art") is >= 0 and var baAt && baAt + 1 < args.Length)
@@ -112,6 +112,14 @@ internal static class Program
         {
             ApplicationConfiguration.Initialize();
             LiveIconSnapshot.Save(args[liAt + 1]);
+            return;
+        }
+
+        if (Array.IndexOf(args, "--snapshot-hazard-card") is >= 0 and var hcAt && hcAt + 1 < args.Length)
+        {
+            ApplicationConfiguration.Initialize();
+            var result = HazardCardSnapshot.Save(args[hcAt + 1]);
+            File.WriteAllText(args[hcAt + 1] + ".txt", result);
             return;
         }
 
@@ -142,7 +150,7 @@ internal static class Program
             ApplicationConfiguration.Initialize();
             var cfgLy = Array.IndexOf(args, "--config");
             using var lyHost = new TickerHost(cfgLy >= 0 && cfgLy + 1 < args.Length ? args[cfgLy + 1] : null);
-            LayoutAudit.Run(lyHost, args[lyAt + 1]);
+            Environment.ExitCode = LayoutAudit.Run(lyHost, args[lyAt + 1]) ? 0 : 1;
             return;
         }
         if (Array.IndexOf(args, "--snapshot-portfolio") is >= 0 and var pfAt && pfAt + 1 < args.Length)
@@ -170,7 +178,16 @@ internal static class Program
             ? "OpsisNewsCrawler.SingleInstance." + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(Path.GetFullPath(args[configArgAt + 1]).ToLowerInvariant())))[..16]
             : "OpsisNewsCrawler.SingleInstance";
         using var singleInstance = new Mutex(true, mutexName, out var createdNew);
-        if (!createdNew) return;
+        if (!createdNew)
+        {
+            // The default instance may be the plugin inside Opsis or an earlier start: say so instead of doing nothing.
+            if (configArgAt < 0 && !Environment.GetCommandLineArgs().Skip(1).Any(a => a.StartsWith("--", StringComparison.Ordinal)))
+            {
+                ApplicationConfiguration.Initialize();
+                MessageBox.Show(Loc.T("app.alreadyRunning"), Loc.T("app.name"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            return;
+        }
 
         ApplicationConfiguration.Initialize();
 

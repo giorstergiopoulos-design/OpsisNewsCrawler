@@ -3,6 +3,16 @@
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
 Detailed notes per release: `docs/releases/RELEASE-<version>.md` and the GitHub releases.
 
+## 0.18.5 — 2026-10-29
+- **Settings in the Windows 11 style**: the yes/no settings are now switches (`FlatToggle` of Opsis.UI 0.2) with the label on the left and the switch on the right, and the main ones have a one-sentence description under the label; every card of the settings has a **Reset** link that puts only that card's controls back to their defaults (nothing is saved until Apply); a note says that every change takes effect with Apply and that no setting needs a restart. Mirrors for right-to-left languages.
+- **One crawler at a time**: the stand-alone program and the Opsis plugin share one mutex, so they never run two bars (and two writers of the settings file); the program says "already running" when the plugin owns it.
+- **Quality gate**: `tools/ci-audit.ps1` runs the settings audit and the layout audit in English, Greek, German and Arabic; GitHub Actions runs it on every push after the build and the tests. The audits now return an exit code (0 = clean); helper controls of forms are recognised as UI-only.
+- **Verified live**: the detail card with its real OpenStreetMap map (picture saved by `--snapshot-hazard-card`); the card shows the depth once ("12 km").
+- **Shared themes**: the named themes (Midnight, Forest, Dawn, Contrast) come from the shared theme file `OpsisThemes` of Opsis.UI 0.2.1, the same in Opsis, the Crawler and Appearance.
+- **Documentation**: `docs/COEXISTENCE.md` (program and plugin together) and, outside the repository, `UPDATE-MECHANISM.md` (exact rules, buttons and messages of the update mechanism, and how it differs from the target of the family).
+- Translations of every new text in all 14 languages.
+- **Left for later (0.18.6)**: running the setup on a disposable Windows machine (UAC, removal of an old per-user install, switching between the separate and the integrated install), "Later / Skip this version / What's new" in the update notification, descriptions under the remaining switches.
+
 ## 0.18.0 — 2026-10-29
 - **A picture for every kind of disaster**: earthquake (seismograph), wildfire (flame), flood (waves and a drop), storm (cloud and lightning), volcano, drought (sun over cracked ground), tsunami (breaking wave) and other (exclamation mark), drawn in code in the colour of the alert level (yellow, orange, red).
 - **World by continent**: the region "World" of the disaster flow now shows one block per continent; each block starts with the picture of the continent and its name (Europe, Asia, Africa, North America, South America, Oceania, Antarctica), then its events.

@@ -1,4 +1,4 @@
-using Microsoft.Web.WebView2.Core;
+﻿using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 using OpsisNewsCrawler.Core;
 using System.Diagnostics;
@@ -110,6 +110,17 @@ internal sealed class HazardDetailForm : Form
         e.Graphics.DrawRectangle(pen, 1, 1, Width - 3, Height - 3);
     }
 
+    /// <summary>For <c>--snapshot-hazard-card</c>: shows the card, waits for the page and the map tiles, and saves a picture of the web view (null = taken, otherwise why not).</summary>
+    internal async Task<string?> SaveSnapshotAsync(string png, int waitMs)
+    {
+        for (var i = 0; i < 100 && (web.CoreWebView2 is null); i++) await Task.Delay(100);
+        if (web.CoreWebView2 is null) return message.Visible ? message.Text : "web view not created";
+        await Task.Delay(waitMs);
+        await using var stream = File.Create(png);
+        await web.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, stream);
+        return null;
+    }
+
     private async Task StartAsync()
     {
         try
@@ -191,7 +202,7 @@ internal sealed class HazardDetailForm : Form
                 text += "  (" + H(Loc.T("hazard.range", lo.ToString("0.0", culture), hi.ToString("0.0", culture), e.SourceCount)) + ")";
             rows.Add("<b>" + H(Loc.T("hazard.detail.magnitude")) + ":</b> " + text);
         }
-        if (e.DepthKm is { } d && d > 0) rows.Add("<b>" + H(Loc.T("hazard.detail.depth")) + ":</b> " + H(Loc.T("hazard.depth", Math.Round(d).ToString("0", culture))));
+        if (e.DepthKm is { } d && d > 0) rows.Add("<b>" + H(Loc.T("hazard.detail.depth")) + ":</b> " + Math.Round(d).ToString("0", culture) + " km");
         rows.Add("<b>" + H(Loc.T("hazard.detail.time")) + ":</b> " + e.Time.ToLocalTime().ToString("dd/MM/yyyy HH:mm", culture));
         rows.Add("<b>" + H(Loc.T("hazard.detail.level")) + ":</b> <span class='lv" + Math.Clamp(e.Level, 1, 3) + "'>" + H(Loc.T("hazard.level." + Math.Clamp(e.Level, 1, 3))) + "</span>");
         rows.Add("<b>" + H(Loc.T("hazard.detail.position")) + ":</b> " + e.Lat.ToString("0.00", CultureInfo.InvariantCulture) + ", " + e.Lon.ToString("0.00", CultureInfo.InvariantCulture)

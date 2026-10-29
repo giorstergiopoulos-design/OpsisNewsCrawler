@@ -83,3 +83,9 @@ Fourteen UI languages like Opsis: `Core/Locales/<code>.json` (el, en generated b
 ## 0.17.0 additions
 - **Shared controls**: FlatButton / FlatCheckBox / FlatSlider / FlatComboBox / FlatTabs / FlatMenuRenderer / FlatDraw live in the separate repository `C:\w\Opsis.UI`; the Crawler references the committed `libs\Opsis.UI.dll` (named in `libs\Opsis.UI.version.txt`) from App, Windows and OpsisPlugin (every output project needs the Reference, or deps.json misses it). Do not re-add copies here: fix them in Opsis.UI, rebuild, copy the DLL. `Theme` hands live tokens to the library (`OpsisTheme.Use` in its static constructor). The remaining Flat* controls (FlatNumber, FlatText, FlatList, FlatCard, FlatSwatch, FlatStrip, FlatProgress) stay here for now.
 
+
+## 0.18.5 additions
+- **Settings rows**: yes/no settings are `FlatToggle` (Opsis.UI) built in `SettingsPanel`; `DescribeToggles` adds the one-sentence descriptions, `EnableCardResets`/`ResetCard` give every card with controls a "Reset" link (defaults are found by loading a default `AppConfig` for a moment, `AppConfig.CopyScalars` puts the real plain settings back; nothing is saved until Apply).
+- **Quality gate**: `tools/ci-audit.ps1` (also in `.github/workflows/windows-ci.yml`): `--audit-settings` and `--audit-layout` in en/el/de/ar with a throw-away config; both commands return exit code 0/1. Helper controls of forms are listed in `SettingsAudit.UiOnly`.
+- **One instance**: `Core/InstanceGuard.cs` (plugin and program share `OpsisNewsCrawler.SingleInstance`), see `docs/COEXISTENCE.md`. Named themes come from `OpsisThemes` in Opsis.UI.
+- Test aids: `--snapshot-hazard-icons|-bar|-card <png>`. The update mechanism is written down in `C:\w\UPDATE-MECHANISM.md`.

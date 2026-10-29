@@ -1,5 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup><OutputType>WinExe</OutputType><TargetFramework>net10.0-windows</TargetFramework><UseWindowsForms>true</UseWindowsForms><ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><AssemblyName>OpsisNewsCrawler</AssemblyName><ApplicationIcon>..\OpsisNewsCrawler.Windows\Assets\app.ico</ApplicationIcon><Product>Opsis News Crawler</Product><Version>0.18.0</Version></PropertyGroup>
+  <PropertyGroup><OutputType>WinExe</OutputType><TargetFramework>net10.0-windows</TargetFramework><UseWindowsForms>true</UseWindowsForms><ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><AssemblyName>OpsisNewsCrawler</AssemblyName><ApplicationIcon>..\OpsisNewsCrawler.Windows\Assets\app.ico</ApplicationIcon><Product>Opsis News Crawler</Product><Version>0.18.5</Version></PropertyGroup>
   <ItemGroup><ProjectReference Include="..\OpsisNewsCrawler.Core\OpsisNewsCrawler.Core.csproj" /><ProjectReference Include="..\OpsisNewsCrawler.Windows\OpsisNewsCrawler.Windows.csproj" /></ItemGroup>
   <ItemGroup><Reference Include="Opsis.UI"><HintPath>..\..\libs\Opsis.UI.dll</HintPath><Private>true</Private></Reference></ItemGroup>
 </Project>
