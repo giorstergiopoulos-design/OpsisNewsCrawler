@@ -79,3 +79,15 @@ Other keyless prices added the same day: gold-api.com (BTC, ETH), Frankfurter/EC
 ## Yahoo Finance catalogue (after 0.13.2)
 - `YahooQuoteProvider` (`QuoteSource.Yahoo`, code = Yahoo symbol) uses the same chart address as the history (`v8/finance/chart/{symbol}?range=6mo&interval=1d`: one answer gives price, previous close, name, currency and 6 months of candles) and `YahooSearch` uses `v1/finance/search` (one request per button press). Tested 2026-10-21: GD.AT (Athens General Index), ^GSPC, ^GDAXI, EURUSD=X, BZ=F, AAPL; search "hellenic telecom" gives HTO.AT. All answer without key, cookie or crumb.
 - Opt-in only (`AppConfig.HistoryFromYahoo`, off by default), unofficial, at the user's own risk (Yahoo's terms do not allow automated use). Limits in `YahooAccess`: 30 instruments, 15 minutes per instrument (cache), 0.9-1.6 s between requests, honest User-Agent, no cookies, 6-hour stop at 401/403/429. A VPN or any other way around a block is NOT part of the program.
+
+## Natural disasters and places (added 0.16.0, tested live 2026-10-27/29)
+| Source | Address | Notes |
+|---|---|---|
+| USGS | `earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson` | Public GeoJSON, no key. One GET per refresh. |
+| EMSC | `www.seismicportal.eu/fdsnws/event/1/query?format=json&limit=100&minmag=2.5&orderby=time` | FDSN web service, no key. |
+| GDACS | `www.gdacs.org/xml/rss.xml` | UN/EU alert system RSS (earthquakes, cyclones, floods, volcanoes, fires, drought). The `geteventlist` JSON API answers 400 without an event type, so the RSS is used. |
+| NASA EONET | `eonet.gsfc.nasa.gov/api/v3/events?status=open&days=10&limit=200` | Open events only; sea ice, snow, dust and similar non-emergencies are skipped. |
+| Open-Meteo geocoding | `geocoding-api.open-meteo.com/v1/search` | Place names worldwide. **It does not resolve Greek postcodes** (a search for `54248` returned no result), so postcodes are not a primary key. |
+| OpenStreetMap Nominatim | `nominatim.openstreetmap.org/search?postalcode=…&country=gr`, `/reverse` | Postcodes (centre of the postcode area) and recognising typed coordinates. Only on the user's Search; identifying User-Agent; at most one request a second; results are not bulk-stored. |
+- Earthquakes of several organisations are merged when they are within 3 minutes and 60 km; the magnitude shown is the average (rounded to 0.1) and the range is kept.
+- Raw materials: Pyth Hermes still answers 401 (key needed); Stooq is behind a bot check. With the Yahoo option on, Brent/WTI/Henry Hub use the Yahoo futures `BZ=F`, `CL=F`, `NG=F` (about 15 minutes delayed, unofficial, one request per instrument per 15 minutes). Without it the FRED/EIA daily values stay (a few days behind, labelled with their date).

@@ -3,7 +3,7 @@ namespace OpsisNewsCrawler.Core;
 public enum TickerMode { Economy, Market, International, Greece, Defence, Sports }
 public enum TickerPosition { BottomTaskbar, Top, Center, Custom, TaskbarIntegrated }
 public readonly record struct TickerScrollState(double Offset);
-public enum NewsItemKind { News, Quote, Weather }
+public enum NewsItemKind { News, Quote, Weather, Hazard }
 
 /// <summary>What a bar shows: news, market quotes, or both side by side (the bar is split in the middle).</summary>
 public enum BarContent { News, Stocks, Both, Weather }

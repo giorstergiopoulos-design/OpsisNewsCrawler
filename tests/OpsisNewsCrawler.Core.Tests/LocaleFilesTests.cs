@@ -46,7 +46,7 @@ public sealed class LocaleFilesTests
     }
 
     // Keys that are legitimately the same in every language (the product name, the MIT licence text, technical names).
-    private static readonly HashSet<string> SameEverywhere = new() { "app.name", "license.text", "dep.dotnet", "fmt.monitor", "note.hostTheme" };
+    private static readonly HashSet<string> SameEverywhere = new() { "app.name", "license.text", "dep.dotnet", "fmt.monitor", "note.hostTheme", "hazard.range" };
 
     [Theory]
     [InlineData("ar")] [InlineData("de")] [InlineData("es")] [InlineData("fr")] [InlineData("hi")] [InlineData("it")]

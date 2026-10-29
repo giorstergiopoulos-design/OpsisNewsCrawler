@@ -77,3 +77,25 @@ public static class SuiteSnapshots
         sheet.Save(png);
     }
 }
+
+/// <summary><c>--snapshot-live-icon &lt;png&gt;</c>: the wide icon with the weather and alert symbols in several live states.</summary>
+public static class LiveIconSnapshot
+{
+    public static void Save(string png)
+    {
+        var states = new[] { (1, 0), (0, 1), (5, 2), (7, 3), (12, 0), (3, 2) };
+        using var sheet = new Bitmap(1060, states.Length * 150);
+        using (var g = Graphics.FromImage(sheet))
+        {
+            g.Clear(Color.FromArgb(40, 44, 54));
+            for (var i = 0; i < states.Length; i++)
+            {
+                LiveIconState.Set(states[i].Item1, states[i].Item2, "");
+                using var icon = AppIconArt.RenderWide(1024, 128);
+                g.DrawImage(icon, 18, i * 150 + 10);
+            }
+        }
+        sheet.Save(png);
+        LiveIconState.Set(1, 0, "");
+    }
+}

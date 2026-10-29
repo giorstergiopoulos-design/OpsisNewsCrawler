@@ -379,3 +379,21 @@ public sealed class SuiteCatalogStoreTests : IDisposable
         Assert.Equal("remote", c.Updated);
     }
 }
+
+public sealed class SuiteIconTests
+{
+    [Fact]
+    public void EveryAppOfTheCatalogueHasItsOwnEmbeddedIcon()
+    {
+        var names = typeof(SuiteCatalog).Assembly.GetManifestResourceNames();
+        foreach (var app in SuiteCatalogStore.Embedded().Apps)
+        {
+            var resource = $"OpsisNewsCrawler.Suite.icons.{app.Id}.png";
+            Assert.Contains(resource, names);
+            using var stream = typeof(SuiteCatalog).Assembly.GetManifestResourceStream(resource)!;
+            var header = new byte[8];
+            Assert.Equal(8, stream.Read(header, 0, 8));
+            Assert.Equal(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }, header);   // a real PNG
+        }
+    }
+}

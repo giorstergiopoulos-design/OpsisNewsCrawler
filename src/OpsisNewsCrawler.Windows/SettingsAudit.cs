@@ -191,3 +191,39 @@ public static class SettingsAudit
     private static List<string> Diff(Dictionary<string, string> a, Dictionary<string, string> b) =>
         b.Where(kv => !a.TryGetValue(kv.Key, out var old) || old != kv.Value).Select(kv => kv.Key).ToList();
 }
+
+/// <summary><c>--snapshot-geo &lt;png&gt; &lt;query&gt; --config &lt;file&gt;</c>: types the query into the place search of the weather page, searches (real network), ticks the first two places, adds them and saves a picture.</summary>
+public static class GeoSnapshot
+{
+    public static void Run(TickerHost host, string png, string query)
+    {
+        var form = new Form { StartPosition = FormStartPosition.Manual, Location = new Point(-4000, 0), ClientSize = new Size(1180, 1500), ShowInTaskbar = false };
+        var panel = new SettingsPanel(host, showCloseButton: false) { Dock = DockStyle.Fill };
+        form.Controls.Add(panel);
+        form.Show();
+        Application.DoEvents();
+        panel.LoadFromConfig();
+        panel.SelectTab(6);
+        Application.DoEvents();
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var t = typeof(SettingsPanel);
+        var q = (FlatText)t.GetField("geoQuery", flags)!.GetValue(panel)!;
+        q.Value = query;
+        Wait((Task)t.GetMethod("RunGeoSearchAsync", flags)!.Invoke(panel, null)!);
+        var list = (FlatList)t.GetField("geoList", flags)!.GetValue(panel)!;
+        list.SetChecked(0, true);
+        if (((System.Collections.IList)t.GetField("geoHits", flags)!.GetValue(panel)!).Count > 1) list.SetChecked(1, true);
+        Wait((Task)t.GetMethod("AddGeoPlacesAsync", flags)!.Invoke(panel, null)!);
+        for (var i = 0; i < 10; i++) { Application.DoEvents(); Thread.Sleep(40); }
+        using var bmp = new Bitmap(form.ClientSize.Width, form.ClientSize.Height);
+        form.DrawToBitmap(bmp, new Rectangle(Point.Empty, bmp.Size));
+        bmp.Save(png);
+        form.Close();
+    }
+
+    private static void Wait(Task task)
+    {
+        var until = DateTime.UtcNow.AddSeconds(25);
+        while (!task.IsCompleted && DateTime.UtcNow < until) { Application.DoEvents(); Thread.Sleep(30); }
+    }
+}

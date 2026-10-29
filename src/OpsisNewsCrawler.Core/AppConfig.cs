@@ -85,6 +85,26 @@ public sealed class AppConfig
     /// <summary>Cities (ids of <see cref="GreekCities"/>) shown by a bar whose content is "Weather", in this order.</summary>
     public List<string> WeatherCities { get; set; } = GreekCities.DefaultSelection.ToList();
 
+    /// <summary>Places added by search, postcode or coordinates (any town, village or island): shown in the weather list next to the built-in cities.</summary>
+    public List<GreekCity> CustomPlaces { get; set; } = new();
+
+    // ---- natural disasters (USGS, EMSC, GDACS, NASA EONET) ----
+    /// <summary>Which organisations are asked: 1 USGS, 2 EMSC, 4 GDACS, 8 NASA EONET (15 = all).</summary>
+    public int HazardSources { get; set; } = 15;
+    /// <summary>"greece" (Greece, its seas and neighbours), "europe" or "world".</summary>
+    public string HazardRegion { get; set; } = "greece";
+    /// <summary>Earthquakes weaker than this are not shown.</summary>
+    public double HazardMinMagnitude { get; set; } = 4.0;
+    /// <summary>Events older than this are not shown.</summary>
+    public int HazardMaxAgeHours { get; set; } = 48;
+    /// <summary>Kinds shown (names of <see cref="HazardKind"/>); empty = all.</summary>
+    public List<string> HazardKinds { get; set; } = new();
+    public int HazardRefreshMinutes { get; set; } = 15;
+    /// <summary>The warning symbol of the animated icon shows the highest active level, also when no bar shows disasters.</summary>
+    public bool HazardInIcon { get; set; } = true;
+    /// <summary>The weather symbol of the animated icon shows the current weather of the first city (fetched even when no bar shows weather).</summary>
+    public bool WeatherInIcon { get; set; } = true;
+
     /// <summary>The small weather bar on the desktop (one city: icon, temperature, wind, humidity). Click it for the next selected city.</summary>
     public bool MiniWeatherEnabled { get; set; }
     /// <summary>Position of the small weather bar; int.MinValue = in the middle of the desktop.</summary>
@@ -491,6 +511,14 @@ public sealed class AppConfig
         if (BarColorMode is not ("theme" or "lightblue" or "accent" or "custom")) BarColorMode = "theme";
         if (TaskbarBarColorMode is not ("taskbar" or "lightblue" or "accent" or "custom")) TaskbarBarColorMode = "taskbar";
         BreakingDurationMinutes = Math.Clamp(BreakingDurationMinutes, 1, 240);
+        HazardSources = HazardSources is >= 0 and <= 15 ? HazardSources : 15;
+        if (!HazardFilter.IsKnownRegion(HazardRegion)) HazardRegion = "greece";
+        HazardMinMagnitude = double.IsFinite(HazardMinMagnitude) ? Math.Clamp(Math.Round(HazardMinMagnitude, 1), 2.5, 8.0) : 4.0;
+        HazardMaxAgeHours = Math.Clamp(HazardMaxAgeHours, 1, 24 * 14);
+        HazardRefreshMinutes = Math.Clamp(HazardRefreshMinutes, 5, 240);
+        HazardKinds = (HazardKinds ?? new()).Where(k => Enum.TryParse<HazardKind>(k, out _)).Distinct().ToList();
+        GreekCities.SetCustom(CustomPlaces);   // before the city ids below are checked
+        CustomPlaces = GreekCities.Custom.ToList();
         if (GreekCities.Find(AlertCityId) is null) AlertCityId = "";
         LiveFeeds = (LiveFeeds ?? new()).Where(l => l is not null && !string.IsNullOrWhiteSpace(l.Url)).ToList();
         if (!Enum.IsDefined(MainContent)) MainContent = BarContent.News;

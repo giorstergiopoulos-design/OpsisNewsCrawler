@@ -524,6 +524,10 @@ public sealed class FredEnergyProvider : IQuoteProvider
 
         var live = await FetchPythAsync(instruments, ct).ConfigureAwait(false);
         ct.ThrowIfCancellationRequested();
+        // Only when the user switched Yahoo Finance on: the futures prices (about 15 minutes delayed) replace the days-old daily values.
+        foreach (var (code, quote) in await FetchYahooAsync(instruments, ct).ConfigureAwait(false))
+            if (!live.TryGetValue(code, out var existing) || quote.AsOf > existing.AsOf) live[code] = quote;
+        ct.ThrowIfCancellationRequested();
         // FRED is also asked when a live price has no day change yet: the last official daily value is then the reference.
         var needFred = instruments.Where(i => !live.TryGetValue(i.Code, out var q) || q.Delayed || q.ChangePercent is null).ToList();
         var daily = needFred.Count == 0 ? new Dictionary<string, MarketQuote>(StringComparer.Ordinal) : await FetchFredAsync(needFred, ct).ConfigureAwait(false);
@@ -540,6 +544,47 @@ public sealed class FredEnergyProvider : IQuoteProvider
             if (best is not null && results.All(r => r.Symbol != best.Symbol)) results.Add(best);
         }
         return results;
+    }
+
+    /// <summary>The Yahoo Finance futures that stand for the three FRED series (Brent, WTI, Henry Hub gas).</summary>
+    internal static readonly IReadOnlyDictionary<string, string> YahooSymbols = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["DCOILBRENTEU"] = "BZ=F", ["DCOILWTICO"] = "CL=F", ["DHHNGSP"] = "NG=F"
+    };
+
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, (MarketQuote Quote, DateTimeOffset At)> yahooCache = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Opt-in and unofficial (see docs/DATA-SOURCES.md): one request per instrument, at most every 15 minutes, never in a burst. Empty when Yahoo is off or blocked.</summary>
+    private async Task<Dictionary<string, MarketQuote>> FetchYahooAsync(IReadOnlyList<QuoteInstrument> instruments, CancellationToken ct)
+    {
+        var result = new Dictionary<string, MarketQuote>(StringComparer.Ordinal);
+        if (!YahooAccess.Enabled || YahooAccess.IsBlocked) return result;
+        var first = true;
+        foreach (var inst in instruments.Where(i => YahooSymbols.ContainsKey(i.Code)))
+        {
+            if (yahooCache.TryGetValue(inst.Code, out var cached) && DateTimeOffset.UtcNow - cached.At < YahooAccess.MinInterval) { result[inst.Code] = cached.Quote; continue; }
+            if (YahooAccess.IsBlocked || ct.IsCancellationRequested) break;
+            if (!first) await Task.Delay(1100, ct).ConfigureAwait(false);
+            first = false;
+            try
+            {
+                using var response = await YahooHistory.Http.GetAsync(string.Format(YahooHistory.ChartUrl, Uri.EscapeDataString(YahooSymbols[inst.Code])), ct).ConfigureAwait(false);
+                if ((int)response.StatusCode is 401 or 403 or 429) { YahooAccess.Block(((int)response.StatusCode).ToString()); break; }
+                if (!response.IsSuccessStatusCode) continue;
+                var snap = YahooHistory.ParseSnapshot(await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false));
+                if (snap is null || snap.Price <= 0) continue;
+                decimal? change = snap.PreviousClose is > 0 ? Math.Round((snap.Price - snap.PreviousClose.Value) / snap.PreviousClose.Value * 100, 2) : null;
+                var quote = new MarketQuote(inst.Symbol, inst.NameEn, snap.Price, change, snap.At, Delayed: true);
+                yahooCache[inst.Code] = (quote, DateTimeOffset.UtcNow);
+                result[inst.Code] = quote;
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException)
+            {
+                if (ct.IsCancellationRequested) throw;
+                Log.Write($"Yahoo energy {inst.Code}: {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+        return result;
     }
 
     /// <summary>Pyth Hermes: one request for all instruments that have a feed. Keyed by instrument code; empty when it fails.</summary>

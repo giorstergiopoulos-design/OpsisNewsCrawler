@@ -25,7 +25,7 @@
 **μέσα** σε αυτήν, ή στο κέντρο της οθόνης. Τρέχει μόνη της (εικονίδιο στην περιοχή ειδοποιήσεων) ή ως plugin του
 **Opsis - Desktop Customization**. Δωρεάν και ανοιχτού κώδικα (MIT).
 
-<p align="center"><img src="docs/screenshots/bar-news-1.png" width="900" alt="η μπάρα"/><br/><img src="docs/screenshots/bar-news-2.png" width="900" alt="η μπάρα"/></p>
+<p align="center"><img src="docs/screenshots/bar-news-1.png" width="900" alt="η μπάρα"/><br/><img src="docs/screenshots/bar-news-2.png" width="900" alt="η μπάρα"/><br/><img src="docs/screenshots/bar-hazards-weather.png" width="900" alt="φυσικές καταστροφές και καιρός"/></p>
 
 ### Λειτουργίες
 
@@ -35,10 +35,13 @@
 | 📈 Τιμές | Μετοχές Euronext (Αθήνα με 15′ καθυστέρηση, Παρίσι, Άμστερνταμ, Βρυξέλλες, Λισσαβώνα, Μιλάνο, Όσλο), μέταλλα, πετρέλαιο/αέριο, ισοτιμίες ΕΚΤ· ειδοποιήσεις ορίων· οι τιμές επισημαίνονται ως καθυστερημένες |
 | 💼 Χαρτοφυλάκιο και ανάλυση | Αξία και κέρδος/ζημιά, RSI, SMA20/50, MACD, κεριά, δοκιμή στρατηγικής, δείκτης φόβου και απληστίας, διάθεση ειδήσεων |
 | ⛅ Καιρός | Πόλεις της Ελλάδας: εικονίδιο, θερμοκρασία, άνεμος, υγρασία· χάρτης με κλικ· προειδοποιήσεις έντονων φαινομένων |
+| 🌋 Φυσικές καταστροφές | Σεισμοί, πυρκαγιές, πλημμύρες, καταιγίδες, ηφαίστεια ως περιεχόμενο μπάρας· φίλτρα περιοχής, μεγέθους, ηλικίας και ειδών· συγχώνευση αναφορών πολλών οργανισμών |
 | 🖥 Μπάρες | Πάνω από τη γραμμή εργασιών ή **μέσα** σε αυτήν (ακολουθεί και την αυτόματη απόκρυψη)· δεύτερη μπάρα, μπάρα ανά οθόνη, μπάρα επιφάνειας που αντικαθιστά την κρυμμένη μπάρα εργασιών· κάθε μπάρα δείχνει ειδήσεις, αγορές ή καιρό |
 | 🎨 Εμφάνιση | Θέματα (ίδια με το Opsis), χρώμα, διαφάνεια, υλικό φόντου (acrylic/blur), σβήσιμο στα άκρα· πλήρης πλοήγηση με πληκτρολόγιο |
 | 🧩 Plugin ή αυτόνομη | Ενσωματωμένη στο Opsis (δική της σελίδα, γλώσσα και χρώματα του Opsis) ή ξεχωριστή εφαρμογή με εικονίδιο στην περιοχή ειδοποιήσεων |
 | 🌍 14 γλώσσες | Ελληνικά, English, Deutsch, Français, Español, Italiano, Português, Русский, Türkçe, 日本語, 한국어, 简体中文, العربية (δεξιά-προς-αριστερά), हिन्दी |
+
+**Νέο στην 0.16.0:** **φυσικές καταστροφές** (σεισμοί, πυρκαγιές, πλημμύρες, καταιγίδες, ηφαίστεια από USGS, EMSC, GDACS, NASA EONET· ο ίδιος σεισμός από πολλούς οργανισμούς δείχνει μέσο όρο μεγέθους και εύρος), **καιρός για οποιονδήποτε τόπο** (όνομα, ταχυδρομικός κώδικας ή συντεταγμένες), το κινούμενο εικονίδιο δείχνει τον τρέχοντα καιρό και την υψηλότερη ενεργή ειδοποίηση, ροδέλα ποντικιού για ταχύτητα, πετρέλαιο/αέριο από συμβόλαια Yahoo (προαιρετικά).
 
 **Νέο στην 0.15.0:** οδηγός καλωσορίσματος και παράθυρο «Η οικογένεια Opsis» με κινούμενο εικονίδιο (εφημερίδα, μπάλα, ασπίδα, οικονομία, καιρός, φυσικές καταστροφές), ειδοποίηση νέας έκδοσης μία φορά ανά έκδοση, ορθογώνιο εικονίδιο, θέματα Opsis, σωστή ανίχνευση της μπάρας εργασιών με αυτόματη απόκρυψη, πλήρης υποστήριξη πληκτρολογίου στα στοιχεία ελέγχου. Όλο το ιστορικό: [`CHANGELOG.md`](CHANGELOG.md).
 
@@ -62,6 +65,10 @@
 <tr>
 <td><img src="docs/screenshots/el/dark/09-analysis-candles.png" width="440"/><br/><sub>Ανάλυση αγορών</sub></td>
 <td><img src="docs/screenshots/el/dark/03-look.png" width="440"/><br/><sub>Εμφάνιση</sub></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/el/dark/10-weather-search.png" width="440"/><br/><sub>Καιρός: εύρεση οποιουδήποτε τόπου</sub></td>
+<td><img src="docs/img/icon-live-states.png" width="440"/><br/><sub>Το εικονίδιο με τον ζωντανό καιρό και τις ειδοποιήσεις</sub></td>
 </tr>
 </table>
 
@@ -87,11 +94,11 @@
 
 ### Απόρρητο και δίκτυο
 
-Το πρόγραμμα δεν στέλνει τηλεμετρία. Εκτός από τις πηγές ειδήσεων/τιμών/καιρού που επιλέγετε, κάνει μόνο: (1) έναν έλεγχο νέας έκδοσης προς το GitHub (`api.github.com`, 30 s μετά την εκκίνηση και μία φορά την ημέρα, με ETag) και (2) όταν ανοίξετε το παράθυρο «Η οικογένεια Opsis», τη λήψη του καταλόγου εφαρμογών (`raw.githubusercontent.com`, το πολύ μία φορά την ημέρα) και την ερώτηση για την τελευταία έκδοση κάθε εγκατεστημένης εφαρμογής του καταλόγου. Κανένα αρχείο δεν κατεβαίνει χωρίς τη δική σας επιβεβαίωση και κανένα δεν εκτελείται από το πρόγραμμα. Το κλειδί Anthropic του προαιρετικού βοηθού αποθηκεύεται κρυπτογραφημένο (DPAPI) και δεν εξάγεται.
+Το πρόγραμμα δεν στέλνει τηλεμετρία. Εκτός από τις πηγές ειδήσεων/τιμών/καιρού που επιλέγετε, κάνει μόνο: (1) έναν έλεγχο νέας έκδοσης προς το GitHub (`api.github.com`, 30 s μετά την εκκίνηση και μία φορά την ημέρα, με ETag) και (2) όταν χρησιμοποιείτε φυσικές καταστροφές (USGS, EMSC, GDACS, NASA EONET: ένα GET ανά πηγή κάθε 15 λεπτά, μόνο όσο εμφανίζονται ή τροφοδοτούν το εικονίδιο), (3) όταν πατήσετε Αναζήτηση τόπου (Open-Meteo geocoding· OpenStreetMap Nominatim για ταχυδρομικούς κώδικες και συντεταγμένες, το πολύ ένα αίτημα το δευτερόλεπτο) και (4) όταν ανοίξετε το παράθυρο «Η οικογένεια Opsis», τη λήψη του καταλόγου εφαρμογών (`raw.githubusercontent.com`, το πολύ μία φορά την ημέρα) και την ερώτηση για την τελευταία έκδοση κάθε εγκατεστημένης εφαρμογής του καταλόγου. Κανένα αρχείο δεν κατεβαίνει χωρίς τη δική σας επιβεβαίωση και κανένα δεν εκτελείται από το πρόγραμμα. Το κλειδί Anthropic του προαιρετικού βοηθού αποθηκεύεται κρυπτογραφημένο (DPAPI) και δεν εξάγεται.
 
 ### Πηγές δεδομένων, πιστώσεις και άδειες τρίτων
 
-Ειδήσεις: RSS των ίδιων των εκδοτών (μόνο τίτλος, σύντομη περίληψη και σύνδεσμος). Τιμές: Euronext, gold-api.com, Frankfurter/ΕΚΤ, FRED/EIA. Καιρός: [Open-Meteo.com](https://open-meteo.com) (CC BY 4.0). Χάρτης: © συνεργάτες του [OpenStreetMap](https://www.openstreetmap.org/copyright) (ODbL). Οι τιμές δεν αποτελούν επενδυτική συμβουλή. Λεπτομέρειες και όροι: [`docs/DATA-SOURCES.md`](docs/DATA-SOURCES.md).
+Ειδήσεις: RSS των ίδιων των εκδοτών (μόνο τίτλος, σύντομη περίληψη και σύνδεσμος). Τιμές: Euronext, gold-api.com, Frankfurter/ΕΚΤ, FRED/EIA. Καιρός: [Open-Meteo.com](https://open-meteo.com) (CC BY 4.0). Σεισμοί και καταστροφές: [USGS](https://earthquake.usgs.gov), [EMSC](https://www.emsc-csem.org), [GDACS](https://www.gdacs.org), [NASA EONET](https://eonet.gsfc.nasa.gov). Χάρτης και αναζήτηση τόπων: © συνεργάτες του [OpenStreetMap](https://www.openstreetmap.org/copyright) (ODbL). Οι τιμές δεν αποτελούν επενδυτική συμβουλή. Λεπτομέρειες και όροι: [`docs/DATA-SOURCES.md`](docs/DATA-SOURCES.md).
 
 Βιβλιοθήκες: [Microsoft.Web.WebView2](https://www.nuget.org/packages/Microsoft.Web.WebView2) (Microsoft, άδεια BSD-style της Microsoft), για τα tests xUnit (Apache-2.0). Οι ιδέες του χαρτοφυλακίου προέρχονται από το [stonks-cli](https://github.com/igoropaniuk/stonks-cli) (MIT) και του RSI/SMA από το [greek-stocks-ai](https://github.com/karidasd/greek-stocks-ai)· ο κώδικας γράφτηκε από την αρχή. Ο installer χρησιμοποιεί το [Inno Setup](https://jrsoftware.org/isinfo.php).
 
@@ -111,7 +118,7 @@ powershell -ExecutionPolicy Bypass -File tools\release.ps1     # publish + insta
 
 A scrolling news, market-price and weather bar for the Windows desktop — above the taskbar, **inside** it, or in the middle of the screen. It runs on its own (notification-area icon) or as a plugin of **Opsis - Desktop Customization**. Free and open source (MIT).
 
-<p align="center"><img src="docs/screenshots/bar-news-1.png" width="900" alt="the bar"/><br/><img src="docs/screenshots/bar-news-2.png" width="900" alt="the bar"/></p>
+<p align="center"><img src="docs/screenshots/bar-news-1.png" width="900" alt="the bar"/><br/><img src="docs/screenshots/bar-news-2.png" width="900" alt="the bar"/><br/><img src="docs/screenshots/bar-hazards-weather.png" width="900" alt="natural disasters and weather"/></p>
 
 ### Features
 
@@ -121,10 +128,13 @@ A scrolling news, market-price and weather bar for the Windows desktop — above
 | 📈 Prices | Euronext shares (Athens 15′ delayed, Paris, Amsterdam, Brussels, Lisbon, Milan, Oslo), metals, oil/gas, ECB currency rates; price alerts; quotes are labelled delayed |
 | 💼 Portfolio and analysis | Value and profit/loss, RSI, SMA20/50, MACD, candlesticks, strategy back-test, fear & greed gauge, news mood |
 | ⛅ Weather | Greek cities: icon, temperature, wind, humidity; map on click; severe-weather warnings |
+| 🌋 Natural disasters | Earthquakes, fires, floods, storms, volcanoes as bar content; filters for region, magnitude, age and kind; reports of several organisations merged |
 | 🖥 Bars | Above the taskbar or **inside** it (follows auto-hide); a second bar, a bar per monitor, a desktop bar that stands in for a hidden taskbar; each bar shows news, markets or weather |
 | 🎨 Look | Themes (the same as Opsis), colour, transparency, background material (acrylic/blur), fading ends; fully keyboard-operable controls |
 | 🧩 Plugin or stand-alone | Integrated into Opsis (its own page, Opsis language and colours) or a separate app with a notification-area icon |
 | 🌍 14 languages | Greek, English, German, French, Spanish, Italian, Portuguese, Russian, Turkish, Japanese, Korean, Simplified Chinese, Arabic (right-to-left), Hindi |
+
+**New in 0.16.0:** **natural disasters** (earthquakes, fires, floods, storms, volcanoes from USGS, EMSC, GDACS, NASA EONET; the same earthquake from several organisations shows the average magnitude and the range), **weather for any place** (name, postcode or coordinates), the animated icon shows the current weather and the highest active alert, mouse wheel for speed, oil and gas from Yahoo futures (optional).
 
 **New in 0.15.0:** welcome guide and "The Opsis family" window with the animated icon (newspaper, ball, shield, economy, weather, natural disasters), one update notice per version, rectangular icon, Opsis themes, correct auto-hide taskbar detection, full keyboard support in the custom controls. Full history: [`CHANGELOG.md`](CHANGELOG.md).
 
@@ -148,6 +158,10 @@ Dark and light themes (all of them: [`docs/screenshots`](docs/screenshots)).
 <tr>
 <td><img src="docs/screenshots/en/light/09-analysis-candles.png" width="440"/><br/><sub>Market analysis</sub></td>
 <td><img src="docs/screenshots/en/dark/03-look.png" width="440"/><br/><sub>Look</sub></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/en/light/10-weather-search.png" width="440"/><br/><sub>Weather: find any place</sub></td>
+<td><img src="docs/img/icon-live-states.png" width="440"/><br/><sub>The icon with live weather and alerts</sub></td>
 </tr>
 </table>
 
@@ -173,11 +187,11 @@ Silent install: `OpsisNewsCrawler-Setup.exe /VERYSILENT /SUPPRESSMSGBOXES /NORES
 
 ### Privacy and network
 
-The program sends no telemetry. Besides the news/price/weather sources you choose, it only does: (1) one version check to GitHub (`api.github.com`, 30 s after the start and once a day, with an ETag) and (2) when you open "The Opsis family" window, one download of the app catalogue (`raw.githubusercontent.com`, at most once a day) and one question about the latest release of each installed app of the catalogue. No file is downloaded without your confirmation and the program never runs one. The Anthropic key of the optional assistant is stored encrypted (DPAPI) and never exported.
+The program sends no telemetry. Besides the news/price/weather sources you choose, it only does: (1) one version check to GitHub (`api.github.com`, 30 s after the start and once a day, with an ETag) and (2) when natural disasters are used (USGS, EMSC, GDACS, NASA EONET: one GET per source every 15 minutes, only while a bar shows them or the icon uses them), (3) when you press Search for a place (Open-Meteo geocoding; OpenStreetMap Nominatim for postcodes and coordinates, at most one request a second) and (4) when you open "The Opsis family" window, one download of the app catalogue (`raw.githubusercontent.com`, at most once a day) and one question about the latest release of each installed app of the catalogue. No file is downloaded without your confirmation and the program never runs one. The Anthropic key of the optional assistant is stored encrypted (DPAPI) and never exported.
 
 ### Data sources, credits and third-party licences
 
-News: the publishers' own RSS feeds (only the title, a short summary and the link). Prices: Euronext, gold-api.com, Frankfurter/ECB, FRED/EIA. Weather: [Open-Meteo.com](https://open-meteo.com) (CC BY 4.0). Map: © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors (ODbL). Prices are not investment advice. Details and terms: [`docs/DATA-SOURCES.md`](docs/DATA-SOURCES.md).
+News: the publishers' own RSS feeds (only the title, a short summary and the link). Prices: Euronext, gold-api.com, Frankfurter/ECB, FRED/EIA. Weather: [Open-Meteo.com](https://open-meteo.com) (CC BY 4.0). Earthquakes and disasters: [USGS](https://earthquake.usgs.gov), [EMSC](https://www.emsc-csem.org), [GDACS](https://www.gdacs.org), [NASA EONET](https://eonet.gsfc.nasa.gov). Map and place search: © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors (ODbL). Prices are not investment advice. Details and terms: [`docs/DATA-SOURCES.md`](docs/DATA-SOURCES.md).
 
 Libraries: [Microsoft.Web.WebView2](https://www.nuget.org/packages/Microsoft.Web.WebView2) (Microsoft licence), xUnit for the tests (Apache-2.0). The portfolio idea comes from [stonks-cli](https://github.com/igoropaniuk/stonks-cli) (MIT) and the RSI/SMA idea from [greek-stocks-ai](https://github.com/karidasd/greek-stocks-ai); the code was written from scratch. The installer is built with [Inno Setup](https://jrsoftware.org/isinfo.php).
 

@@ -160,37 +160,42 @@ public static class AppIconArt
         g.Restore(state);
     }
 
-    /// <summary>A sun half behind a cloud: the weather.</summary>
-    private static void Weather(Graphics g)
-    {
-        using (var ray = new Pen(Color.FromArgb(255, 205, 60), 5f) { StartCap = LineCap.Round, EndCap = LineCap.Round })
-            for (var i = 0; i < 8; i++)
-            {
-                var a = i * Math.PI / 4;
-                g.DrawLine(ray, (float)(60 + Math.Cos(a) * 27), (float)(38 + Math.Sin(a) * 27), (float)(60 + Math.Cos(a) * 36), (float)(38 + Math.Sin(a) * 36));
-            }
-        using (var sun = new SolidBrush(Color.FromArgb(255, 200, 45))) g.FillEllipse(sun, 42, 20, 36, 36);
-        using var cloud = new SolidBrush(Color.FromArgb(240, 246, 252));
-        g.FillEllipse(cloud, 10, 54, 30, 30);
-        g.FillEllipse(cloud, 28, 44, 36, 36);
-        g.FillEllipse(cloud, 50, 54, 32, 30);
-        g.FillRectangle(cloud, 24, 62, 42, 22);
-        using var edge = new Pen(Color.FromArgb(120, 150, 185), 3f);
-        g.DrawArc(edge, 10, 54, 30, 30, 90, 180);
-        g.DrawLine(edge, 25, 84, 66, 84);
-    }
+    /// <summary>The weather of the first weather city, drawn with the same picture the bar uses (a sun behind a cloud until the first reading arrives).</summary>
+    private static void Weather(Graphics g) => WeatherIcons.Draw(g, new Rectangle(0, 0, 100, 100), LiveIconState.WeatherIcon, true);
 
-    /// <summary>A warning triangle over a seismic wave: earthquakes, floods, fires and the other natural disasters.</summary>
+    /// <summary>
+    /// A warning triangle over a seismic wave: severe weather and natural disasters. Calm and grey while nothing is active, then yellow, orange or red
+    /// with an exclamation mark for the highest active level.
+    /// </summary>
     private static void Alert(Graphics g)
     {
+        var level = LiveIconState.HazardLevel;
+        var (top, bottom) = level switch
+        {
+            3 => (Color.FromArgb(255, 110, 90), Color.FromArgb(205, 40, 40)),
+            2 => (Color.FromArgb(255, 170, 70), Color.FromArgb(230, 105, 35)),
+            1 => (Color.FromArgb(255, 225, 110), Color.FromArgb(225, 175, 40)),
+            _ => (Color.FromArgb(150, 168, 190), Color.FromArgb(100, 118, 144)),
+        };
         using var path = new GraphicsPath();
         path.AddPolygon(new[] { new PointF(50, 8), new PointF(94, 82), new PointF(6, 82) });
-        using (var fill = new LinearGradientBrush(new RectangleF(6, 8, 88, 74), Color.FromArgb(255, 150, 60), Color.FromArgb(225, 70, 50), 90f)) g.FillPath(fill, path);
-        using (var edge = new Pen(Color.FromArgb(255, 235, 215), 5f) { LineJoin = LineJoin.Round }) g.DrawPath(edge, path);
-        using (var mark = new Pen(Color.White, 8f) { StartCap = LineCap.Round, EndCap = LineCap.Round }) g.DrawLine(mark, 50, 32, 50, 56);
-        using (var dot = new SolidBrush(Color.White)) g.FillEllipse(dot, 45, 62, 10, 10);
+        using (var fill = new LinearGradientBrush(new RectangleF(6, 8, 88, 74), top, bottom, 90f)) g.FillPath(fill, path);
+        using (var edge = new Pen(Color.FromArgb(240, 245, 252), 5f) { LineJoin = LineJoin.Round }) g.DrawPath(edge, path);
+        if (level > 0)
+        {
+            using (var mark = new Pen(Color.White, 8f) { StartCap = LineCap.Round, EndCap = LineCap.Round }) g.DrawLine(mark, 50, 32, 50, 56);
+            using var dot = new SolidBrush(Color.White);
+            g.FillEllipse(dot, 45, 62, 10, 10);
+        }
+        else
+        {
+            using var calm = new Pen(Color.White, 5f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+            g.DrawLine(calm, 30, 58, 70, 58);
+        }
         using var wave = new Pen(Color.FromArgb(90, 150, 235), 4f) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
-        g.DrawLines(wave, new[] { new PointF(6, 94), new PointF(24, 94), new PointF(32, 86), new PointF(42, 98), new PointF(52, 90), new PointF(60, 94), new PointF(94, 94) });
+        g.DrawLines(wave, level > 0
+            ? new[] { new PointF(6, 94), new PointF(24, 94), new PointF(32, 86), new PointF(42, 98), new PointF(52, 90), new PointF(60, 94), new PointF(94, 94) }
+            : new[] { new PointF(6, 94), new PointF(94, 94) });
     }
 
     private static void Newspaper(Graphics g)

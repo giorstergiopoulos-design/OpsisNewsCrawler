@@ -28,6 +28,14 @@ internal sealed class AnimatedAppIcon : Control
             Invalidate();
         };
         timer.Start();
+        LiveIconState.Changed += OnLiveChanged;
+    }
+
+    private void OnLiveChanged()
+    {
+        if (IsDisposed || !IsHandleCreated) return;
+        try { BeginInvoke(new Action(() => { renderedSize = 0; Invalidate(); })); }
+        catch (InvalidOperationException) { }
     }
 
     private void EnsureFrames()
@@ -60,6 +68,7 @@ internal sealed class AnimatedAppIcon : Control
     {
         if (disposing)
         {
+            LiveIconState.Changed -= OnLiveChanged;
             timer.Dispose();
             DisposeFrames();
         }

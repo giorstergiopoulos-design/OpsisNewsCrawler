@@ -3,6 +3,17 @@
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
 Detailed notes per release: `docs/releases/RELEASE-<version>.md` and the GitHub releases.
 
+## 0.16.0 — 2026-10-27
+- **Natural disasters** (new bar content "Natural disasters"): earthquakes from USGS and EMSC, and events from GDACS (UN/EU) and NASA EONET (fires, floods, storms, volcanoes). The same earthquake reported by several organisations is one item with the average magnitude and the range (for example M5.7, range 5.6-5.8, 3 sources). Filters: region (Greece and neighbours, Europe, world), smallest magnitude, maximum age, kinds, sources, refresh interval (5-240 min, default 15). Each feed is fetched on its own, so one that fails only adds a notice. Tests: parsers, merging, filter, text.
+- **Any place** in the weather list: search by name (Open-Meteo geocoding, any country), by Greek postcode (OpenStreetMap Nominatim) or by coordinates (37.78, 20.89 / 37.78N 20.89E). Added places are marked with a star and stay in the list (at most 60). Nominatim is used only when Search is pressed, at most once a second, with an identifying User-Agent. Postcodes name an area, not one place; the name or coordinates identify a place better. The Canadian/US postcode formats are not handled.
+- **Animated icon** shows the current weather of the first weather city and the highest active alert (triangle colour: yellow, orange, red). The tray tooltip gives the same in words. The settings header icon always moves (the tray option only controls the tray icon).
+- **Mouse wheel** over the bar changes its speed; the welcome guide now says so (14 languages).
+- **Help**: the Help and Instructions pages have buttons for the welcome guide and the Opsis family window.
+- **Raw materials**: Brent, WTI and natural gas use the Yahoo Finance futures (about 15 minutes delayed, one request per instrument at most every 15 minutes) instead of the days-old FRED/EIA values, but only when the Yahoo option is switched on (it is unofficial and off by default; Pyth Hermes needs a key since 2026-10). Without it the daily values stay, with their date.
+- Translations: every new text (disasters, places, weather icon, guide line) is in all 14 languages; the test that fails on English left in other languages passes.
+- Not done in this version (stated, not hidden): speed set per bar and per half of a split bar; a full search over the whole Yahoo catalogue in the settings; live verification of the disaster feeds on the owner's PC (only parsers and the feeds' current answers were checked).
+- Tests: 308.
+
 ## 0.15.0 — 2026-10-27
 - **The crawler themes are independent of Opsis**: inside Opsis you can now choose any crawler theme (Follow Windows, Light, Dark, Midnight, Forest, Dawn, Contrast, with or without the Windows accent). A new choice "Follow Opsis" uses the Opsis colours; existing installs are switched to it once, so nothing changes until you pick another theme.
 - **Welcome guide**: six short pages with the animated icon, shown on the first start of a new major/minor version (not inside Opsis, which has its own), from the tray menu "Welcome guide", with "Don't show again". Closing it (Finish, Skip, Esc) shrinks and fades it into the header icon of the settings window when that is open, otherwise into the tray area (a plain fade when animations are off or the PC is Low-tier).

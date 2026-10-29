@@ -695,6 +695,11 @@ internal sealed class TickerCanvas : Control
 
     private void DrawIcon(Graphics g, Entry entry, Rectangle rect)
     {
+        if (entry.Item.Kind == NewsItemKind.Hazard)
+        {
+            DrawHazardIcon(g, rect, entry.Item.Icon);
+            return;
+        }
         var icon = entry.Host.Length > 0 ? FaviconCache.TryGetFor(entry.Host, darkSurface) : null;
         if (icon is not null)
         {
@@ -716,6 +721,26 @@ internal sealed class TickerCanvas : Control
             using var center = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
             g.DrawString(char.ToUpperInvariant(letter).ToString(), badgeFont, Brushes.White, rect, center);
         }
+    }
+
+    /// <summary>A warning triangle: yellow, orange or red by the level of the event.</summary>
+    private static void DrawHazardIcon(Graphics g, Rectangle rect, int level)
+    {
+        var (top, bottom) = level switch
+        {
+            >= 3 => (Color.FromArgb(255, 110, 90), Color.FromArgb(205, 40, 40)),
+            2 => (Color.FromArgb(255, 170, 70), Color.FromArgb(230, 105, 35)),
+            _ => (Color.FromArgb(255, 225, 110), Color.FromArgb(225, 175, 40)),
+        };
+        var r = Rectangle.Inflate(rect, -1, -1);
+        using var path = new GraphicsPath();
+        path.AddPolygon(new[] { new PointF(r.Left + r.Width / 2f, r.Top), new PointF(r.Right, r.Bottom), new PointF(r.Left, r.Bottom) });
+        using (var fill = new LinearGradientBrush(r, top, bottom, 90f)) g.FillPath(fill, path);
+        using (var edge = new Pen(Color.FromArgb(230, 255, 255, 255), Math.Max(1f, r.Width / 14f)) { LineJoin = LineJoin.Round }) g.DrawPath(edge, path);
+        using var mark = new Pen(Color.White, Math.Max(1.5f, r.Width / 8f)) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+        var cx = r.Left + r.Width / 2f;
+        g.DrawLine(mark, cx, r.Top + r.Height * 0.38f, cx, r.Top + r.Height * 0.66f);
+        g.FillEllipse(Brushes.White, cx - r.Width / 14f, r.Top + r.Height * 0.76f, r.Width / 7f, r.Width / 7f);
     }
 
     /// <summary>Multiplies the pixels near the left and right end by a ramp 0..1 (the frame is premultiplied, so this is a true fade).</summary>

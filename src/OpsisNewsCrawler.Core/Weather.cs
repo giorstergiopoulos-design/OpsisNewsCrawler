@@ -83,13 +83,39 @@ rethymno|Ρέθυμνο|Rethymno|35.3650|24.4820
 agios-nikolaos|Άγιος Νικόλαος|Agios Nikolaos|35.1900|25.7160
 """;
 
-    public static readonly IReadOnlyList<GreekCity> All = Data.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+    public static readonly IReadOnlyList<GreekCity> BuiltIn = Data.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
         .Select(l => l.Split('|'))
         .Where(p => p.Length == 5)
         .Select(p => new GreekCity(p[0], p[1], p[2], double.Parse(p[3], CultureInfo.InvariantCulture), double.Parse(p[4], CultureInfo.InvariantCulture)))
         .ToList();
 
-    public static GreekCity? Find(string? id) => All.FirstOrDefault(c => string.Equals(c.Id, id, StringComparison.OrdinalIgnoreCase));
+    private static IReadOnlyList<GreekCity> custom = Array.Empty<GreekCity>();
+    private static IReadOnlyList<GreekCity> everything = BuiltIn;
+
+    /// <summary>The built-in cities followed by the places the user added by search or coordinates (see <see cref="GeoSearch"/>).</summary>
+    public static IReadOnlyList<GreekCity> All => everything;
+
+    /// <summary>The places the user added.</summary>
+    public static IReadOnlyList<GreekCity> Custom => custom;
+
+    public const int MaxCustom = 60;
+
+    /// <summary>Replaces the user's places. Entries with a bad id, bad coordinates or no name are dropped, duplicates too; at most <see cref="MaxCustom"/> are kept.</summary>
+    public static void SetCustom(IEnumerable<GreekCity>? places)
+    {
+        var list = new List<GreekCity>();
+        foreach (var c in places ?? Enumerable.Empty<GreekCity>())
+        {
+            if (list.Count >= MaxCustom) break;
+            if (!GeoSearch.IsValidId(c.Id) || Math.Abs(c.Lat) > 90 || Math.Abs(c.Lon) > 180 || string.IsNullOrWhiteSpace(c.NameEl) || string.IsNullOrWhiteSpace(c.NameEn)) continue;
+            if (list.Any(x => string.Equals(x.Id, c.Id, StringComparison.OrdinalIgnoreCase))) continue;
+            list.Add(c with { NameEl = c.NameEl.Trim(), NameEn = c.NameEn.Trim() });
+        }
+        custom = list;
+        everything = list.Count == 0 ? BuiltIn : BuiltIn.Concat(list).ToList();
+    }
+
+    public static GreekCity? Find(string? id) => everything.FirstOrDefault(c => string.Equals(c.Id, id, StringComparison.OrdinalIgnoreCase));
 
     public static string[] DefaultSelection => new[] { "athens", "thessaloniki", "patras", "heraklion" };
 }

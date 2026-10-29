@@ -324,11 +324,35 @@ internal sealed class BarPreview : Control
             g.ResetClip();
         }
 
+        void Hazards(Rectangle area)
+        {
+            if (compact) { Dashes(area); return; }
+            g.SetClip(area, CombineMode.Intersect);
+            var xx = area.Left + 6f;
+            foreach (var (level, text) in new[] { (2, "M5.7 (5.6\u20135.8) \u00B7 Crete"), (1, "M4.3 \u00B7 Evia"), (3, "M7.0 \u00B7 Japan") })
+            {
+                if (xx >= area.Right) break;
+                var size = Math.Min(area.Height - 4, 16);
+                var r = new Rectangle((int)xx, area.Top + (area.Height - size) / 2, size, size);
+                using (var tri = new GraphicsPath())
+                {
+                    tri.AddPolygon(new[] { new PointF(r.Left + r.Width / 2f, r.Top), new PointF(r.Right, r.Bottom), new PointF(r.Left, r.Bottom) });
+                    using var b = new SolidBrush(level == 3 ? Color.FromArgb(215, 55, 50) : level == 2 ? Color.FromArgb(235, 130, 45) : Color.FromArgb(230, 185, 50));
+                    g.FillPath(b, tri);
+                }
+                xx += size + 5;
+                g.DrawString(text, font, textBrush, new RectangleF(xx, area.Top, 600, area.Height), sf);
+                xx += g.MeasureString(text, font).Width + 24;
+            }
+            g.ResetClip();
+        }
+
         void Part(BarSlot slot, Rectangle area)
         {
             switch (slot.Kind)
             {
                 case SlotKind.Weather: Weather(area); break;
+                case SlotKind.Hazards: Hazards(area); break;
                 case SlotKind.Stocks: Quotes(area); break;
                 default: News(area); break;
             }

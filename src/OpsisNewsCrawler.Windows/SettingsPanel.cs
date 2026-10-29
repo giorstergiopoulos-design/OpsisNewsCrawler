@@ -65,6 +65,18 @@ public sealed class SettingsPanel : UserControl
     private FlatCombo miniShape = null!;
     private FlatCombo barShape = null!;
     private List<string> workCities = new();
+    private List<GreekCity> workCustom = new();
+    private FlatText geoQuery = null!;
+    private FlatButton geoSearchButton = null!, geoAddButton = null!, geoCleanupButton = null!;
+    private FlatList geoList = null!;
+    private Label geoStatus = null!;
+    private List<GeoPlace> geoHits = new();
+    private FlatCombo hazardRegion = null!, hazardMinMagnitude = null!;
+    private FlatNumber hazardMaxAge = null!, hazardRefresh = null!;
+    private FlatCheck hazardInIcon = null!, weatherInIcon = null!;
+    private readonly Dictionary<HazardKind, FlatCheck> hazardKindChecks = new();
+    private readonly Dictionary<HazardSources, FlatCheck> hazardSourceChecks = new();
+    private static readonly double[] MagnitudeChoices = { 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5 };
     private List<GreekCity> shownCities = new();
     private FlatCheck barsEnabled = null!;
     private Label updateStatus = null!;
@@ -273,7 +285,7 @@ public sealed class SettingsPanel : UserControl
         loading = true;
         watchLists.Clear();
         tabs = new FlatNav { Dock = DockStyle.Fill };
-        tabs.Badge = new AnimatedAppIcon(() => host.Config.TrayIconAnimated && host.Config.BarsEnabled);
+        tabs.Badge = new AnimatedAppIcon(() => !MinimiseAnimation.Simple);   // always moving: the tray option is for the tray icon only
 
         // One navigation rail: three groups (Settings, Sources, Information), every page under its group.
         AddGroup(Loc.T("pk.settings"),
@@ -293,8 +305,8 @@ public sealed class SettingsPanel : UserControl
         var info = new List<(string, Control)>();
         if (showAboutTabs)
         {
-            info.Add((L("tab.help"), BuildInfoPage(() => AboutTexts.Help)));
-            info.Add((L("tab.instructions"), BuildInfoPage(() => AboutTexts.Instructions)));
+            info.Add((L("tab.help"), BuildInfoPage(() => AboutTexts.Help, host)));
+            info.Add((L("tab.instructions"), BuildInfoPage(() => AboutTexts.Instructions, host)));
             info.Add((L("tab.history"), BuildInfoPage(() => AboutTexts.History)));
             info.Add((L("tab.license"), BuildInfoPage(() => AboutTexts.License)));
         }
@@ -877,6 +889,35 @@ public sealed class SettingsPanel : UserControl
         card.Controls.Add(inner);
         flow.Controls.Add(card);
 
+        // Any place on Earth: by name, Greek postcode or coordinates. The places are added to the list above (marked with a star).
+        var geo = new FlatCard(L("geo.card"));
+        var geoFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        geoFlow.Controls.Add(Note(L("geo.hint"), 700));
+        geoQuery = new FlatText { Width = 380 };
+        geoSearchButton = new FlatButton { Text = L("geo.search") };
+        geoSearchButton.SetPrimary(true);
+        var geoRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
+        geoRow.Controls.Add(geoQuery);
+        geoRow.Controls.Add(geoSearchButton);
+        geoFlow.Controls.Add(geoRow);
+        geoList = new FlatList { Width = 740, Height = 30 * 5 + 4 };
+        geoList.SetShowChecks(true);
+        geoFlow.Controls.Add(geoList);
+        geoAddButton = new FlatButton { Text = L("geo.add") };
+        geoCleanupButton = new FlatButton { Text = L("geo.cleanup") };
+        var geoButtons = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = true };
+        geoButtons.Controls.Add(geoAddButton);
+        geoButtons.Controls.Add(geoCleanupButton);
+        geoFlow.Controls.Add(geoButtons);
+        geoStatus = new Label { AutoSize = true, Tag = "muted", MaximumSize = new Size(700, 0), Margin = new Padding(0, 6, 0, 0), UseMnemonic = false };
+        geoFlow.Controls.Add(geoStatus);
+        geoFlow.Controls.Add(Note(L("geo.note"), 700));
+        geo.Controls.Add(geoFlow);
+        flow.Controls.Add(geo);
+        geoSearchButton.Click += async (_, _) => await RunGeoSearchAsync();
+        geoAddButton.Click += async (_, _) => await AddGeoPlacesAsync();
+        geoCleanupButton.Click += (_, _) => CleanupGeoPlaces();
+
         weatherMapOnClick = new FlatCheck { Text = Loc.T("pk.click.a.city.on") };
         flow.Controls.Add(weatherMapOnClick);
         flow.Controls.Add(Note(Loc.T("pk.the.map.openstreetmap.needs"), 640));
@@ -894,6 +935,47 @@ public sealed class SettingsPanel : UserControl
         fieldsFlow.Controls.Add(Note(Loc.T("pk.the.temperature.is.always"), 600));
         fields.Controls.Add(fieldsFlow);
         flow.Controls.Add(fields);
+
+        // Natural disasters: where from, how far, how strong, how old; and whether the animated icon shows them.
+        var hazards = new FlatCard(L("hazard.card"));
+        var hazardFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        hazardFlow.Controls.Add(Note(L("hazard.note"), 700));
+        hazardRegion = new FlatCombo { Width = 300 };
+        hazardRegion.SetItems(new[] { L("hazard.region.greece"), L("hazard.region.europe"), L("hazard.region.world") }, 0);
+        hazardFlow.Controls.Add(Row(L("hazard.region"), hazardRegion, 260));
+        hazardMinMagnitude = new FlatCombo { Width = 120 };
+        hazardMinMagnitude.SetItems(MagnitudeChoices.Select(m => m.ToString("0.0", System.Globalization.CultureInfo.CurrentCulture)), 3);
+        hazardFlow.Controls.Add(Row(L("hazard.minmag"), hazardMinMagnitude, 260));
+        hazardMaxAge = new FlatNumber { Width = 120 };
+        hazardMaxAge.Configure(1, 24 * 14, 6);
+        hazardFlow.Controls.Add(Row(L("hazard.maxage"), hazardMaxAge, 260));
+        hazardRefresh = new FlatNumber { Width = 120 };
+        hazardRefresh.Configure(5, 240, 5);
+        hazardFlow.Controls.Add(Row(L("hazard.refresh"), hazardRefresh, 260));
+        var kindsRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = true, MaximumSize = new Size(700, 0) };
+        hazardKindChecks.Clear();
+        foreach (var kind in Enum.GetValues<HazardKind>())
+        {
+            var check = new FlatCheck { Text = HazardText.KindName(kind), Margin = new Padding(0, 4, 16, 4) };
+            hazardKindChecks[kind] = check;
+            kindsRow.Controls.Add(check);
+        }
+        hazardFlow.Controls.Add(Row(L("hazard.kinds"), kindsRow, 260));
+        var sourcesRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = true, MaximumSize = new Size(700, 0) };
+        hazardSourceChecks.Clear();
+        foreach (var (source, name) in new[] { (HazardSources.Usgs, "USGS"), (HazardSources.Emsc, "EMSC"), (HazardSources.Gdacs, "GDACS"), (HazardSources.Eonet, "NASA EONET") })
+        {
+            var check = new FlatCheck { Text = name, Margin = new Padding(0, 4, 16, 4) };
+            hazardSourceChecks[source] = check;
+            sourcesRow.Controls.Add(check);
+        }
+        hazardFlow.Controls.Add(Row(L("hazard.src"), sourcesRow, 260));
+        hazardInIcon = new FlatCheck { Text = L("hazard.icon") };
+        hazardFlow.Controls.Add(hazardInIcon);
+        weatherInIcon = new FlatCheck { Text = L("hazard.weatherIcon") };
+        hazardFlow.Controls.Add(weatherInIcon);
+        hazards.Controls.Add(hazardFlow);
+        flow.Controls.Add(hazards);
 
         citySearch.TextValueChanged += (_, _) => ShowCities();
         cityList.ItemChecked += (index, isChecked) =>
@@ -916,7 +998,82 @@ public sealed class SettingsPanel : UserControl
         shownCities = GreekCities.All.Where(c => term.Length == 0 || c.NameEl.Contains(term, StringComparison.OrdinalIgnoreCase) ||
                                                  c.NameEn.Contains(term, StringComparison.OrdinalIgnoreCase)).ToList();
         cityList.ClearRows();
-        foreach (var c in shownCities) cityList.AddRow(CityName(c), workCities.Contains(c.Id));
+        foreach (var c in shownCities) cityList.AddRow(CityName(c) + (GreekCities.Custom.Contains(c) ? "  \u2605" : ""), workCities.Contains(c.Id));
+    }
+
+    // ---- places found by name, postcode or coordinates -------------------------------------------
+
+    private async Task RunGeoSearchAsync()
+    {
+        var query = geoQuery.Value.Trim();
+        if (query.Length < 2) return;
+        geoSearchButton.Enabled = false;
+        geoStatus.Text = Loc.T("pk.testing");
+        try
+        {
+            geoHits = (await GeoSearch.SearchAsync(query, Loc.IsGreek ? "el" : "en", Loc.IsGreek, CancellationToken.None)).ToList();
+            geoList.ClearRows();
+            foreach (var h in geoHits) geoList.AddRow(h.Label, false);
+            geoStatus.Text = geoHits.Count == 0 ? L("geo.none") : Loc.T("geo.found", geoHits.Count);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            geoStatus.Text = Loc.T("geo.error", ex.Message);
+        }
+        finally
+        {
+            if (!IsDisposed) geoSearchButton.Enabled = true;
+        }
+    }
+
+    private async Task AddGeoPlacesAsync()
+    {
+        var chosen = Enumerable.Range(0, geoHits.Count).Where(i => geoList.GetChecked(i)).Select(i => geoHits[i]).ToList();
+        if (chosen.Count == 0) return;
+        geoAddButton.Enabled = false;
+        var added = 0;
+        try
+        {
+            foreach (var place in chosen)
+            {
+                if (workCustom.Count >= GreekCities.MaxCustom) break;
+                // The name in the other language of the program, when the place has one (best effort; the name found is used otherwise).
+                var other = place.OpenMeteoId is { } id ? await GeoSearch.NameInAsync(id, Loc.IsGreek ? "en" : "el", CancellationToken.None) : null;
+                var city = Loc.IsGreek ? GeoSearch.ToCity(place, place.Name, other) : GeoSearch.ToCity(place, other, place.Name);
+                if (workCustom.All(c => c.Id != city.Id)) workCustom.Add(city);
+                if (!workCities.Contains(city.Id)) workCities.Add(city.Id);
+                added++;
+            }
+            var keep = AlertCityIdSelected();
+            GreekCities.SetCustom(workCustom);
+            ShowCities();
+            FillAlertCities(keep);
+            geoStatus.Text = Loc.T("geo.added", added);
+        }
+        finally
+        {
+            if (!IsDisposed) geoAddButton.Enabled = true;
+        }
+    }
+
+    /// <summary>Forgets the added places that are not ticked in the list.</summary>
+    private void CleanupGeoPlaces()
+    {
+        var keep = AlertCityIdSelected();
+        workCustom = workCustom.Where(c => workCities.Contains(c.Id)).ToList();
+        GreekCities.SetCustom(workCustom);
+        workCities = workCities.Where(id => GreekCities.Find(id) is not null).ToList();
+        ShowCities();
+        FillAlertCities(keep);
+    }
+
+    private string? AlertCityIdSelected() => alertCity is null || alertCity.SelectedIndex <= 0 || alertCity.SelectedIndex > GreekCities.All.Count ? null : GreekCities.All[alertCity.SelectedIndex - 1].Id;
+
+    /// <summary>The "my area" list of the severe-weather card: automatic, then every city (built-in and added).</summary>
+    private void FillAlertCities(string? keepId)
+    {
+        var index = keepId is null ? 0 : Math.Max(0, GreekCities.All.ToList().FindIndex(x => x.Id == keepId) + 1);
+        alertCity.SetItems(new[] { Loc.T("pk.automatic.the.first.city") }.Concat(GreekCities.All.Select(CityName)), index);
     }
 
     // ---- updates -----------------------------------------------------------------------------
@@ -1509,8 +1666,7 @@ public sealed class SettingsPanel : UserControl
         weatherAlerts = new FlatCheck { Text = Loc.T("pk.warn.me.about.severe") };
         weatherFlow.Controls.Add(weatherAlerts);
         alertCity = new FlatCombo { Width = 360 };
-        alertCity.SetItems(new[] { Loc.T("pk.automatic.the.first.city") }
-            .Concat(GreekCities.All.Select(CityName)), 0);
+        FillAlertCities(null);
         weatherFlow.Controls.Add(Row(Loc.T("pk.my.area"), alertCity, 200));
         weatherFlow.Controls.Add(Note(Loc.T("pk.every.30.minutes.the"), 640));
         var testWeather = new FlatButton { Text = Loc.T("pk.test.the.weather.warning") };
@@ -1580,7 +1736,8 @@ public sealed class SettingsPanel : UserControl
     }
 
     /// <summary>A read-only page with one of the long texts (help, instructions, history, license).</summary>
-    private static Control BuildInfoPage(Func<string> text)
+    /// <summary>A read-only text page. With a <paramref name="host"/> it has two buttons on top: the welcome guide and the Opsis family window.</summary>
+    private static Control BuildInfoPage(Func<string> text, TickerHost? host = null)
     {
         var page = new Panel { Padding = new Padding(8, 6, 8, 6) };
         var box = new TextBox
@@ -1592,6 +1749,17 @@ public sealed class SettingsPanel : UserControl
         var frame = new Panel { Dock = DockStyle.Fill, Padding = new Padding(16, 12, 8, 12), Tag = "surface" };
         frame.Controls.Add(box);
         page.Controls.Add(frame);
+        if (host is not null)
+        {
+            var bar = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlowDirection = FlowDirection.LeftToRight, WrapContents = true, Padding = new Padding(16, 4, 8, 4) };
+            var welcome = new FlatButton { Text = Loc.T("tray.welcome") };
+            var family = new FlatButton { Text = Loc.T("tray.suite") };
+            welcome.Click += (_, _) => host.ShowWelcome();
+            family.Click += (_, _) => host.ShowSuite();
+            bar.Controls.Add(welcome);
+            bar.Controls.Add(family);
+            page.Controls.Add(bar);   // Top, added after the Fill frame so it docks above it
+        }
         return page;
     }
 
@@ -1633,6 +1801,17 @@ public sealed class SettingsPanel : UserControl
             autoUpdate.Checked = c.CheckForUpdates;
             yahooHistory.Checked = c.HistoryFromYahoo;
             UpdateYahooUi();
+            hazardRegion.SelectSilently(c.HazardRegion switch { "europe" => 1, "world" => 2, _ => 0 });
+            hazardMinMagnitude.SelectSilently(Math.Max(0, Array.FindIndex(MagnitudeChoices, m => Math.Abs(m - c.HazardMinMagnitude) < 0.05)));
+            hazardMaxAge.SetValueSilently(c.HazardMaxAgeHours);
+            hazardRefresh.SetValueSilently(c.HazardRefreshMinutes);
+            foreach (var (kind, check) in hazardKindChecks) check.Checked = c.HazardKinds.Count == 0 || c.HazardKinds.Contains(kind.ToString());
+            foreach (var (source, check) in hazardSourceChecks) check.Checked = (c.HazardSources & (int)source) != 0;
+            hazardInIcon.Checked = c.HazardInIcon;
+            weatherInIcon.Checked = c.WeatherInIcon;
+            workCustom = c.CustomPlaces.ToList();
+            GreekCities.SetCustom(workCustom);   // what is saved, not what an earlier unsaved edit added
+            FillAlertCities(string.IsNullOrEmpty(c.AlertCityId) ? null : c.AlertCityId);
             workCities = c.WeatherCities.ToList();
             ShowCities();
             miniWeather.Checked = c.MiniWeatherEnabled;
@@ -1924,6 +2103,16 @@ public sealed class SettingsPanel : UserControl
         c.CheckForUpdates = autoUpdate.Checked;
         c.HistoryFromYahoo = yahooHistory.Checked;
         c.ToggleHotkey = toggleHotkey.Checked;
+        c.HazardRegion = hazardRegion.SelectedIndex switch { 1 => "europe", 2 => "world", _ => "greece" };
+        c.HazardMinMagnitude = MagnitudeChoices[Math.Clamp(hazardMinMagnitude.SelectedIndex, 0, MagnitudeChoices.Length - 1)];
+        c.HazardMaxAgeHours = hazardMaxAge.Value;
+        c.HazardRefreshMinutes = hazardRefresh.Value;
+        var chosenKinds = hazardKindChecks.Where(kv => kv.Value.Checked).Select(kv => kv.Key).ToList();
+        c.HazardKinds = chosenKinds.Count == hazardKindChecks.Count || chosenKinds.Count == 0 ? new List<string>() : chosenKinds.Select(k => k.ToString()).ToList();
+        c.HazardSources = hazardSourceChecks.Where(kv => kv.Value.Checked).Sum(kv => (int)kv.Key);
+        c.HazardInIcon = hazardInIcon.Checked;
+        c.WeatherInIcon = weatherInIcon.Checked;
+        c.CustomPlaces = workCustom.ToList();
         c.WeatherCities = workCities.ToList();
         c.MiniWeatherEnabled = miniWeather.Checked;
         c.MiniWeatherWidth = miniW.Value;
@@ -2164,6 +2353,8 @@ public sealed class SettingsPanel : UserControl
             labels.Add(Loc.T("content.stocks"));
             choices.Add(new BarSlot(SlotKind.Weather));
             labels.Add(Loc.T("content.weather"));
+            choices.Add(new BarSlot(SlotKind.Hazards));
+            labels.Add(Loc.T("hazard.slot"));
 
             suppress = true;
             try

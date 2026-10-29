@@ -1,7 +1,7 @@
 namespace OpsisNewsCrawler.Core;
 
 /// <summary>What one part of a bar shows.</summary>
-public enum SlotKind { News, Stocks, Weather }
+public enum SlotKind { News, Stocks, Weather, Hazards }
 
 /// <summary>One half (or the whole) of a bar. <see cref="Category"/> is the id of a news category; null = the category that is active.</summary>
 public readonly record struct BarSlot(SlotKind Kind, string? Category = null)
@@ -11,6 +11,7 @@ public readonly record struct BarSlot(SlotKind Kind, string? Category = null)
     {
         SlotKind.Stocks => "stocks",
         SlotKind.Weather => "weather",
+        SlotKind.Hazards => "hazards",
         _ => string.IsNullOrWhiteSpace(Category) ? "news" : "news:" + Category
     };
 
@@ -20,6 +21,7 @@ public readonly record struct BarSlot(SlotKind Kind, string? Category = null)
         spec = spec.Trim();
         if (spec.Equals("stocks", StringComparison.OrdinalIgnoreCase)) return new BarSlot(SlotKind.Stocks);
         if (spec.Equals("weather", StringComparison.OrdinalIgnoreCase)) return new BarSlot(SlotKind.Weather);
+        if (spec.Equals("hazards", StringComparison.OrdinalIgnoreCase)) return new BarSlot(SlotKind.Hazards);
         if (spec.Equals("news", StringComparison.OrdinalIgnoreCase)) return new BarSlot(SlotKind.News);
         if (spec.StartsWith("news:", StringComparison.OrdinalIgnoreCase) && spec.Length > 5) return new BarSlot(SlotKind.News, spec[5..]);
         return null;
@@ -43,7 +45,7 @@ public sealed record BarSlots(BarSlot A, BarSlot? B)
         if (Has(SlotKind.News) && Has(SlotKind.Stocks)) return BarContent.Both;
         if (Has(SlotKind.News)) return BarContent.News;
         if (Has(SlotKind.Stocks)) return BarContent.Stocks;
-        return BarContent.Weather;
+        return BarContent.Weather;   // weather and hazards have no old equivalent
     }
 }
 

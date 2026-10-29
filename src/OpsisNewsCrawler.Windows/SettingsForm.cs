@@ -8,6 +8,7 @@ public sealed class SettingsForm : Form
     private readonly Icon staticIcon;
     private readonly TickerHost host;
     private Icon[]? iconFrames;
+    private volatile bool iconFramesStale;
     private int iconFrame;
     private readonly System.Windows.Forms.Timer iconTimer = new() { Interval = 60 };
 
@@ -41,8 +42,10 @@ public sealed class SettingsForm : Form
         };
 
         // The title-bar icon moves like the one in the notification area (only while the window is visible and animation is on).
+        LiveIconState.Changed += () => iconFramesStale = true;
         iconTimer.Tick += (_, _) =>
         {
+            if (iconFramesStale) { iconFramesStale = false; iconFrames = null; }
             var animate = Visible && host.Config.TrayIconAnimated && host.Config.BarsEnabled;
             if (!animate)
             {

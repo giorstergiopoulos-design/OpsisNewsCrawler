@@ -258,12 +258,11 @@ internal sealed class SuiteCard : Panel
     private readonly FlatButton open = new();
     private readonly FlatButton install = new();
     private readonly FlatButton details = new();
-    private Bitmap? appIcon;
+    private readonly Bitmap? brandIcon;
     private bool hot;
     private InstalledInfo info = InstalledInfo.None;
     private string? latestTag;
     private double phase;
-    private Bitmap? selfFrame;
     private int bulletsBottom;
 
     public const int CardWidth = 428;
@@ -276,6 +275,7 @@ internal sealed class SuiteCard : Panel
     {
         this.app = app;
         this.isSelf = isSelf;
+        brandIcon = SuiteIcons.Load(app.Id);
         DoubleBuffered = true;
         Width = CardWidth;
         Margin = new Padding(0, 0, 14, 14);
@@ -313,17 +313,6 @@ internal sealed class SuiteCard : Panel
     public void SetInstalled(InstalledInfo value)
     {
         info = isSelf ? new InstalledInfo(true, AboutTexts.Version, info.ExePath) : value;
-        appIcon?.Dispose();
-        appIcon = null;
-        if (!isSelf && info.ExePath is { } exe)
-        {
-            try
-            {
-                using var icon = Icon.ExtractAssociatedIcon(exe);
-                if (icon is not null) appIcon = icon.ToBitmap();
-            }
-            catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException or InvalidOperationException) { }
-        }
         Relayout();
     }
 
@@ -336,18 +325,13 @@ internal sealed class SuiteCard : Panel
     /// <summary>Advances the shimmer / the animated icon (called by the window's timer).</summary>
     public void Tick(double t)
     {
-        phase = hot ? (t * 3) % 1.0 : t % 1.0;
-        if (isSelf)
-        {
-            selfFrame?.Dispose();
-            selfFrame = AppIconArt.RenderWide(112, 28, MinimiseAnimation.Simple ? 0 : phase, showAllFour: MinimiseAnimation.Simple);
-        }
+        phase = MinimiseAnimation.Simple ? 0.5 : t % 1.0;
         Invalidate(new Rectangle(0, 0, Width, 90));
     }
 
     private const int BulletsTop = 108;
 
-    private int TileWidth => isSelf ? 112 : 56;
+    private int TileWidth => 56;
 
     private static TextFormatFlags Flags => TextFormatFlags.NoPrefix | TextFormatFlags.WordBreak | (Loc.IsRtl ? TextFormatFlags.Right | TextFormatFlags.RightToLeft : TextFormatFlags.Left);
 
@@ -405,13 +389,8 @@ internal sealed class SuiteCard : Panel
         int Ax(int x, int w) => rtl ? Width - x - w : x;
 
         // tile
-        var tile = new Rectangle(Ax(16, TileWidth), isSelf ? 24 : 14, TileWidth, isSelf ? 28 : 56);
-        if (isSelf)
-        {
-            if (selfFrame is null) selfFrame = AppIconArt.RenderWide(112, 28, 0, showAllFour: true);
-            g.DrawImage(selfFrame, tile);
-        }
-        else DrawTile(g, tile);
+        var tile = new Rectangle(Ax(16, TileWidth), 14, TileWidth, 56);
+        DrawTile(g, tile);
 
         // name, tagline, state
         var textLeft = 16 + TileWidth + 14;
@@ -458,15 +437,19 @@ internal sealed class SuiteCard : Panel
     private void DrawTile(Graphics g, Rectangle tile)
     {
         using var path = FlatDraw.Rounded(tile, 12);
-        var h = Math.Abs(app.Id.Aggregate(17, (a, c) => a * 31 + c)) % 360;
-        using (var brush = new LinearGradientBrush(tile, ColorFromHsv(h, .55, .62), ColorFromHsv((h + 40) % 360, .65, .42), 45f))
-            g.FillPath(brush, path);
-        if (appIcon is not null)
+        if (brandIcon is not null)
         {
+            // The real icon of the app, whether it is installed or not.
             g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-            g.DrawImage(appIcon, new Rectangle(tile.X + 4, tile.Y + 4, tile.Width - 8, tile.Height - 8));
+            g.DrawImage(brandIcon, tile);
         }
         else
+        {
+            var h = Math.Abs(app.Id.Aggregate(17, (a, c) => a * 31 + c)) % 360;
+            using var brush = new LinearGradientBrush(tile, ColorFromHsv(h, .55, .62), ColorFromHsv((h + 40) % 360, .65, .42), 45f);
+            g.FillPath(brush, path);
+        }
+        if (brandIcon is null)
         {
             var words = app.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Where(w => !w.Equals("Opsis", StringComparison.OrdinalIgnoreCase)).ToList();
             if (words.Count == 0) words.Add(app.Name);
@@ -500,8 +483,7 @@ internal sealed class SuiteCard : Panel
     {
         if (disposing)
         {
-            appIcon?.Dispose();
-            selfFrame?.Dispose();
+            brandIcon?.Dispose();
         }
         base.Dispose(disposing);
     }
@@ -543,7 +525,7 @@ internal sealed class SuiteForm : SplashBase
         SetCatalog(SuiteCatalogStore.Embedded());
         timer.Tick += (_, _) =>
         {
-            var t = clock.ElapsedMilliseconds / 3200.0;
+            var t = clock.ElapsedMilliseconds / 9000.0;
             foreach (var c in cards) c.Tick(t + c.App.Id.Length * 0.07);
         };
         timer.Start();

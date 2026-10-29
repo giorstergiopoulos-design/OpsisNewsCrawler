@@ -262,6 +262,7 @@ public sealed class TickerHost : IDisposable
         };
         Loc.Changed += OnLanguageChanged;
         weatherTimer.Tick += (_, _) => _ = RefreshWeatherAsync();
+        hazardTimer.Tick += (_, _) => _ = RefreshHazardsAsync();
         alertTimer.Tick += (_, _) => _ = CheckWeatherAlertsAsync();
         snoozeTimer.Tick += (_, _) =>
         {
@@ -574,11 +575,14 @@ public sealed class TickerHost : IDisposable
         refreshTimer.Start();
         quoteTimer.Start();
         weatherTimer.Start();
+        hazardTimer.Interval = Config.HazardRefreshMinutes * 60 * 1000;
+        hazardTimer.Start();
         alertTimer.Start();
         breakingTimer.Start();
         _ = RefreshAsync(force: true);
         _ = RefreshQuotesAsync();
         _ = RefreshWeatherAsync();
+        _ = RefreshHazardsAsync();
         _ = CheckWeatherAlertsAsync();
         UpdateMiniWeather();
     }
@@ -592,6 +596,7 @@ public sealed class TickerHost : IDisposable
         refreshTimer.Stop();
         quoteTimer.Stop();
         weatherTimer.Stop();
+        hazardTimer.Stop();
         alertTimer.Stop();
         Window.StopTicker();
         SecondWindow?.StopTicker();
@@ -937,6 +942,7 @@ public sealed class TickerHost : IDisposable
     {
         SlotKind.Stocks => StocksForDisplay(),
         SlotKind.Weather => WeatherForDisplay(),
+        SlotKind.Hazards => HazardsForDisplay(),
         _ => IsActiveCategory(slot.Category) ? NewsForDisplay() : CategoryNewsForDisplay(slot.Category!)
     };
 
@@ -1195,6 +1201,99 @@ public sealed class TickerHost : IDisposable
     private bool quotesFailed;
     private bool quoteRetryPending;
 
+    // ---- natural disasters --------------------------------------------------------------------------
+
+    private readonly HazardService hazardService = new();
+    private readonly System.Windows.Forms.Timer hazardTimer = new() { Interval = 15 * 60 * 1000 };
+    private IReadOnlyList<HazardEvent> hazardEvents = Array.Empty<HazardEvent>();
+    private IReadOnlyList<string> hazardFailed = Array.Empty<string>();
+    private bool refreshingHazards;
+    private bool hasHazards;
+    private DateTimeOffset? hazardDataAt;
+
+    /// <summary>Disasters are fetched when a bar shows them, or when the animated icon should show the highest alert.</summary>
+    private bool NeedsHazards => Needs(SlotKind.Hazards) || Config.HazardInIcon;
+
+    private HazardFilter HazardFilterNow() => new(Config.HazardRegion, Config.HazardMinMagnitude, Config.HazardMaxAgeHours,
+        Config.HazardKinds.Count == 0 ? Enum.GetValues<HazardKind>() : Config.HazardKinds.Select(Enum.Parse<HazardKind>).ToList());
+
+    private IReadOnlyList<HazardEvent> VisibleHazards() => HazardFilterNow().Apply(hazardEvents, DateTimeOffset.Now);
+
+    private IReadOnlyList<NewsItem> HazardsForDisplay()
+    {
+        if (!hasHazards) return new[] { Placeholder(Loc.T("ph.loadingWeather")) };
+        var now = DateTimeOffset.Now;
+        var items = VisibleHazards().Take(15).Select(e => HazardText.ToItem(e, now)).ToList();
+        var notice = hazardFailed.Count > 0 ? Placeholder(Loc.T("hazard.failed", string.Join(", ", hazardFailed))) : null;
+        if (items.Count == 0) return new[] { notice ?? Placeholder(Loc.T("hazard.none")) };
+        return notice is null ? items : new[] { notice }.Concat(items).ToList();
+    }
+
+    private async Task RefreshHazardsAsync()
+    {
+        if (disposed || !NeedsHazards || refreshingHazards) return;
+        refreshingHazards = true;
+        try
+        {
+            var events = await hazardService.FetchAsync((HazardSources)Config.HazardSources, cts.Token);
+            var failed = hazardService.LastFailed;
+            void Apply()
+            {
+                if (disposed) return;
+                hasHazards = true;
+                hazardFailed = failed;
+                if (events.Count > 0 || failed.Count == 0) { hazardEvents = events; hazardDataAt = DateTimeOffset.Now; }
+                UpdateLiveIcon();
+                PushAll();
+            }
+            if (!Window.IsHandleCreated) return;
+            if (Window.InvokeRequired) Window.BeginInvoke(new Action(Apply)); else Apply();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            Log.Write($"disasters failed: {ex.GetType().Name}: {ex.Message}");
+        }
+        finally
+        {
+            refreshingHazards = false;
+        }
+    }
+
+    /// <summary>
+    /// What the two live symbols of the animated icon show: the weather of the first city of the weather list and the highest level of the
+    /// alerts that are active (disasters in the chosen region, a severe-weather warning). The tray tooltip gets the same in words.
+    /// </summary>
+    private void UpdateLiveIcon()
+    {
+        if (disposed) return;
+        var icon = LiveIconState.WeatherIcon;
+        var tip = new List<string>();
+        var first = Config.WeatherCities.FirstOrDefault();
+        var reading = weatherReadings.FirstOrDefault(r => string.Equals(r.CityId, first, StringComparison.OrdinalIgnoreCase)) ?? weatherReadings.FirstOrDefault();
+        if (reading is not null)
+        {
+            icon = (int)WeatherInfo.KindOf(reading.Code) + (reading.IsDay ? 0 : 10);
+            var city = GreekCities.Find(reading.CityId);
+            tip.Add((city is null ? "" : (Loc.IsGreek ? city.NameEl : city.NameEn) + " ") + reading.TemperatureC.ToString("0.0", System.Globalization.CultureInfo.GetCultureInfo("el-GR")) + " °C");
+        }
+        var level = 0;
+        if (Config.HazardInIcon)
+        {
+            var visible = VisibleHazards();
+            if (visible.Count > 0)
+            {
+                var worst = visible.OrderByDescending(e => e.Level).ThenByDescending(e => e.Time).First();
+                level = worst.Level;
+                tip.Add(HazardText.Tip(worst));
+            }
+        }
+        if (weatherAlertKeys.Count > 0) { level = Math.Max(level, 2); tip.Add(Loc.T("pk.severe.weather")); }
+        LiveIconState.Set(icon, level, string.Join(" · ", tip));
+    }
+
     // ---- weather ---------------------------------------------------------------------------------
 
     private readonly WeatherService weather = new();
@@ -1207,7 +1306,10 @@ public sealed class TickerHost : IDisposable
     private TickerWindow? miniWeather;
     private readonly TickerState miniState = new();
 
-    private bool NeedsWeather => Needs(SlotKind.Weather);
+    private bool NeedsWeatherForBars => Needs(SlotKind.Weather);
+
+    /// <summary>Weather is fetched when a bar shows it, and for the first city when the animated icon shows it.</summary>
+    private bool NeedsWeather => NeedsWeatherForBars || Config.WeatherInIcon;
 
     private IReadOnlyList<NewsItem> WeatherForDisplay()
     {
@@ -1225,6 +1327,7 @@ public sealed class TickerHost : IDisposable
         try
         {
             var ids = Config.WeatherCities.Distinct().ToList();
+            if (!NeedsWeatherForBars) ids = ids.Take(1).ToList();   // only the icon wants it
             var readings = await weather.FetchAsync(ids, cts.Token);
             var failed = weather.LastFailed;
             void Apply()
@@ -1243,6 +1346,7 @@ public sealed class TickerHost : IDisposable
                 }
                 PushAll();
                 UpdateMiniWeather();
+                UpdateLiveIcon();
             }
             if (!Window.IsHandleCreated) return;
             if (Window.InvokeRequired) Window.BeginInvoke(new Action(Apply)); else Apply();
@@ -1549,6 +1653,7 @@ public sealed class TickerHost : IDisposable
         snoozeTimer.Dispose();
         hotkey?.Dispose();
         weatherTimer.Dispose();
+        hazardTimer.Dispose();
         alertTimer.Dispose();
         miniWeather?.Dispose();
         breakingTimer.Dispose();

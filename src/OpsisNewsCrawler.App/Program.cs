@@ -100,6 +100,21 @@ internal static class Program
             BrandArt.SaveAll(args[baAt + 1]);
             return;
         }
+        if (Array.IndexOf(args, "--snapshot-geo") is >= 0 and var geAt && geAt + 2 < args.Length)
+        {
+            ApplicationConfiguration.Initialize();
+            var cfgGe = Array.IndexOf(args, "--config");
+            using var geHost = new TickerHost(cfgGe >= 0 && cfgGe + 1 < args.Length ? args[cfgGe + 1] : null);
+            GeoSnapshot.Run(geHost, args[geAt + 1], args[geAt + 2]);
+            return;
+        }
+        if (Array.IndexOf(args, "--snapshot-live-icon") is >= 0 and var liAt && liAt + 1 < args.Length)
+        {
+            ApplicationConfiguration.Initialize();
+            LiveIconSnapshot.Save(args[liAt + 1]);
+            return;
+        }
+
         if (Array.IndexOf(args, "--snapshot-portfolio") is >= 0 and var pfAt && pfAt + 1 < args.Length)
         {
             ApplicationConfiguration.Initialize();
@@ -147,8 +162,17 @@ internal static class Program
         var trayFrame = 0;
         var trayAnimating = false;
         var trayTimer = new System.Windows.Forms.Timer { Interval = 60 };
+        // The weather and alert symbols follow the live state: the frames are drawn again when it changes (checked on the UI thread by this timer).
+        var liveDirty = 0;
+        LiveIconState.Changed += () => Interlocked.Exchange(ref liveDirty, 1);
         trayTimer.Tick += (_, _) =>
         {
+            if (Interlocked.Exchange(ref liveDirty, 0) == 1)
+            {
+                trayFrames = AppIconArt.BuildTrayFrames(Math.Max(16, SystemInformation.SmallIconSize.Width));
+                var tip = LiveIconState.Tip;
+                tray.Text = tip.Length == 0 ? "Opsis News Crawler" : ("Opsis News Crawler\n" + tip).Substring(0, Math.Min(("Opsis News Crawler\n" + tip).Length, 127));
+            }
             var animate = host.Config.TrayIconAnimated && host.Config.BarsEnabled;
             if (animate)
             {

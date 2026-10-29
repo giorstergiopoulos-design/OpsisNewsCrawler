@@ -289,3 +289,19 @@ internal sealed class SplashGhost : Form
         base.Dispose(disposing);
     }
 }
+
+/// <summary>The pictures of the apps of the family, embedded in the program (one square PNG per catalogue id), so every card shows its real icon even when the app is not installed.</summary>
+internal static class SuiteIcons
+{
+    public static Bitmap? Load(string id)
+    {
+        try
+        {
+            using var stream = typeof(OpsisNewsCrawler.Core.SuiteCatalog).Assembly.GetManifestResourceStream($"OpsisNewsCrawler.Suite.icons.{id}.png");
+            return stream is null ? null : new Bitmap(stream);
+        }
+        catch (Exception ex) when (ex is ArgumentException or ExternalException) { return null; }
+    }
+
+    public static bool Has(string id) => typeof(OpsisNewsCrawler.Core.SuiteCatalog).Assembly.GetManifestResourceNames().Contains($"OpsisNewsCrawler.Suite.icons.{id}.png");
+}
