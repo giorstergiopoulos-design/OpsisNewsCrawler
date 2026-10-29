@@ -41,7 +41,9 @@
 | 🧩 Plugin ή αυτόνομη | Ενσωματωμένη στο Opsis (δική της σελίδα, γλώσσα και χρώματα του Opsis) ή ξεχωριστή εφαρμογή με εικονίδιο στην περιοχή ειδοποιήσεων |
 | 🌍 14 γλώσσες | Ελληνικά, English, Deutsch, Français, Español, Italiano, Português, Русский, Türkçe, 日本語, 한국어, 简体中文, العربية (δεξιά-προς-αριστερά), हिन्दी |
 
-**Νέο στην 0.16.0:** **φυσικές καταστροφές** (σεισμοί, πυρκαγιές, πλημμύρες, καταιγίδες, ηφαίστεια από USGS, EMSC, GDACS, NASA EONET· ο ίδιος σεισμός από πολλούς οργανισμούς δείχνει μέσο όρο μεγέθους και εύρος), **καιρός για οποιονδήποτε τόπο** (όνομα, ταχυδρομικός κώδικας ή συντεταγμένες), το κινούμενο εικονίδιο δείχνει τον τρέχοντα καιρό και την υψηλότερη ενεργή ειδοποίηση, ροδέλα ποντικιού και ξεχωριστή ταχύτητα ανά μπάρα, κατάλογος Yahoo με 100+ προϊόντα προς επιλογή, πετρέλαιο/αέριο από συμβόλαια Yahoo (προαιρετικά).
+**Νέο στην 0.16.1:** σελίδα «Ροή καταστροφών», ξεχωριστή ταχύτητα ανά μπάρα και ανά μισό split, κατάλογος Yahoo με 100+ προϊόντα προς επιλογή, ενιαία πλάτη καρτών σε όλες τις γλώσσες.
+
+**Νέο στην 0.16.0:** **φυσικές καταστροφές** (σεισμοί, πυρκαγιές, πλημμύρες, καταιγίδες, ηφαίστεια από USGS, EMSC, GDACS, NASA EONET· ο ίδιος σεισμός από πολλούς οργανισμούς δείχνει μέσο όρο μεγέθους και εύρος), **καιρός για οποιονδήποτε τόπο** (όνομα, ταχυδρομικός κώδικας ή συντεταγμένες), το κινούμενο εικονίδιο δείχνει τον τρέχοντα καιρό και την υψηλότερη ενεργή ειδοποίηση, ροδέλα ποντικιού, πετρέλαιο/αέριο από συμβόλαια Yahoo (προαιρετικά).
 
 **Νέο στην 0.15.0:** οδηγός καλωσορίσματος και παράθυρο «Η οικογένεια Opsis» με κινούμενο εικονίδιο (εφημερίδα, μπάλα, ασπίδα, οικονομία, καιρός, φυσικές καταστροφές), ειδοποίηση νέας έκδοσης μία φορά ανά έκδοση, ορθογώνιο εικονίδιο, θέματα Opsis, σωστή ανίχνευση της μπάρας εργασιών με αυτόματη απόκρυψη, πλήρης υποστήριξη πληκτρολογίου στα στοιχεία ελέγχου. Όλο το ιστορικό: [`CHANGELOG.md`](CHANGELOG.md).
 
@@ -134,7 +136,9 @@ A scrolling news, market-price and weather bar for the Windows desktop — above
 | 🧩 Plugin or stand-alone | Integrated into Opsis (its own page, Opsis language and colours) or a separate app with a notification-area icon |
 | 🌍 14 languages | Greek, English, German, French, Spanish, Italian, Portuguese, Russian, Turkish, Japanese, Korean, Simplified Chinese, Arabic (right-to-left), Hindi |
 
-**New in 0.16.0:** **natural disasters** (earthquakes, fires, floods, storms, volcanoes from USGS, EMSC, GDACS, NASA EONET; the same earthquake from several organisations shows the average magnitude and the range), **weather for any place** (name, postcode or coordinates), the animated icon shows the current weather and the highest active alert, mouse wheel and a separate speed per bar, a Yahoo catalogue with 100+ instruments to pick from, oil and gas from Yahoo futures (optional).
+**New in 0.16.1:** "Disasters flow" page, a separate speed per bar and per half of a split bar, a Yahoo catalogue with 100+ instruments to pick from, the same card width in every language.
+
+**New in 0.16.0:** **natural disasters** (earthquakes, fires, floods, storms, volcanoes from USGS, EMSC, GDACS, NASA EONET; the same earthquake from several organisations shows the average magnitude and the range), **weather for any place** (name, postcode or coordinates), the animated icon shows the current weather and the highest active alert, mouse wheel, oil and gas from Yahoo futures (optional).
 
 **New in 0.15.0:** welcome guide and "The Opsis family" window with the animated icon (newspaper, ball, shield, economy, weather, natural disasters), one update notice per version, rectangular icon, Opsis themes, correct auto-hide taskbar detection, full keyboard support in the custom controls. Full history: [`CHANGELOG.md`](CHANGELOG.md).
 
