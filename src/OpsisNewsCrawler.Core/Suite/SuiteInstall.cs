@@ -109,7 +109,7 @@ public static class SuiteReleases
                 var name = a.TryGetProperty("name", out var n) && n.ValueKind == JsonValueKind.String ? n.GetString() : null;
                 var url = a.TryGetProperty("browser_download_url", out var u) && u.ValueKind == JsonValueKind.String ? u.GetString() : null;
                 if (name is null || url is null || !url.StartsWith(prefix, StringComparison.Ordinal) || !SuiteCatalog.IsAllowedSource(url)) continue;
-                if (name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0) continue;
+                if (!DownloadPolicy.IsSafeFileName(name)) continue;
                 if (app.ChecksumAsset is not null && string.Equals(name, app.ChecksumAsset, StringComparison.OrdinalIgnoreCase)) checksumUrl = url;
                 if (found is null && pattern.IsMatch(name))
                 {

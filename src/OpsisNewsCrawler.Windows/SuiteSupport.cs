@@ -114,15 +114,15 @@ internal static class SuiteDownloader
     /// <summary>Returns the saved path, or throws <see cref="SuiteDownloadException"/> with the reason (mismatch, size, network).</summary>
     public static async Task<string> DownloadAsync(SuiteDownload d, IProgress<int> progress, CancellationToken ct)
     {
-        if (!SuiteCatalog.IsAllowedSource(d.Url)) throw new SuiteDownloadException("address not allowed", mismatch: false);
+        if (!SuiteCatalog.IsAllowedSource(d.Url) || !DownloadPolicy.IsSafeFileName(d.FileName)) throw new SuiteDownloadException("address not allowed", mismatch: false);
         var expected = d.Sha256;
         using var http = NewClient(600);
         try
         {
             if (expected is null && d.ChecksumUrl is not null && SuiteCatalog.IsAllowedSource(d.ChecksumUrl))
             {
-                var text = await http.GetStringAsync(d.ChecksumUrl, ct).ConfigureAwait(false);
-                if (text.Length <= 4096) expected = Sha256Check.ParseChecksumFile(text);
+                var text = await DownloadPolicy.ReadLimitedTextAsync(http, d.ChecksumUrl, 4096, ct).ConfigureAwait(false);
+                if (text is not null) expected = Sha256Check.ParseChecksumFile(text);
             }
             if (expected is null) throw new SuiteDownloadException("no checksum", mismatch: false);
 
@@ -133,6 +133,7 @@ internal static class SuiteDownloader
             using (var response = await http.GetAsync(d.Url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false))
             {
                 response.EnsureSuccessStatusCode();
+                if (!DownloadPolicy.IsTrustedRedirectTarget(response.RequestMessage?.RequestUri)) throw new SuiteDownloadException("address not allowed", mismatch: false);
                 var total = response.Content.Headers.ContentLength ?? d.Size;
                 if (total > MaxBytes) throw new SuiteDownloadException("file too large", mismatch: false);
                 await using var input = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);

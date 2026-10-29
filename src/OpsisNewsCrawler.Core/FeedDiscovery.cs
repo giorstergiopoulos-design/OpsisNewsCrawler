@@ -23,7 +23,7 @@ public static class FeedDiscovery
         var result = new List<FeedSource>();
         if (!TryNormalize(input, out var site)) return result;
 
-        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10), MaxResponseContentBufferSize = 4 * 1024 * 1024 };
         http.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible; OpsisNewsCrawler)");
 
         try

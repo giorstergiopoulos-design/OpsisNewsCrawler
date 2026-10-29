@@ -28,7 +28,7 @@ internal static class UpdateInstaller
         var expected = update.Sha256;
         if (expected is null && update.ChecksumUrl is not null && UpdateChecker.IsTrustedDownloadUrl(update.ChecksumUrl))
         {
-            var text = await http.GetStringAsync(update.ChecksumUrl, ct).ConfigureAwait(false);
+            var text = await DownloadPolicy.ReadLimitedTextAsync(http, update.ChecksumUrl, 4096, ct).ConfigureAwait(false) ?? "";
             var first = text.Trim().Split(' ', '\t', '\r', '\n')[0].ToLowerInvariant();
             if (first.Length == 64 && first.All(Uri.IsHexDigit)) expected = first;
         }
@@ -37,14 +37,16 @@ internal static class UpdateInstaller
         Directory.CreateDirectory(UpdateDir);
         foreach (var old in Directory.GetFiles(UpdateDir)) { try { File.Delete(old); } catch (IOException) { } catch (UnauthorizedAccessException) { } }
         var path = Path.Combine(UpdateDir, "OpsisNewsCrawler-Setup.exe");
+        var part = path + ".part";
 
         using var response = await http.GetAsync(update.SetupUrl, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
+        if (!DownloadPolicy.IsTrustedRedirectTarget(response.RequestMessage?.RequestUri)) throw new InvalidOperationException("untrusted-url");
         var total = response.Content.Headers.ContentLength ?? 0;
         if (total > MaxSetupBytes) throw new InvalidDataException("too-large");
         using var sha = SHA256.Create();
         await using (var source = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false))
-        await using (var target = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None))
+        await using (var target = new FileStream(part, FileMode.Create, FileAccess.Write, FileShare.None))
         {
             var buffer = new byte[81920];
             long read = 0;
@@ -62,9 +64,10 @@ internal static class UpdateInstaller
         var actual = Convert.ToHexString(sha.Hash!).ToLowerInvariant();
         if (actual != expected)
         {
-            try { File.Delete(path); } catch (IOException) { }
+            try { File.Delete(part); } catch (IOException) { }
             throw new InvalidDataException("hash-mismatch");
         }
+        File.Move(part, path, overwrite: true);
         return (path, actual);
     }
 

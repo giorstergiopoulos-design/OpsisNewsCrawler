@@ -154,6 +154,7 @@ public static class GeoSearch
     {
         var http = handler is null ? new HttpClient() : new HttpClient(handler, disposeHandler: false);
         http.Timeout = TimeSpan.FromSeconds(10);
+        http.MaxResponseContentBufferSize = 2 * 1024 * 1024;
         http.DefaultRequestHeaders.UserAgent.ParseAdd("OpsisNewsCrawler/1.0 (+https://github.com/giorstergiopoulos-design/OpsisNewsCrawler)");
         http.DefaultRequestHeaders.AcceptLanguage.ParseAdd("el,en;q=0.8");
         return http;

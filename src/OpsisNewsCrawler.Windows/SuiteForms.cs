@@ -634,7 +634,7 @@ internal sealed class SuiteForm : SplashBase
 
     private void OnOpen(SuiteCard card)
     {
-        if (card.Info.ExePath is not { } exe) return;
+        if (card.Info.ExePath is not { } exe || !exe.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) || !File.Exists(exe)) return;
         try { Process.Start(new ProcessStartInfo(exe) { UseShellExecute = true, WorkingDirectory = Path.GetDirectoryName(exe) ?? "" }); }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or IOException) { }
     }

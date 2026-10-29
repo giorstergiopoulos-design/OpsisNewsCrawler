@@ -82,7 +82,9 @@ public static class HazardFeeds
         var list = new List<HazardEvent>();
         try
         {
-            var doc = XDocument.Parse(xml.TrimStart('﻿'));
+            using var reader = System.Xml.XmlReader.Create(new StringReader(xml.TrimStart('﻿')),
+                new System.Xml.XmlReaderSettings { DtdProcessing = System.Xml.DtdProcessing.Prohibit, XmlResolver = null, MaxCharactersInDocument = 8 * 1024 * 1024 });
+            var doc = XDocument.Load(reader);
             foreach (var item in doc.Descendants().Where(e => e.Name.LocalName == "item"))
             {
                 string? V(string local) => item.Elements().FirstOrDefault(e => e.Name.LocalName == local)?.Value;

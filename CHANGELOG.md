@@ -3,6 +3,11 @@
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
 Detailed notes per release: `docs/releases/RELEASE-<version>.md` and the GitHub releases.
 
+## 0.16.2 — 2026-10-29
+- **Security audit** (report in `docs/SECURITY.md`, trust model and open items included). Fixed: downloads of updates and of family setups now stop unless the *final* address after redirects is GitHub or its CDN; the checksum file is read with a 4 KB limit; the update setup is saved as `.part` and renamed only after the SHA-256 matches; the WebView2 bootstrapper must be signed by exactly "Microsoft Corporation" (path passed in an environment variable, temp folder removed afterwards); asset names must be plain file names; "Open" in the family window starts only an existing .exe; the GDACS feed is parsed without DTDs (entity-expansion attack) and geocoding / feed discovery answers have size caps; `crawler.log` no longer contains the Windows account name. No vulnerable NuGet packages.
+- Open: no code-signing certificate, plugin DLL integrity is the host's job (Opsis), the update trust root is GitHub itself.
+- Translations of the history entry in all 14 languages. Tests: 353.
+
 ## 0.16.1 — 2026-10-29
 - **Disasters flow**: natural disasters have their own page in the Sources group of the settings (it was a card of the weather page in 0.16.0).
 - **Speed per bar**: the main bar, its second half (split bar), the second bar, the desktop bar and the bars of the other monitors each have their own speed (0 = like the main bar). The mouse wheel changes only the bar, or the half of a split bar, it is turned over. New card "Speed of each bar" on the General page.

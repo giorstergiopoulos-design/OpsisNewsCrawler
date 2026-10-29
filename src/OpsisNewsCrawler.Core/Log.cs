@@ -17,7 +17,7 @@ public static class Log
                 Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Path)!);
                 var info = new FileInfo(Path);
                 if (info.Exists && info.Length > 200_000) File.Move(Path, Path + ".old", overwrite: true);
-                File.AppendAllText(Path, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}  {message}{Environment.NewLine}");
+                File.AppendAllText(Path, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}  {DownloadPolicy.ScrubForLog(message)}{Environment.NewLine}");
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

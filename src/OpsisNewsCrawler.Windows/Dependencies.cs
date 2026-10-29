@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Microsoft.Win32;
+using OpsisNewsCrawler.Core;
 
 namespace OpsisNewsCrawler.Windows;
 
@@ -57,13 +58,19 @@ internal static class Dependencies
             return InstallResult.DownloadFailed;
         }
 
-        if (!await SignedByMicrosoftAsync(file).ConfigureAwait(false)) return InstallResult.NotSignedByMicrosoft;
+        if (!await SignedByMicrosoftAsync(file).ConfigureAwait(false))
+        {
+            try { Directory.Delete(Path.GetDirectoryName(file)!, recursive: true); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+            return InstallResult.NotSignedByMicrosoft;
+        }
         try
         {
             using var process = Process.Start(new ProcessStartInfo(file, "/silent /install") { UseShellExecute = false, CreateNoWindow = true });
             if (process is null) return InstallResult.InstallFailed;
             await process.WaitForExitAsync(ct).ConfigureAwait(false);
-            return process.ExitCode == 0 && WebView2Version() is not null ? InstallResult.Installed : InstallResult.InstallFailed;
+            var ok = process.ExitCode == 0 && WebView2Version() is not null;
+            try { Directory.Delete(Path.GetDirectoryName(file)!, recursive: true); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+            return ok ? InstallResult.Installed : InstallResult.InstallFailed;
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or OperationCanceledException)
         {
@@ -76,17 +83,21 @@ internal static class Dependencies
     {
         try
         {
-            var command = "$s = Get-AuthenticodeSignature -LiteralPath '" + file.Replace("'", "''") +
-                          "'; if ($s.Status -eq 'Valid' -and $s.SignerCertificate.Subject -like '*O=Microsoft Corporation*') { exit 0 } else { exit 1 }";
-            using var ps = Process.Start(new ProcessStartInfo("powershell.exe")
+            // The path travels in an environment variable, never inside the script text; the script only prints the subject of a VALID signature.
+            var command = "$s = Get-AuthenticodeSignature -LiteralPath $env:OPSIS_SIGCHECK_FILE; if ($s.Status -eq 'Valid') { [Console]::Out.Write($s.SignerCertificate.Subject) } else { exit 1 }";
+            var info = new ProcessStartInfo("powershell.exe")
             {
                 ArgumentList = { "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", command },
                 UseShellExecute = false,
-                CreateNoWindow = true
-            });
+                CreateNoWindow = true,
+                RedirectStandardOutput = true
+            };
+            info.Environment["OPSIS_SIGCHECK_FILE"] = file;
+            using var ps = Process.Start(info);
             if (ps is null) return false;
+            var subject = await ps.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
             await ps.WaitForExitAsync().ConfigureAwait(false);
-            return ps.ExitCode == 0;
+            return ps.ExitCode == 0 && DownloadPolicy.IsMicrosoftSigner(subject);
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
         {
