@@ -36,7 +36,7 @@
 | 💼 Χαρτοφυλάκιο και ανάλυση | Αξία και κέρδος/ζημιά, RSI, SMA20/50, MACD, κεριά, δοκιμή στρατηγικής, δείκτης φόβου και απληστίας, διάθεση ειδήσεων |
 | ⛅ Καιρός | Πόλεις της Ελλάδας: εικονίδιο, θερμοκρασία, άνεμος, υγρασία· χάρτης με κλικ· προειδοποιήσεις έντονων φαινομένων |
 | 🌋 Φυσικές καταστροφές | Σεισμοί, πυρκαγιές, πλημμύρες, καταιγίδες, ηφαίστεια ως περιεχόμενο μπάρας· φίλτρα περιοχής, μεγέθους, ηλικίας και ειδών· συγχώνευση αναφορών πολλών οργανισμών |
-| 🖥 Μπάρες | Πάνω από τη γραμμή εργασιών ή **μέσα** σε αυτήν (ακολουθεί και την αυτόματη απόκρυψη)· δεύτερη μπάρα, μπάρα ανά οθόνη, μπάρα επιφάνειας που αντικαθιστά την κρυμμένη μπάρα εργασιών· κάθε μπάρα δείχνει ειδήσεις, αγορές ή καιρό |
+| 🖥 Μπάρες | Πάνω από τη γραμμή εργασιών ή **μέσα** σε αυτήν (*πειραματικό*· ακολουθεί και την αυτόματη απόκρυψη)· δεύτερη μπάρα, μπάρα ανά οθόνη, μπάρα επιφάνειας που αντικαθιστά την κρυμμένη μπάρα εργασιών· κάθε μπάρα δείχνει ειδήσεις, αγορές ή καιρό |
 | 🎨 Εμφάνιση | Θέματα (ίδια με το Opsis), χρώμα, διαφάνεια, υλικό φόντου (acrylic/blur), σβήσιμο στα άκρα· πλήρης πλοήγηση με πληκτρολόγιο |
 | 🧩 Plugin ή αυτόνομη | Ενσωματωμένη στο Opsis (δική της σελίδα, γλώσσα και χρώματα του Opsis) ή ξεχωριστή εφαρμογή με εικονίδιο στην περιοχή ειδοποιήσεων |
 | 🌍 14 γλώσσες | Ελληνικά, English, Deutsch, Français, Español, Italiano, Português, Русский, Türkçe, 日本語, 한국어, 简体中文, العربية (δεξιά-προς-αριστερά), हिन्दी |
@@ -131,7 +131,7 @@ A scrolling news, market-price and weather bar for the Windows desktop — above
 | 💼 Portfolio and analysis | Value and profit/loss, RSI, SMA20/50, MACD, candlesticks, strategy back-test, fear & greed gauge, news mood |
 | ⛅ Weather | Greek cities: icon, temperature, wind, humidity; map on click; severe-weather warnings |
 | 🌋 Natural disasters | Earthquakes, fires, floods, storms, volcanoes as bar content; filters for region, magnitude, age and kind; reports of several organisations merged |
-| 🖥 Bars | Above the taskbar or **inside** it (follows auto-hide); a second bar, a bar per monitor, a desktop bar that stands in for a hidden taskbar; each bar shows news, markets or weather |
+| 🖥 Bars | Above the taskbar or **inside** it (*experimental*; follows auto-hide); a second bar, a bar per monitor, a desktop bar that stands in for a hidden taskbar; each bar shows news, markets or weather |
 | 🎨 Look | Themes (the same as Opsis), colour, transparency, background material (acrylic/blur), fading ends; fully keyboard-operable controls |
 | 🧩 Plugin or stand-alone | Integrated into Opsis (its own page, Opsis language and colours) or a separate app with a notification-area icon |
 | 🌍 14 languages | Greek, English, German, French, Spanish, Italian, Portuguese, Russian, Turkish, Japanese, Korean, Simplified Chinese, Arabic (right-to-left), Hindi |

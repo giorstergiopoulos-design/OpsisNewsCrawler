@@ -8,6 +8,7 @@ Detailed notes per release: `docs/releases/RELEASE-<version>.md` and the GitHub 
 - **Reset** of a card is saved at once as well.
 - **Export / Import of the settings** moved to the new card "Backup of the settings" on the General page.
 - Texts that mentioned "Apply" were changed in all 14 languages.
+- **The bar built into the taskbar is described as experimental** everywhere: the cards and switches of the settings, the choice in the setup (14 languages) and the README.
 
 ## 0.18.6 — 2026-10-30
 - **Fix: an update from 0.17.0 left two copies and did not update.** The setup now removes the older per-user copy *first* and checks the result: it ends the running program of that exact folder only, runs its uninstaller, verifies that the uninstall entry and the folder are gone (retries), cleans its own leftovers, removes the per-user start-up value, and stops with a message if something remains. A running program no longer blocks the removal.
