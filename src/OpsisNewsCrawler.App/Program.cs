@@ -171,6 +171,9 @@ internal static class Program
             return;
         }
 
+        // A probe (own --config, snapshot, audit, test switch) never touches the real registry (start-up entry, uninstall entries).
+        WinRegistry.Configure(args);
+
         // Only one ticker at a time.
         // A run with its own --config (tests, a second profile) does not collide with the normal instance.
         var configArgAt = Array.IndexOf(args, "--config");
@@ -309,6 +312,7 @@ internal static class Program
             var header = settings.HeaderIconScreenRect();
             return header.IsEmpty ? MinimiseTarget.Tray() : header;
         };
+        InstallChecks.Run(host);
         host.Start();
 
         if (args.Contains("--portfolio")) host.ShowPortfolio(); // handy for testing

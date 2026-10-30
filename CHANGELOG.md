@@ -3,6 +3,16 @@
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
 Detailed notes per release: `docs/releases/RELEASE-<version>.md` and the GitHub releases.
 
+## 0.18.6 — 2026-10-30
+- **Fix: an update from 0.17.0 left two copies and did not update.** The setup now removes the older per-user copy *first* and checks the result: it ends the running program of that exact folder only, runs its uninstaller, verifies that the uninstall entry and the folder are gone (retries), cleans its own leftovers, removes the per-user start-up value, and stops with a message if something remains. A running program no longer blocks the removal.
+- **Update helper**: the setup is started with an explicit UAC request (`-Verb RunAs`), the program really ends (a fallback exit after 8 seconds), and the result (ok / failed with exit code, also "UAC refused") is written to `%LocalAppData%\OpsisNewsCrawler\update\last-update.log`; a failed update is shown once at the next start (never silent).
+- **Two copies at start**: when an older per-user copy is still installed next to the machine-wide one, the program asks (once a week) to remove it, with the same safe steps as the setup; a wrong start-up entry (a build folder, the old folder) is repaired.
+- **Start with Windows**: one per-user value written by the program itself; the setup no longer writes a machine-wide start-up value (0.18.0 / 0.18.5 did, which could duplicate the entry) and removes that old value; an earlier start-up choice is carried over.
+- **Fix: tests and probes touched the real registry.** The settings audit called the real "Apply" and rewrote the user's start-up value with the path of the build under test. Every probe run (own `--config`, `--snapshot*`, `--audit*`, `--test*`, `--make*`) now uses an isolated registry tree; unit tests use an in-memory registry.
+- **Fix: a clean installation ignored the setup's choices** (language, default bar) because `first-run.json` was applied only when a settings file already existed; and every silent update rewrote `first-run.json`: it is now written only for a fresh installation.
+- 24 new tests (migration, start-up entry, update log, helper script, probe isolation); translations in 14 languages. Documented for the other products in `UPDATE-MIGRATION.md`.
+- **Not verified**: the setup itself was not run (compile only); the removal of a real per-user copy and the UAC path need a disposable Windows machine.
+
 ## 0.18.5 — 2026-10-29
 - **Settings in the Windows 11 style**: the yes/no settings are now switches (`FlatToggle` of Opsis.UI 0.2) with the label on the left and the switch on the right, and the main ones have a one-sentence description under the label; every card of the settings has a **Reset** link that puts only that card's controls back to their defaults (nothing is saved until Apply); a note says that every change takes effect with Apply and that no setting needs a restart. Mirrors for right-to-left languages.
 - **One crawler at a time**: the stand-alone program and the Opsis plugin share one mutex, so they never run two bars (and two writers of the settings file); the program says "already running" when the plugin owns it.

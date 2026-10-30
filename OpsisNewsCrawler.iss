@@ -9,7 +9,7 @@
 ; The wizard looks for Opsis (uninstall entry, default folders) and proposes the integrated install when it finds it.
 ; Test switches: /MODE=integrated | /MODE=separate (silent installs), /PLUGINROOT=<folder> (instead of %AppData%\Opsis\plugins).
 #define MyAppName "Opsis News Crawler"
-#define MyAppVersion "0.18.5"
+#define MyAppVersion "0.18.6"
 #ifndef BinDir
 #define BinDir "bin"
 #endif
@@ -36,6 +36,8 @@ SolidCompression=yes
 ; Machine-wide: the program lives in Program Files (writable by administrators only), the settings stay per user in %AppData%\OpsisNewsCrawler.
 ; An earlier per-user installation (%LocalAppData%\Programs) is removed first, see RemovePerUserInstall.
 PrivilegesRequired=admin
+; The script reads and cleans the per-user (HKCU) entries of an older per-user installation on purpose (RemovePerUserInstall).
+UsedUserAreasWarning=no
 ArchitecturesInstallIn64BitMode=x64compatible
 ; Entry in Windows "Apps / Installed apps" with an Uninstall button
 UninstallDisplayName={#MyAppName}
@@ -370,7 +372,9 @@ Type: files; Name: "{app}\OpsisNewsCrawler.MotionDeskPlugin.*"
 
 [Registry]
 ; Start with Windows (removed again by the uninstaller)
-Root: HKA; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "{#MyAppName}"; ValueData: """{app}\{#MyAppExe}"""; Tasks: startup; Flags: uninsdeletevalue
+; "Start with Windows" is the user's own per-user Run value, written by the program itself at its first start (the task only carries the wish in
+; first-run.json). The machine-wide value that 0.18.0 / 0.18.5 wrote is removed, so there is never a second start-up entry.
+Root: HKLM; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueName: "{#MyAppName}"; Flags: deletevalue
 ; Clean up the start-up entry of the very first versions (they were called DeskTicker)
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueName: "DeskTicker"; Flags: deletevalue
 ; Clean up the plugin-path entry written by an earlier build of this installer
@@ -527,38 +531,112 @@ begin
 end;
 
 // Earlier builds were installed per user (%LocalAppData%\Programs\Opsis News Crawler, uninstall entry and start-up entry in HKCU).
-// Setup now installs machine-wide: the per-user copy is removed first (its settings in %AppData%\OpsisNewsCrawler are kept), so there are no
-// duplicate shortcuts, start-up entries or tray icons. If the old program is still running its uninstaller stops, and setup says so.
-procedure RemovePerUserInstall;
+// Setup installs machine-wide, so the per-user copy is removed FIRST and the result is checked:
+//   1. its running program is ended (only an image inside that exact folder, never anything else),
+//   2. its own uninstaller runs silently (the settings in %AppData%\OpsisNewsCrawler are kept),
+//   3. the uninstall entry and the folder must be gone (a few retries); what is left of OUR OWN old copy is cleaned by hand,
+//   4. its start-up value (HKCU Run) is removed; the wish "start with Windows" is carried over to the new installation.
+// If something is still there, setup stops with a message instead of leaving two copies.
+const
+  OldUninstallKey = 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{{B7E3C9A2-5D41-4F68-9A0E-3C1D7F52A8B4}_is1';
+  RunKeyPath = 'Software\Microsoft\Windows\CurrentVersion\Run';
+
 var
-  Key, Cmd, Exe: String;
-  ResultCode: Integer;
+  HadAutostart: Boolean;
+
+function PerUserCopyThere(Dir: String): Boolean;
 begin
-  Key := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{{B7E3C9A2-5D41-4F68-9A0E-3C1D7F52A8B4}_is1';
-  if RegQueryStringValue(HKCU, Key, 'UninstallString', Cmd) then
+  Result := RegKeyExists(HKCU, OldUninstallKey) or ((Dir <> '') and DirExists(Dir));
+end;
+
+function RunValueIsMine(Root: Integer; Name: String): Boolean;
+var
+  Value: String;
+begin
+  Result := RegQueryStringValue(Root, RunKeyPath, Name, Value) and (Value <> '');
+end;
+
+// Ends the programs whose image lies inside the old per-user folder (exact path, so a program in Program Files or a build folder is never touched).
+procedure EndProgramsIn(Dir: String);
+var
+  ResultCode: Integer;
+  Quoted, Params: String;
+begin
+  Quoted := Dir;
+  StringChangeEx(Quoted, '''', '''''', True);
+  Params := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "Get-Process OpsisNewsCrawler -ErrorAction SilentlyContinue | ' +
+            'Where-Object { $_.Path -and $_.Path.StartsWith(''' + Quoted + '\'', ''OrdinalIgnoreCase'') } | Stop-Process -Force"';
+  Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), Params, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+end;
+
+// Returns '' when the per-user copy is gone, otherwise the reason.
+function RemovePerUserInstall: String;
+var
+  Cmd, Uninstaller, Dir, Programs: String;
+  ResultCode, Attempt: Integer;
+begin
+  Result := '';
+  HadAutostart := RunValueIsMine(HKCU, '{#MyAppName}') or RunValueIsMine(HKLM, '{#MyAppName}');
+  Dir := '';
+  Uninstaller := '';
+  if RegQueryStringValue(HKCU, OldUninstallKey, 'InstallLocation', Dir) then Dir := RemoveBackslashUnlessRoot(Dir);
+  if RegQueryStringValue(HKCU, OldUninstallKey, 'UninstallString', Cmd) then
   begin
-    Exe := RemoveQuotes(Cmd);
-    if FileExists(Exe) then
-      Exec(Exe, '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    Uninstaller := RemoveQuotes(Cmd);
+    if Dir = '' then Dir := ExtractFileDir(Uninstaller);
   end;
-  RegDeleteValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', '{#MyAppName}');
-  RegDeleteValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', 'DeskTicker');
+
+  Programs := Lowercase(ExpandConstant('{localappdata}\Programs\'));
+  if (Dir <> '') and (Pos(Programs, Lowercase(AddBackslash(Dir))) = 1) then
+  begin
+    EndProgramsIn(Dir);
+    // the uninstaller must lie in that folder: a value of the registry is never run from anywhere else
+    if (Uninstaller <> '') and FileExists(Uninstaller) and (Pos(Lowercase(AddBackslash(Dir)), Lowercase(Uninstaller)) = 1) then
+      Exec(Uninstaller, '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    Attempt := 0;
+    while PerUserCopyThere(Dir) and (Attempt < 5) do
+    begin
+      Sleep(1000);
+      Attempt := Attempt + 1;
+    end;
+    if PerUserCopyThere(Dir) then
+    begin
+      // what is left of our own old copy: the uninstall entry and the folder (settings in %AppData% are not touched)
+      RegDeleteKeyIncludingSubkeys(HKCU, OldUninstallKey);
+      if DirExists(Dir) then DelTree(Dir, True, True, True);
+    end;
+    if PerUserCopyThere(Dir) then Result := Dir;
+  end
+  else if RegKeyExists(HKCU, OldUninstallKey) then
+  begin
+    // an uninstall entry of ours outside %LocalAppData%\Programs: not touched, but reported (never leave two copies silently)
+    Result := OldUninstallKey;
+  end;
+  RegDeleteValue(HKCU, RunKeyPath, '{#MyAppName}');
+  RegDeleteValue(HKCU, RunKeyPath, 'DeskTicker');
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
-  Key: String;
+  Left: String;
 begin
   Result := '';
-  RemovePerUserInstall;
-  Key := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{{B7E3C9A2-5D41-4F68-9A0E-3C1D7F52A8B4}_is1';
-  if RegKeyExists(HKCU, Key) then
-    Result := CustomMessage('OldInstallRemains');
+  Left := RemovePerUserInstall;
+  if Left <> '' then
+    Result := CustomMessage('OldInstallRemains') + #13#10 + Left;
+end;
+
+procedure CurPageChanged_StartupDefault(CurPageID: Integer);
+begin
+  // an earlier copy started with Windows: the same wish is pre-selected for the new one
+  if (CurPageID = wpSelectTasks) and HadAutostart then
+    WizardSelectTasks('startup');
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
 var
-  Dir: String;
+  Dir, Json: String;
+  Wish: Boolean;
 begin
   if CurStep = ssInstall then
   begin
@@ -567,10 +645,21 @@ begin
   end;
   if CurStep = ssPostInstall then
   begin
-    // read once by the app at its next start (AppConfig.ApplyFirstRun)
+    // read once by the app at its next start (AppConfig.ApplyFirstRun). A fresh installation carries the choices of the wizard; an update
+    // (a config.json exists) never overwrites the user's language and bar, it only carries the "start with Windows" wish over.
     Dir := ExpandConstant('{userappdata}\OpsisNewsCrawler');
     ForceDirectories(Dir);
-    SaveStringToFile(Dir + '\first-run.json', '{"Position":"' + ChosenBar() + '","Language":"' + AppLanguage() + '"}', False);
+    Wish := IsSeparate() and (WizardIsTaskSelected('startup') or (WizardSilent and HadAutostart));
+    Json := '';
+    if not FileExists(Dir + '\config.json') then
+    begin
+      Json := '{"Position":"' + ChosenBar() + '","Language":"' + AppLanguage() + '"';
+      if Wish then Json := Json + ',"StartWithWindows":true';
+      Json := Json + '}';
+    end
+    else if Wish then
+      Json := '{"StartWithWindows":true}';
+    if Json <> '' then SaveStringToFile(Dir + '\first-run.json', Json, False);
   end;
 end;
 
@@ -578,6 +667,7 @@ procedure CurPageChanged(CurPageID: Integer);
 var
   Info: TNewStaticText;
 begin
+  CurPageChanged_StartupDefault(CurPageID);
   if (ModePage <> nil) and (CurPageID = ModePage.ID) and (not InfoAdded) then
   begin
     // explanation texts under the two choices (added once)

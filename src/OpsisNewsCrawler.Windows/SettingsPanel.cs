@@ -1178,7 +1178,12 @@ public sealed class SettingsPanel : UserControl
             if (IsDisposed) return;
             updateStatus.Text = L(hosted ? "msg.updateScheduled" : "msg.updateStarted");
             UpdateInstaller.LaunchAfterExit(path, sha256, hosted);
-            if (!hosted) host.RequestExit();
+            if (!hosted)
+            {
+                host.RequestExit();
+                // The helper waits for this process: if the normal exit is blocked (a dialog, a stuck window) the process ends anyway after a few seconds.
+                _ = Task.Delay(8000).ContinueWith(_ => Environment.Exit(0), TaskScheduler.Default);
+            }
         }
         catch (InvalidDataException)
         {

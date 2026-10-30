@@ -89,3 +89,7 @@ Fourteen UI languages like Opsis: `Core/Locales/<code>.json` (el, en generated b
 - **Quality gate**: `tools/ci-audit.ps1` (also in `.github/workflows/windows-ci.yml`): `--audit-settings` and `--audit-layout` in en/el/de/ar with a throw-away config; both commands return exit code 0/1. Helper controls of forms are listed in `SettingsAudit.UiOnly`.
 - **One instance**: `Core/InstanceGuard.cs` (plugin and program share `OpsisNewsCrawler.SingleInstance`), see `docs/COEXISTENCE.md`. Named themes come from `OpsisThemes` in Opsis.UI.
 - Test aids: `--snapshot-hazard-icons|-bar|-card <png>`. The update mechanism is written down in `C:\w\UPDATE-MECHANISM.md`.
+
+## 0.18.6 additions
+- **Registry is never touched by probes**: all registry access goes through `IUserRegistry` (`Core/InstallMigration.cs`); `WinRegistry.Configure(args)` (first line of `Main`) isolates every run with `--config`/`--snapshot*`/`--audit*`/`--test*`/`--make*` under `HKCU\Software\OpsisNewsCrawler\IsolatedTest`. Unit tests use `MemoryRegistry`. Never run the installer or uninstaller on the real PC (compile with ISCC only).
+- Migration per-user to machine-wide: `OpsisNewsCrawler.iss` (`RemovePerUserInstall`), `Windows/InstallChecks.cs` (checks at start), `UpdateHelperScript` (helper with `-Verb RunAs` + `last-update.log`). Rules for all products: `C:\w\UPDATE-MIGRATION.md`.

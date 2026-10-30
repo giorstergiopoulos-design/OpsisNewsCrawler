@@ -159,6 +159,12 @@ public sealed class AppConfig
     public bool CheckForUpdates { get; set; } = true;
     /// <summary>The release tag the user was already told about (a notification is shown once per version).</summary>
     public string LastNotifiedUpdate { get; set; } = "";
+
+    /// <summary>When the user was last asked about an older per-user copy that is still installed next to this machine-wide one (asked again after a week).</summary>
+    public DateTimeOffset? DuplicateInstallAskedAt { get; set; }
+
+    /// <summary>Set (not saved) when the setup wrote <c>"StartWithWindows": true</c> into first-run.json: the program then writes its own per-user Run value.</summary>
+    [JsonIgnore] public bool StartWithWindowsRequested { get; set; }
     /// <summary>Version (major.minor) for which the welcome guide was shown; "" = never.</summary>
     public string WelcomeSeenVersion { get; set; } = "";
     /// <summary>"Don't show again" in the welcome guide.</summary>
@@ -411,6 +417,8 @@ public sealed class AppConfig
                 config = new AppConfig { IsFirstRun = true };
                 config.Normalize();
                 config.Save(path);
+                // A clean install has no config yet: the choices of the setup (language, default bar, start with Windows) must still be applied.
+                ApplyFirstRun(config, path);
                 return config;
             }
 
@@ -444,6 +452,7 @@ public sealed class AppConfig
                 config.Language = code;
                 config.Save(configPath);
             }
+            if (doc.RootElement.TryGetProperty("StartWithWindows", out var sw) && sw.ValueKind == JsonValueKind.True) config.StartWithWindowsRequested = true;
             if (doc.RootElement.TryGetProperty("Position", out var p) &&
                 Enum.TryParse<TickerPosition>(p.GetString(), true, out var position) &&
                 position is TickerPosition.BottomTaskbar or TickerPosition.TaskbarIntegrated)

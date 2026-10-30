@@ -77,18 +77,11 @@ internal static class UpdateInstaller
     /// </summary>
     public static void LaunchAfterExit(string setupPath, string sha256, bool hostedByOpsis)
     {
-        static string Q(string s) => "'" + s.Replace("'", "''") + "'";
         var exe = Environment.ProcessPath ?? "";
         var args = hostedByOpsis
             ? "'/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/MODE=integrated'"
             : "'/SILENT','/SUPPRESSMSGBOXES','/NORESTART','/CLOSEAPPLICATIONS','/MODE=separate'";
-        var script = new StringBuilder()
-            .AppendLine("$ErrorActionPreference = 'Stop'")
-            .AppendLine($"try {{ Wait-Process -Id {Environment.ProcessId} -Timeout 120 -ErrorAction SilentlyContinue }} catch {{ }}")
-            .AppendLine($"if ((Get-FileHash -LiteralPath {Q(setupPath)} -Algorithm SHA256).Hash.ToLowerInvariant() -ne {Q(sha256)}) {{ exit 2 }}")
-            .AppendLine($"$p = Start-Process -FilePath {Q(setupPath)} -ArgumentList {args} -Wait -PassThru")
-            .Append(hostedByOpsis ? "" : $"if ($p.ExitCode -eq 0 -and (Test-Path -LiteralPath {Q(exe)})) {{ Start-Process -FilePath {Q(exe)} }}")
-            .ToString();
+        var script = UpdateHelperScript.Build(Environment.ProcessId, setupPath, sha256, UpdateResultLog.DefaultPath, AboutTexts.Version, args, hostedByOpsis ? null : exe);
         Process.Start(new ProcessStartInfo("powershell.exe")
         {
             ArgumentList = { "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-Command", script },
