@@ -28,7 +28,6 @@ public sealed class SettingsForm : Form
         MinimizeBox = false;
 
         panel = new SettingsPanel(host, showCloseButton: true);
-        panel.CloseRequested += Hide;
         panel.Applied += () => Opacity = Math.Clamp(this.host.Config.SettingsOpacityPercent, 60, 100) / 100.0;
         Controls.Add(panel);
 

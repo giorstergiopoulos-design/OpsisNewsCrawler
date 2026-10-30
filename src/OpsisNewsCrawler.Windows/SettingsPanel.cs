@@ -177,7 +177,6 @@ public sealed class SettingsPanel : UserControl
     public event Action? Applied;
 
     /// <summary>Raised when the user presses the close button (the window hides itself).</summary>
-    public event Action? CloseRequested;
 
     /// <summary>True when Opsis pushes its own colours and language; then those two choices are locked.</summary>
     [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
@@ -317,28 +316,17 @@ public sealed class SettingsPanel : UserControl
         info.Add((L("tab.dependencies"), BuildDependencies()));
         AddGroup(Loc.T("pk.information"), info.ToArray());
 
-        var apply = new FlatButton { Text = L("btn.apply") };
-        apply.SetPrimary(true);
-        apply.Click += (_, _) => ApplySettings();
-        var export = new FlatButton { Text = L("settings.export") };
-        export.Click += (_, _) => ExportSettings();
-        var import = new FlatButton { Text = L("settings.import") };
-        import.Click += (_, _) => ImportSettings();
-        status = new Label { AutoSize = true, MaximumSize = new Size(420, 0), Padding = new Padding(8, 11, 0, 0), Tag = "muted" };
-        var bar = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = true, Padding = new Padding(12, 8, 12, 10) };
-        bar.Controls.Add(apply);
-        bar.Controls.Add(export);
-        bar.Controls.Add(import);
-        if (showCloseButton)
-        {
-            var close = new FlatButton { Text = L("btn.close") };
-            close.Click += (_, _) =>
-            {
-                if (ConfirmCloseIfNeeded()) CloseRequested?.Invoke();
-            };
-            bar.Controls.Add(close);
-        }
+        // Every change is saved by itself a moment after it is made (see AutoApply): there is no Apply button, and the window closes with its own X.
+        // Export / import of the settings live on the General page (card "Backup of the settings").
+        status = new Label { AutoSize = true, MaximumSize = new Size(900, 0), Padding = new Padding(8, 11, 0, 0), Tag = "muted", Text = L("settings.legend") };
+        var bar = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = true, Padding = new Padding(12, 4, 12, 6) };
         bar.Controls.Add(status);
+        autoApplyTimer.Tick += (_, _) =>
+        {
+            autoApplyTimer.Stop();
+            if (!IsDisposed && !loading && built && hasUnsavedChanges) ApplySettings();
+        };
+        VisibleChanged += (_, _) => FlushPendingChanges();   // leaving the page (Opsis) or hiding the window saves what is pending
 
         barPreview = new BarPreview { Dock = DockStyle.Bottom, Visible = false };
         Controls.Add(tabs);
@@ -468,6 +456,17 @@ public sealed class SettingsPanel : UserControl
         speedFlow.Controls.Add(Row(L("speed.monitorsB"), speedMonitorB, 340));
         speedCard.Controls.Add(speedFlow);
         flow.Controls.Add(speedCard);
+
+        var backupCard = new FlatCard(L("card.backup"));
+        var backupFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = true };
+        var exportButton = new FlatButton { Text = L("settings.export") };
+        exportButton.Click += (_, _) => ExportSettings();
+        var importButton = new FlatButton { Text = L("settings.import") };
+        importButton.Click += (_, _) => ImportSettings();
+        backupFlow.Controls.Add(exportButton);
+        backupFlow.Controls.Add(importButton);
+        backupCard.Controls.Add(backupFlow);
+        flow.Controls.Add(backupCard);
 
         hoverPause = new FlatToggle { RowWidth = 600, Text = L("chk.hoverPause") };
         icons = new FlatToggle { RowWidth = 600, Text = L("chk.icons") };
@@ -1948,7 +1947,7 @@ public sealed class SettingsPanel : UserControl
         }
         moveWithMouse.Text = host.IsPositionEditMode ? L("btn.moveMouseDone") : L("btn.moveMouse");
         hasUnsavedChanges = false;
-        if (status is not null && !status.IsDisposed) status.Text = "";
+        if (status is not null && !status.IsDisposed) status.Text = L("settings.legend");
     }
 
     private void AttachDirtyTracking()
@@ -1986,7 +1985,7 @@ public sealed class SettingsPanel : UserControl
                         {
                             L("btn.resetRead"), L("btn.openLog"), L("btn.checkNow"),
                             L("btn.installUpdate"), L("btn.openPage"), L("btn.refreshList"),
-                            L("btn.testBreaking"), L("btn.open"), L("settings.exportOpml")
+                            L("btn.testBreaking"), L("btn.open"), L("settings.exportOpml"), L("settings.export"), L("settings.import")
                         };
                         if (!nonEditingActions.Contains(button.Text, StringComparer.CurrentCultureIgnoreCase)
                             && !button.Text.Contains("Export OPML", StringComparison.OrdinalIgnoreCase)
@@ -2081,7 +2080,7 @@ public sealed class SettingsPanel : UserControl
         {
             AppConfig.CopyScalars(saved, host.Config);
         }
-        hasUnsavedChanges = true;
+        MarkDirty();
         if (status is not null && !status.IsDisposed) status.Text = L("card.resetDone");
         Theme.Apply(this);
     }
@@ -2095,30 +2094,29 @@ public sealed class SettingsPanel : UserControl
         }
     }
 
+    private readonly System.Windows.Forms.Timer autoApplyTimer = new() { Interval = 600 };
+
+    /// <summary>A change was made: it is saved and applied about 0.6 s later (typing and dragging a slider make one save, not one per key).</summary>
     private void MarkDirty()
     {
         if (loading || !built) return;
         hasUnsavedChanges = true;
-        if (status is not null && !status.IsDisposed) status.Text = L("settings.unsavedChanges");
+        autoApplyTimer.Stop();
+        autoApplyTimer.Start();
     }
 
-    /// <summary>Prompts before closing when the user has edits that have not been saved.</summary>
+    /// <summary>Saves a pending change at once (closing, hiding, leaving the page).</summary>
+    public void FlushPendingChanges()
+    {
+        autoApplyTimer.Stop();
+        if (hasUnsavedChanges && built && !loading && !IsDisposed) ApplySettings();
+    }
+
+    /// <summary>Called before the window is hidden: a pending change is saved (there is no "unsaved changes" question any more); always true.</summary>
     public bool ConfirmCloseIfNeeded()
     {
-        if (!hasUnsavedChanges) return true;
-        var result = MessageBox.Show(FindForm(), L("settings.unsavedPrompt"), L("window.settings"),
-            MessageBoxButtons.YesNoCancel, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1);
-        if (result == DialogResult.Yes)
-        {
-            ApplySettings();
-            return !hasUnsavedChanges;
-        }
-        if (result == DialogResult.No)
-        {
-            LoadFromConfig();
-            return true;
-        }
-        return false;
+        FlushPendingChanges();
+        return true;
     }
 
     private static FeedCategory Clone(FeedCategory c) => new()
@@ -2452,7 +2450,7 @@ public sealed class SettingsPanel : UserControl
         var timer = new System.Windows.Forms.Timer { Interval = 4000 };
         timer.Tick += (_, _) =>
         {
-            if (!status.IsDisposed) status.Text = "";
+            if (!status.IsDisposed) status.Text = L("settings.legend");
             timer.Dispose();
         };
         timer.Start();
