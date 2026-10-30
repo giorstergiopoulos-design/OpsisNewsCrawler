@@ -3,12 +3,14 @@
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
 Detailed notes per release: `docs/releases/RELEASE-<version>.md` and the GitHub releases.
 
+## 0.18.8 — 2026-10-30
+- **The bar built into the taskbar is no longer labelled "experimental"**: the mark was removed from the position choice in the settings (all 14 languages).
+
 ## 0.18.7 — 2026-10-30
 - **Settings are saved by themselves.** There is no Apply button any more: a switch, a drop-down list, a number, a slider or a text takes effect about 0.6 seconds after the change (typing and dragging make one save), also inside Opsis; a pending change is saved when the page or the window is left. The Close button is gone too (the window has its X). The bottom line says "Every change is saved immediately." (the note announced in 0.18.5 had been missing).
 - **Reset** of a card is saved at once as well.
 - **Export / Import of the settings** moved to the new card "Backup of the settings" on the General page.
 - Texts that mentioned "Apply" were changed in all 14 languages.
-- **The bar built into the taskbar is described as experimental** everywhere: the cards and switches of the settings, the choice in the setup (14 languages) and the README.
 
 ## 0.18.6 — 2026-10-30
 - **Fix: an update from 0.17.0 left two copies and did not update.** The setup now removes the older per-user copy *first* and checks the result: it ends the running program of that exact folder only, runs its uninstaller, verifies that the uninstall entry and the folder are gone (retries), cleans its own leftovers, removes the per-user start-up value, and stops with a message if something remains. A running program no longer blocks the removal.
