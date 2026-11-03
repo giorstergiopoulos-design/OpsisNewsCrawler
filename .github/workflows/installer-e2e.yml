@@ -1,0 +1,73 @@
+name: installer-e2e
+
+# End-to-end test of the setup on clean, FREE GitHub-hosted Windows runners (public repository: standard runners only, never larger / GPU / paid ones).
+# build the setup once -> on a clean machine: install an older published version, upgrade to the new one, check registry / folders / start-up /
+# shortcuts, start the program (settings audit, layout audit, tier detection with and without OPSISNEWSCRAWLER_FORCE_TIER), uninstall, check leftovers.
+# NOT checked here (a runner cannot): the UAC prompt, SmartScreen, a real graphics card, several monitors, per-monitor DPI.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths-ignore: ['docs/**', '**/*.md']
+
+concurrency:
+  group: installer-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-setup:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Inno Setup (free)
+        shell: pwsh
+        run: ./tools/ci-install-inno.ps1
+      - name: Build the setup (tools/release.ps1)
+        shell: pwsh
+        run: ./tools/release.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: setup
+          path: |
+            Output/OpsisNewsCrawler-Setup.exe
+            Output/OpsisNewsCrawler-Setup.exe.sha256
+          retention-days: 7
+
+  e2e:
+    needs: build-setup
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022]
+        scenario: [fresh, from-per-user, from-latest]
+        include:
+          - os: windows-2025
+            scenario: fresh
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: setup
+          path: setup
+      - name: Install, upgrade, smoke test, uninstall (${{ matrix.scenario }} on ${{ matrix.os }})
+        shell: pwsh
+        run: ./tools/e2e-installer.ps1 -Scenario '${{ matrix.scenario }}' -NewSetup "$PWD/setup/OpsisNewsCrawler-Setup.exe" -Repository '${{ github.repository }}' -Out "$env:RUNNER_TEMP/e2e"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-${{ matrix.os }}-${{ matrix.scenario }}
+          path: ${{ runner.temp }}/e2e
+          if-no-files-found: ignore
+          retention-days: 7

@@ -1,4 +1,4 @@
-using OpsisNewsCrawler.Core;
+﻿using OpsisNewsCrawler.Core;
 using System.ComponentModel;
 
 namespace OpsisNewsCrawler.Windows;
@@ -26,6 +26,8 @@ public sealed class SettingsPanel : UserControl
 
     // General
     private FlatComboBox language = null!;
+    private FlatComboBox perfMode = null!;
+    private Label perfInfo = null!;
     private FlatComboBox category = null!;
     private FlatNumber refresh = null!;
     private FlatNumber speed = null!;
@@ -456,6 +458,19 @@ public sealed class SettingsPanel : UserControl
         speedFlow.Controls.Add(Row(L("speed.monitorsB"), speedMonitorB, 340));
         speedCard.Controls.Add(speedFlow);
         flow.Controls.Add(speedCard);
+
+        // Performance: Automatic follows the PC (what was detected is shown); the others force a tier.
+        var perfCard = new FlatCard(L("card.performance"));
+        var perfFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        perfMode = new FlatComboBox { Width = 260 };
+        perfMode.SetItems(new[] { L("perf.auto"), L("perf.low"), L("perf.balanced"), L("perf.high") }, 0);
+        perfFlow.Controls.Add(Row(L("perf.mode"), perfMode, 300));
+        perfFlow.Controls.Add(Note(L("perf.note"), 700));
+        perfInfo = new Label { AutoSize = true, MaximumSize = new Size(700, 0), Tag = "muted", Margin = new Padding(0, 2, 0, 6), UseMnemonic = false };
+        perfFlow.Controls.Add(perfInfo);
+        perfCard.Controls.Add(perfFlow);
+        flow.Controls.Add(perfCard);
+        host.PerformanceChanged += () => { if (!IsDisposed && IsHandleCreated) BeginInvoke(new Action(UpdatePerformanceInfo)); };
 
         var backupCard = new FlatCard(L("card.backup"));
         var backupFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = true };
@@ -1836,6 +1851,8 @@ public sealed class SettingsPanel : UserControl
             var c = host.Config;
             var langs = Loc.Available();
             language.SelectSilently(Math.Max(0, langs.ToList().FindIndex(l => l.Code == Loc.Language)));
+            perfMode.SelectSilently((int)PerformanceClassifier.ParseMode(c.PerformanceMode));
+            UpdatePerformanceInfo();
             refresh.SetValueSilently(c.RefreshIntervalSeconds);
             speed.SetValueSilently(c.ScrollSpeed);
             speedMainB.SetValueSilently(c.MainSpeedB); speedSecond.SetValueSilently(c.SecondSpeed); speedSecondB.SetValueSilently(c.SecondSpeedB);
@@ -1998,6 +2015,19 @@ public sealed class SettingsPanel : UserControl
     }
 
     // ---- Windows 11 style rows: a sentence under the label of the main switches, and "Reset" on every card ----------------------
+
+    /// <summary>"Detected: 2 logical processors, 7 GB of memory, no real graphics adapter. In use: Low — the number of processors."</summary>
+    private void UpdatePerformanceInfo()
+    {
+        if (perfInfo is null || perfInfo.IsDisposed) return;
+        if (!host.Performance.HasEvaluated) host.EvaluatePerformance();
+        var p = host.Performance;
+        var parts = new List<string>();
+        if (p.Specs is { } s) parts.Add(Loc.T("perf.detected", s.LogicalCores, s.RamGb.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture), L(s.HasGpu ? "perf.gpuYes" : "perf.gpuNo")));
+        var tierName = L("perf." + p.Tier.ToString().ToLowerInvariant());
+        parts.Add(Loc.T("perf.now", tierName, L("perf.r." + p.Reason)));
+        perfInfo.Text = string.Join(" ", parts);
+    }
 
     private void DescribeToggles()
     {
@@ -2239,6 +2269,7 @@ public sealed class SettingsPanel : UserControl
         var mutedKeywords = mutedNewsKeywords.Value.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct(StringComparer.OrdinalIgnoreCase).Take(100).ToList();
         var newsSettingsChanged = c.NewsMaxAgeHours != newsMaxAge.Value || c.NewsSortNewestFirst != newsNewestFirst.Checked || c.StockNewsOnly != stockNewsOnly.Checked || !c.MutedNewsKeywords.SequenceEqual(mutedKeywords, StringComparer.OrdinalIgnoreCase);
         c.Language = Loc.Available().ElementAtOrDefault(Math.Max(0, language.SelectedIndex)).Code ?? c.Language;
+        c.PerformanceMode = PerformanceClassifier.ModeText((PerformanceMode)Math.Clamp(perfMode.SelectedIndex, 0, 3));
         c.NewsRefreshSeconds = refresh.Value;
         c.ScrollSpeed = speed.Value;
         c.MainSpeedB = AppConfig.CleanSpeed(speedMainB.Value); c.SecondSpeed = AppConfig.CleanSpeed(speedSecond.Value); c.SecondSpeedB = AppConfig.CleanSpeed(speedSecondB.Value);

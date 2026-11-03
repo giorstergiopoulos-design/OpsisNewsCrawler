@@ -160,6 +160,9 @@ public sealed class AppConfig
     /// <summary>The release tag the user was already told about (a notification is shown once per version).</summary>
     public string LastNotifiedUpdate { get; set; } = "";
 
+    /// <summary>"auto" (follow the detected hardware), "low", "balanced" or "high" (force a tier). Inside Opsis, "auto" follows the tier Opsis reports.</summary>
+    public string PerformanceMode { get; set; } = "auto";
+
     /// <summary>When the user was last asked about an older per-user copy that is still installed next to this machine-wide one (asked again after a week).</summary>
     public DateTimeOffset? DuplicateInstallAskedAt { get; set; }
 
@@ -486,6 +489,7 @@ public sealed class AppConfig
     {
         if (UpdateLogicVersion < 1) { CheckForUpdates = true; UpdateLogicVersion = 1; }
         NewsRefreshSeconds = RefreshIntervalSeconds;
+        PerformanceMode = PerformanceClassifier.ModeText(PerformanceClassifier.ParseMode(PerformanceMode));   // "auto" | "low" | "balanced" | "high"
         MaxItemsPerFeed = Math.Clamp(MaxItemsPerFeed, 1, 50);
         NewsMaxAgeHours = Math.Clamp(NewsMaxAgeHours, 1, 720);
         MutedNewsKeywords = (MutedNewsKeywords ?? new()).Where(k => !string.IsNullOrWhiteSpace(k))

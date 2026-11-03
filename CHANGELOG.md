@@ -3,6 +3,11 @@
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
 Detailed notes per release: `docs/releases/RELEASE-<version>.md` and the GitHub releases.
 
+## 0.19.0 — 2026-11-03
+- **Performance tiers (Low / Balanced / High)**: the program detects the PC (logical processors, memory, a real graphics adapter, battery and battery saver) and adapts: scroll step, taskbar polling, splash animations, the tray icon animation and the refresh intervals. Settings > General > *Performance*: Automatic / Low / Balanced / High, with what was detected and why. Down is immediate, up needs two equal readings (about 2 minutes), so a PC does not flicker; an unplugged laptop goes to Balanced and comes back by itself. Inside Opsis the tier Opsis reports is used while the setting is Automatic. Test variable `OPSISNEWSCRAWLER_FORCE_TIER`. Details in `docs/PERFORMANCE.md`. 30 tests with simulated specs (the free runner is a Low PC).
+- **Installer end-to-end test on clean Windows (free GitHub runners)**: workflow `installer-e2e` builds the setup once and, on clean `windows-2022` / `windows-2025` machines, installs the previous published version (also the per-user 0.17.0 with its program running and its start-up entry), upgrades to the new machine-wide setup and checks the registry, the folders, the start-up entry, the shortcuts and that the settings survive; starts the program, runs the settings and layout audits with the detected, a forced Low and a forced High tier; uninstalls and checks that nothing is left. Report and logs as artifacts. `tools/e2e-installer.ps1` refuses to run outside a disposable machine. Not checked by it: the UAC prompt, SmartScreen, a real graphics card, several monitors, per-monitor DPI.
+- Not run yet: the workflow itself (it needs the first push).
+
 ## 0.18.8 — 2026-10-30
 - **The bar built into the taskbar is no longer labelled "experimental"**: the mark was removed from the position choice in the settings (all 14 languages).
 

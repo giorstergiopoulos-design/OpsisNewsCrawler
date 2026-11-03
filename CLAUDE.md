@@ -93,3 +93,7 @@ Fourteen UI languages like Opsis: `Core/Locales/<code>.json` (el, en generated b
 ## 0.18.6 additions
 - **Registry is never touched by probes**: all registry access goes through `IUserRegistry` (`Core/InstallMigration.cs`); `WinRegistry.Configure(args)` (first line of `Main`) isolates every run with `--config`/`--snapshot*`/`--audit*`/`--test*`/`--make*` under `HKCU\Software\OpsisNewsCrawler\IsolatedTest`. Unit tests use `MemoryRegistry`. Never run the installer or uninstaller on the real PC (compile with ISCC only).
 - Migration per-user to machine-wide: `OpsisNewsCrawler.iss` (`RemovePerUserInstall`), `Windows/InstallChecks.cs` (checks at start), `UpdateHelperScript` (helper with `-Verb RunAs` + `last-update.log`). Rules for all products: `C:\w\UPDATE-MIGRATION.md`.
+
+## 0.19.0 additions
+- **Performance tiers**: `Core/Performance.cs` (`PerformanceClassifier`, `PerformanceProfile` table, `PerformanceController` with hysteresis), `Windows/HardwareDetector.cs`, applied in `TickerHost.ApplyPerformance` (re-evaluated every minute and on settings changes), setting `AppConfig.PerformanceMode`, test variable `OPSISNEWSCRAWLER_FORCE_TIER`. Details: `docs/PERFORMANCE.md`.
+- **Installer end-to-end on free runners**: `.github/workflows/installer-e2e.yml` + `tools/e2e-installer.ps1` (refuses to run outside GitHub Actions / a disposable machine; NEVER run it on a PC in use) + `tools/ci-install-inno.ps1`.

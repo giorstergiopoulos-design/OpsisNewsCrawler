@@ -63,10 +63,14 @@ public sealed class TickerWindow : Form
         get => lowPower;
         set { if (lowPower == value) return; lowPower = value; PowerChanged?.Invoke(); }
     }
+    /// <summary>The performance profile changed (any tier, not only Low): every bar takes its scroll step and its taskbar polling from it.</summary>
+    public static void RaisePerformanceChanged() => PowerChanged?.Invoke();
+
     private void ApplyPowerProfile()
     {
-        scrollTimer.Interval = lowPower ? 33 : 15;
-        taskbarTimer.Interval = lowPower ? 90 : 30;
+        var profile = PerformanceProfile.Current;
+        scrollTimer.Interval = profile.ScrollIntervalMs;
+        taskbarTimer.Interval = profile.TaskbarPollMs;
     }
 
     private readonly System.Windows.Forms.Timer scrollTimer = new() { Interval = 15 };

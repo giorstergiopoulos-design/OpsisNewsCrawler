@@ -211,6 +211,7 @@ internal static class Program
         var trayFrames = AppIconArt.BuildTrayFrames(Math.Max(16, SystemInformation.SmallIconSize.Width));
         var trayFrame = 0;
         var trayAnimating = false;
+        var trayTick = 0;
         var trayTimer = new System.Windows.Forms.Timer { Interval = 60 };
         // The weather and alert symbols follow the live state: the frames are drawn again when it changes (checked on the UI thread by this timer).
         var liveDirty = 0;
@@ -223,8 +224,11 @@ internal static class Program
                 var tip = LiveIconState.Tip;
                 tray.Text = tip.Length == 0 ? "Opsis News Crawler" : ("Opsis News Crawler\n" + tip).Substring(0, Math.Min(("Opsis News Crawler\n" + tip).Length, 127));
             }
-            var animate = host.Config.TrayIconAnimated && host.Config.BarsEnabled;
-            if (animate)
+            // The tier of the PC decides: still icon (Low), every other frame (Balanced), every frame (High); the user's switch can always turn it off.
+            var tier = PerformanceProfile.Current.Tray;
+            var animate = host.Config.TrayIconAnimated && host.Config.BarsEnabled && tier != TrayAnimation.Off;
+            trayTick++;
+            if (animate && (tier == TrayAnimation.Full || trayTick % 2 == 0))
             {
                 trayFrame = (trayFrame + 1) % trayFrames.Length;
                 tray.Icon = trayFrames[trayFrame];

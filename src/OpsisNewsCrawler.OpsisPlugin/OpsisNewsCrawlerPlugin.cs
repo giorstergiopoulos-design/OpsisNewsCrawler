@@ -65,7 +65,7 @@ public sealed class OpsisNewsCrawlerPlugin : IOpsisNewsCrawlerPlugin, IPluginPro
         Theme.SetColors(dark, Color.FromArgb(background), Color.FromArgb(surface), Color.FromArgb(border),
             Color.FromArgb(text), Color.FromArgb(textMuted), Color.FromArgb(accent), Theme.Opacity); // the strip keeps its own transparency setting
 
-    public void SetHardwareProfile(string tier) => TickerWindow.LowPower = string.Equals(tier, "Low", StringComparison.OrdinalIgnoreCase);
+    public void SetHardwareProfile(string tier) => _controller.Host.SetHostTier(tier);
 
     public void SetLanguage(string code)
     {

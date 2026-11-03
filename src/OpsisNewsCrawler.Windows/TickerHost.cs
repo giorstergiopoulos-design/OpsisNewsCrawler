@@ -257,7 +257,7 @@ public sealed class TickerHost : IDisposable
         quoteTimer.Tick += (_, _) =>
         {
             // Re-evaluate the interval as the exchange session opens/closes.
-            quoteTimer.Interval = GetQuoteRefreshIntervalMilliseconds();
+            quoteTimer.Interval = PerformanceProfile.Current.Scaled(GetQuoteRefreshIntervalMilliseconds() / 1000) * 1000;
             if (!Window.IsPausedByForeground) _ = RefreshQuotesAsync();
         };
         Loc.Changed += OnLanguageChanged;
@@ -436,8 +436,8 @@ public sealed class TickerHost : IDisposable
 
         SyncMonitorWindows();
 
-        refreshTimer.Interval = Config.RefreshIntervalSeconds * 1000;
-        quoteTimer.Interval = GetQuoteRefreshIntervalMilliseconds();
+        EvaluatePerformance();                      // the setting "Performance" may have changed
+        ApplyRefreshIntervals();
         PushAll();
         if (BarsOn)
         {
@@ -580,10 +580,65 @@ public sealed class TickerHost : IDisposable
 
     private bool BarsOn => started && Config.BarsEnabled && !snoozed;
 
+    // ---- performance tier (Low / Balanced / High) -------------------------------------------------------
+
+    private readonly PerformanceController performance = new(HardwareDetector.Detect);
+    private readonly System.Windows.Forms.Timer performanceTimer = new() { Interval = 60_000 };
+    private PerformanceTier? hostTier;
+
+    /// <summary>What was detected and the tier in use (for the settings page).</summary>
+    public PerformanceController Performance => performance;
+
+    /// <summary>Inside Opsis: the tier Opsis reports ("Low" / "Balanced" / "High"); it decides while the setting is Automatic.</summary>
+    public void SetHostTier(string? tier)
+    {
+        hostTier = PerformanceClassifier.ParseTier(tier);
+        EvaluatePerformance();
+    }
+
+    /// <summary>
+    /// One evaluation of the tier (test variable OPSISNEWSCRAWLER_FORCE_TIER, then the setting, then the host, then the detection) and, when it changed,
+    /// the new profile applies everywhere at once. Runs at the start, when the settings change and every minute (going up needs two equal readings).
+    /// </summary>
+    public void EvaluatePerformance()
+    {
+        if (disposed) return;
+        var forced = PerformanceClassifier.ParseTier(Environment.GetEnvironmentVariable("OPSISNEWSCRAWLER_FORCE_TIER"));
+        if (performance.Evaluate(PerformanceClassifier.ParseMode(Config.PerformanceMode), hostTier, forced)) ApplyPerformance();
+    }
+
+    private void ApplyPerformance()
+    {
+        var profile = PerformanceProfile.For(performance.Tier);
+        PerformanceProfile.Current = profile;
+        TickerWindow.LowPower = profile.Tier == PerformanceTier.Low;
+        TickerWindow.RaisePerformanceChanged();
+        ApplyRefreshIntervals();
+        Log.Write($"Performance tier: {profile.Tier} ({performance.Reason}); specs: {(performance.Specs is { } s ? $"{s.LogicalCores} processors, {s.RamGb} GB, GPU {s.HasGpu}, battery {s.OnBattery}, saver {s.BatterySaver}" : "not measured")}");
+        PerformanceChanged?.Invoke();
+    }
+
+    /// <summary>Raised on the UI thread after the tier changed (the settings page shows the new one).</summary>
+    public event Action? PerformanceChanged;
+
+    /// <summary>The timers of the refreshes follow the user's intervals times the factor of the tier (2 on a low PC, 1 otherwise).</summary>
+    private void ApplyRefreshIntervals()
+    {
+        var p = PerformanceProfile.Current;
+        refreshTimer.Interval = p.Scaled(Config.RefreshIntervalSeconds) * 1000;
+        quoteTimer.Interval = p.Scaled(GetQuoteRefreshIntervalMilliseconds() / 1000) * 1000;
+        weatherTimer.Interval = p.Scaled(15 * 60) * 1000;
+        hazardTimer.Interval = p.Scaled(Math.Max(1, Config.HazardRefreshMinutes) * 60) * 1000;
+    }
+
     public void Start()
     {
         if (disposed) return;
         started = true;
+        EvaluatePerformance();
+        performanceTimer.Tick -= OnPerformanceTimer;
+        performanceTimer.Tick += OnPerformanceTimer;
+        performanceTimer.Start();
         PushAll();
         if (Config.BarsEnabled) StartBars();
         _ = FirstUpdateCheckAsync();
@@ -594,6 +649,8 @@ public sealed class TickerHost : IDisposable
 
     private void OnUpdateTimer(object? sender, EventArgs e) => _ = AutoCheckForUpdatesAsync();
 
+    private void OnPerformanceTimer(object? sender, EventArgs e) => EvaluatePerformance();
+
     private void StartBars()
     {
         Window.StartTicker();
@@ -602,7 +659,7 @@ public sealed class TickerHost : IDisposable
         refreshTimer.Start();
         quoteTimer.Start();
         weatherTimer.Start();
-        hazardTimer.Interval = Config.HazardRefreshMinutes * 60 * 1000;
+        hazardTimer.Interval = PerformanceProfile.Current.Scaled(Config.HazardRefreshMinutes * 60) * 1000;
         hazardTimer.Start();
         alertTimer.Start();
         breakingTimer.Start();
@@ -1714,6 +1771,7 @@ public sealed class TickerHost : IDisposable
         Microsoft.Win32.SystemEvents.PowerModeChanged -= OnPowerModeChanged;
         cts.Cancel();
         refreshTimer.Dispose();
+        performanceTimer.Dispose();
         updateTimer.Dispose();
         quoteTimer.Dispose();
         snoozeTimer.Dispose();
