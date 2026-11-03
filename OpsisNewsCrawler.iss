@@ -9,7 +9,7 @@
 ; The wizard looks for Opsis (uninstall entry, default folders) and proposes the integrated install when it finds it.
 ; Test switches: /MODE=integrated | /MODE=separate (silent installs), /PLUGINROOT=<folder> (instead of %AppData%\Opsis\plugins).
 #define MyAppName "Opsis News Crawler"
-#define MyAppVersion "0.19.0"
+#define MyAppVersion "0.19.1"
 #ifndef BinDir
 #define BinDir "bin"
 #endif
@@ -538,7 +538,7 @@ end;
 //   4. its start-up value (HKCU Run) is removed; the wish "start with Windows" is carried over to the new installation.
 // If something is still there, setup stops with a message instead of leaving two copies.
 const
-  OldUninstallKey = 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{{B7E3C9A2-5D41-4F68-9A0E-3C1D7F52A8B4}_is1';
+  OldUninstallKey = 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{B7E3C9A2-5D41-4F68-9A0E-3C1D7F52A8B4}_is1';   // one brace: a Pascal string is not a [Setup] value, "{{" would stay two braces and never match
   RunKeyPath = 'Software\Microsoft\Windows\CurrentVersion\Run';
 
 var
@@ -732,6 +732,9 @@ var
 begin
   if CurUninstallStep = usPostUninstall then
   begin
+    // The program writes its own per-user start-up value when the user asks for "Start with Windows": nothing may be left that points to the removed program.
+    RegDeleteValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', '{#MyAppName}');
+    RegDeleteValue(HKLM, 'Software\Microsoft\Windows\CurrentVersion\Run', '{#MyAppName}');
     DataDir := ExpandConstant('{userappdata}\OpsisNewsCrawler');
     // Settings are only removed when the user says yes (never in a silent uninstall)
     if DirExists(DataDir) and (not UninstallSilent) then
