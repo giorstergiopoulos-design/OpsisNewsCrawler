@@ -4,13 +4,13 @@
 # an installer on the runner, so it is no longer used.)
 $ErrorActionPreference = 'Stop'
 function Find-Iscc {
-    # The real install folders first: the ISCC.exe on the PATH of a runner is a Chocolatey shim (C:\ProgramData\Chocolateyin) whose folder has no Languages.
+    # The real install folders first: the ISCC.exe on the PATH of a runner is a Chocolatey shim (C:\ProgramData\Chocolatey\bin) whose folder has no Languages.
     $real = @("$env:LOCALAPPDATA\Programs", $env:ProgramFiles, ${env:ProgramFiles(x86)}) | Where-Object { $_ -and (Test-Path $_) } |
         ForEach-Object { Get-ChildItem $_ -Directory -Filter 'Inno Setup*' -ErrorAction SilentlyContinue } | Sort-Object Name -Descending |
         ForEach-Object { Join-Path $_.FullName 'ISCC.exe' } | Where-Object { Test-Path $_ } | Select-Object -First 1
     if ($real) { return $real }
     $found = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source
-    if ($found -and $found -notlike '*\Chocolateyin\*') { return $found }
+    if ($found -and $found -notlike '*\Chocolatey\bin\*') { return $found }
     return $null
 }
 function Missing-Languages($iscc) {
