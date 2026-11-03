@@ -13,8 +13,8 @@ if (-not (Test-Path $Exe)) { throw "program not found: $Exe" }
 New-Item -ItemType Directory -Force $Out | Out-Null
 $failed = $false
 foreach ($lang in $Languages) {
-    foreach ($kind in 'audit-settings', 'audit-layout') {
-        $name = if ($kind -eq 'audit-settings') { 'audit' } else { 'layout' }
+    foreach ($kind in 'audit-settings', 'audit-layout', 'audit-scroll') {
+        $name = switch ($kind) { 'audit-settings' { 'audit' } 'audit-layout' { 'layout' } default { 'scroll' } }
         $cfg = Join-Path $Out "$name-$lang.json"
         $report = Join-Path $Out "$name-$lang.txt"
         Set-Content -Path $cfg -Value ('{"Language":"' + $lang + '","Position":"Top"}') -Encoding utf8

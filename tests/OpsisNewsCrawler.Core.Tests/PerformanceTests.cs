@@ -42,7 +42,6 @@ public class PerformanceTests
         Assert.True(low.ScrollIntervalMs > balanced.ScrollIntervalMs && balanced.ScrollIntervalMs > high.ScrollIntervalMs);
         Assert.True(low.TaskbarPollMs > balanced.TaskbarPollMs && balanced.TaskbarPollMs > high.TaskbarPollMs);
         Assert.True(low.SimpleAnimations && !balanced.SimpleAnimations && !high.SimpleAnimations);
-        Assert.Equal((TrayAnimation.Off, TrayAnimation.Slow, TrayAnimation.Full), (low.Tray, balanced.Tray, high.Tray));
         Assert.True(low.RefreshFactor > high.RefreshFactor);
         Assert.Equal(1.0, high.RefreshFactor);
     }

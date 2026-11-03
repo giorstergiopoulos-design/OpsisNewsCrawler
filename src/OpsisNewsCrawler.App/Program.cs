@@ -145,6 +145,14 @@ internal static class Program
             TallSnapshot.Run(taHost, args[taAt + 1], int.Parse(args[taAt + 2]), taAt + 3 < args.Length && int.TryParse(args[taAt + 3], out var tallHeight) ? tallHeight : 2200);
             return;
         }
+        if (Array.IndexOf(args, "--audit-scroll") is >= 0 and var scAt && scAt + 1 < args.Length)
+        {
+            ApplicationConfiguration.Initialize();
+            var cfgSc = Array.IndexOf(args, "--config");
+            using var scHost = new TickerHost(cfgSc >= 0 && cfgSc + 1 < args.Length ? args[cfgSc + 1] : null);
+            Environment.ExitCode = ScrollAudit.Run(scHost, args[scAt + 1]) ? 0 : 1;
+            return;
+        }
         if (Array.IndexOf(args, "--audit-layout") is >= 0 and var lyAt && lyAt + 1 < args.Length)
         {
             ApplicationConfiguration.Initialize();
@@ -205,39 +213,19 @@ internal static class Program
             Text = "Opsis News Crawler"
         };
 
-        // The icon of the notification area: a little bar with the news passing by (right to left). The frames are drawn once;
-        // the timer only swaps them, and stops swapping when the animation is off or the bars are switched off.
+        // The icon of the notification area is STILL (it never moves). It shows the live state: the weather symbol and the highest alert; the picture is drawn again
+        // when that state changes (checked on the UI thread by a slow timer) and the tooltip says it in words.
         var staticIcon = AppIcon.Get();
-        var trayFrames = AppIconArt.BuildTrayFrames(Math.Max(16, SystemInformation.SmallIconSize.Width));
-        var trayFrame = 0;
-        var trayAnimating = false;
-        var trayTick = 0;
-        var trayTimer = new System.Windows.Forms.Timer { Interval = 60 };
-        // The weather and alert symbols follow the live state: the frames are drawn again when it changes (checked on the UI thread by this timer).
-        var liveDirty = 0;
+        var liveDirty = 1;
         LiveIconState.Changed += () => Interlocked.Exchange(ref liveDirty, 1);
+        var trayTimer = new System.Windows.Forms.Timer { Interval = 1000 };
         trayTimer.Tick += (_, _) =>
         {
-            if (Interlocked.Exchange(ref liveDirty, 0) == 1)
-            {
-                trayFrames = AppIconArt.BuildTrayFrames(Math.Max(16, SystemInformation.SmallIconSize.Width));
-                var tip = LiveIconState.Tip;
-                tray.Text = tip.Length == 0 ? "Opsis News Crawler" : ("Opsis News Crawler\n" + tip).Substring(0, Math.Min(("Opsis News Crawler\n" + tip).Length, 127));
-            }
-            // The tier of the PC decides: still icon (Low), every other frame (Balanced), every frame (High); the user's switch can always turn it off.
-            var tier = PerformanceProfile.Current.Tray;
-            var animate = host.Config.TrayIconAnimated && host.Config.BarsEnabled && tier != TrayAnimation.Off;
-            trayTick++;
-            if (animate && (tier == TrayAnimation.Full || trayTick % 2 == 0))
-            {
-                trayFrame = (trayFrame + 1) % trayFrames.Length;
-                tray.Icon = trayFrames[trayFrame];
-            }
-            else if (trayAnimating)
-            {
-                tray.Icon = staticIcon;
-            }
-            trayAnimating = animate;
+            if (Interlocked.Exchange(ref liveDirty, 0) != 1) return;
+            var frames = AppIconArt.BuildTrayFrames(Math.Max(16, SystemInformation.SmallIconSize.Width));
+            tray.Icon = frames.Length > 0 ? frames[0] : staticIcon;
+            var tip = LiveIconState.Tip;
+            tray.Text = tip.Length == 0 ? "Opsis News Crawler" : ("Opsis News Crawler\n" + tip).Substring(0, Math.Min(("Opsis News Crawler\n" + tip).Length, 127));
         };
         trayTimer.Start();
 

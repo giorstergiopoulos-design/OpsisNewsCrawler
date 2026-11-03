@@ -317,3 +317,77 @@ public static class LayoutAudit
         return true;
     }
 }
+
+/// <summary>
+/// <c>--audit-scroll &lt;report.txt&gt; --config &lt;file&gt;</c>: the "auto scroll up" check. Every page of the settings that scrolls is scrolled half way down, then the things that
+/// change a live page (reading the settings again, applying, a status text, the tier text, the update state, the focus of a control at the bottom) are done one by one;
+/// the page must still be where it was. Exit code 0 = no page moved.
+/// </summary>
+public static class ScrollAudit
+{
+    private static readonly string[] Actions = { "LoadFromConfig", "ApplySettings", "UpdatePerformanceInfo", "ShowUpdateState", "ShowStocks", "RebuildLiveList", "UpdateBarsUi", "UpdatePositionGroups" };
+
+    public static bool Run(TickerHost host, string reportPath)
+    {
+        var report = new System.Text.StringBuilder();
+        var panel = new SettingsPanel(host, showCloseButton: false);
+        var form = new Form { StartPosition = FormStartPosition.Manual, Location = new Point(-4000, 0), ClientSize = new Size(1180, 760), ShowInTaskbar = false };
+        panel.Dock = DockStyle.Fill;
+        form.Controls.Add(panel);
+        form.Show();
+        Application.DoEvents();
+        panel.LoadFromConfig();
+        int checks = 0, moved = 0, pages = 0;
+        for (var tab = 0; tab < panel.TabCount; tab++)
+        {
+            panel.SelectTab(tab);
+            for (var i = 0; i < 6; i++) { Application.DoEvents(); Thread.Sleep(30); }
+            var page = All(panel).OfType<ScrollableControl>().FirstOrDefault(c => c.AutoScroll && Shown(c) && c.DisplayRectangle.Height > c.ClientSize.Height + 200);
+            if (page is null) { report.AppendLine($"tab {tab}: no page that scrolls"); continue; }
+            pages++;
+            void Check(string what, Action act)
+            {
+                var target = Math.Max(1, (page.DisplayRectangle.Height - page.ClientSize.Height) / 2);
+                page.AutoScrollPosition = new Point(0, target);
+                if (page is StableScrollPanel stable) stable.ScrollTo(0, target);
+                Application.DoEvents();
+                var before = -page.AutoScrollPosition.Y;
+                try { act(); } catch (Exception ex) when (ex is System.Reflection.TargetInvocationException or InvalidOperationException or ArgumentException or NullReferenceException) { }
+                for (var i = 0; i < 4; i++) { Application.DoEvents(); Thread.Sleep(20); }
+                var after = -page.AutoScrollPosition.Y;
+                checks++;
+                if (Math.Abs(after - before) > 2) { moved++; report.AppendLine($"MOVED tab {tab} ({page.GetType().Name}): {what}: {before} -> {after}"); }
+            }
+            foreach (var name in Actions)
+            {
+                var method = typeof(SettingsPanel).GetMethod(name, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance, Type.EmptyTypes);
+                if (method is not null) Check(name, () => method.Invoke(panel, null));
+            }
+            var status = typeof(SettingsPanel).GetField("status", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.GetValue(panel) as Label;
+            if (status is not null) Check("status text", () => status.Text = "a status text that changes " + Environment.TickCount);
+            var tail = All(page).Where(c => c.CanSelect && c.TabStop && c.Visible).LastOrDefault();
+            if (tail is not null) Check("focus on the last control", () => tail.Select());
+            var label = All(page).OfType<Label>().FirstOrDefault(l => l.AutoSize && l.Visible);
+            if (label is not null) Check("text of an auto-sized label", () => label.Text += " more");
+        }
+        report.Insert(0, $"Scroll audit: {pages} pages that scroll, {checks} checks, {moved} moved\n");
+        File.WriteAllText(reportPath, report.ToString());
+        form.Close();
+        return moved == 0;
+    }
+
+    private static IEnumerable<Control> All(Control root)
+    {
+        foreach (Control c in root.Controls)
+        {
+            yield return c;
+            foreach (var d in All(c)) yield return d;
+        }
+    }
+
+    private static bool Shown(Control c)
+    {
+        for (Control? x = c; x is not null; x = x.Parent) if (!x.Visible) return false;
+        return true;
+    }
+}

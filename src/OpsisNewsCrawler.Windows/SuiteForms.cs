@@ -509,7 +509,7 @@ internal sealed class SuiteCard : Panel
 internal sealed class SuiteForm : SplashBase
 {
     private readonly string dataDir;
-    private readonly FlowLayoutPanel list = new();
+    private readonly StableFlowPanel list = new();
     private readonly FlatButton close = new();
     private readonly System.Windows.Forms.Timer timer = new() { Interval = 33 };
     private readonly Stopwatch clock = Stopwatch.StartNew();
@@ -697,4 +697,35 @@ internal sealed class SuiteForm : SplashBase
         }
         base.Dispose(disposing);
     }
+}
+
+/// <summary>The scrolling list of the family window: keeps its scroll position when the cards change (a download progress, the installed state) and does not jump to a focused card.</summary>
+internal sealed class StableFlowPanel : FlowLayoutPanel
+{
+    private Point wanted;
+    private bool restoring;
+
+    protected override void OnScroll(ScrollEventArgs se)
+    {
+        base.OnScroll(se);
+        if (!restoring) wanted = new Point(-AutoScrollPosition.X, -AutoScrollPosition.Y);
+    }
+
+    protected override void OnMouseWheel(MouseEventArgs e)
+    {
+        base.OnMouseWheel(e);
+        if (!restoring) wanted = new Point(-AutoScrollPosition.X, -AutoScrollPosition.Y);
+    }
+
+    protected override void OnLayout(LayoutEventArgs levent)
+    {
+        base.OnLayout(levent);
+        if (restoring || !IsHandleCreated || wanted == Point.Empty) return;
+        if (new Point(-AutoScrollPosition.X, -AutoScrollPosition.Y) == wanted) return;
+        restoring = true;
+        try { AutoScrollPosition = wanted; }
+        finally { restoring = false; }
+    }
+
+    protected override Point ScrollToControl(Control activeControl) => AutoScrollPosition;
 }

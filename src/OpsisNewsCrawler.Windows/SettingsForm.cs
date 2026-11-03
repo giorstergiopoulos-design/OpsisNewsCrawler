@@ -45,7 +45,7 @@ public sealed class SettingsForm : Form
         iconTimer.Tick += (_, _) =>
         {
             if (iconFramesStale) { iconFramesStale = false; iconFrames = null; }
-            var animate = Visible && host.Config.TrayIconAnimated && host.Config.BarsEnabled;
+            var animate = Visible && host.Config.BarsEnabled;
             if (!animate)
             {
                 if (iconFrames is not null && !ReferenceEquals(Icon, staticIcon)) Icon = staticIcon;

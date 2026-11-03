@@ -33,7 +33,6 @@ public sealed class SettingsPanel : UserControl
     private FlatNumber speed = null!;
     private FlatCheckBox hoverPause = null!;
     private FlatCheckBox startWithWindows = null!;
-    private FlatCheckBox trayAnimated = null!;
     private FlatCheckBox toggleHotkey = null!;
     private FlatCheckBox icons = null!;
     private FlatCheckBox preview = null!;
@@ -357,7 +356,7 @@ public sealed class SettingsPanel : UserControl
     /// <summary>Puts the content of several pages one under the other on a single scrolling page.</summary>
     private static Panel Combine(params (string? Heading, Control Page)[] parts)
     {
-        var page = new Panel { AutoScroll = true, Padding = new Padding(8, 6, 8, 6) };
+        var page = new StableScrollPanel { Padding = new Padding(8, 6, 8, 6) };
         var stack = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlowDirection = FlowDirection.TopDown, WrapContents = false };
         foreach (var (heading, part) in parts)
         {
@@ -383,7 +382,7 @@ public sealed class SettingsPanel : UserControl
 
     private static Panel NewPage(out FlowLayoutPanel flow)
     {
-        var page = new Panel { AutoScroll = true, Padding = new Padding(8, 6, 8, 6) };
+        var page = new StableScrollPanel { Padding = new Padding(8, 6, 8, 6) };
         flow = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlowDirection = FlowDirection.TopDown, WrapContents = false };
         page.Controls.Add(flow);
         return page;
@@ -421,8 +420,6 @@ public sealed class SettingsPanel : UserControl
         flow.Controls.Add(barsEnabled);
         startWithWindows = new FlatToggle { RowWidth = 600, Text = Loc.T("pk.start.with.windows"), Visible = !host.HostedByOpsis };
         flow.Controls.Add(startWithWindows);
-        trayAnimated = new FlatToggle { RowWidth = 600, Text = L("chk.trayAnimated"), Visible = !host.HostedByOpsis };
-        flow.Controls.Add(trayAnimated);
         toggleHotkey = new FlatToggle { RowWidth = 600, Text = Loc.T("pk.hot.key.ctrl.alt"), Visible = !host.HostedByOpsis };
         flow.Controls.Add(toggleHotkey);
         var languageRow = Row(L("lbl.language"), language);
@@ -724,7 +721,7 @@ public sealed class SettingsPanel : UserControl
 
     private Control BuildSources()
     {
-        var page = new Panel { AutoScroll = true, Padding = new Padding(8, 6, 8, 6) };
+        var page = new StableScrollPanel { Padding = new Padding(8, 6, 8, 6) };
         var root = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
 
         var left = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 18, 0) };
@@ -1864,7 +1861,6 @@ public sealed class SettingsPanel : UserControl
             hideRead.Checked = c.HideRead;
             barsEnabled.Checked = c.BarsEnabled;
             startWithWindows.Checked = StartupRegistration.IsEnabled();
-            trayAnimated.Checked = c.TrayIconAnimated;
             toggleHotkey.Checked = c.ToggleHotkey;
             autoUpdate.Checked = c.CheckForUpdates;
             yahooHistory.Checked = c.HistoryFromYahoo;
@@ -2033,7 +2029,7 @@ public sealed class SettingsPanel : UserControl
     {
         foreach (var (toggle, key) in new (FlatToggle?, string)[]
                  {
-                     (barsEnabled as FlatToggle, "desc.barsEnabled"), (startWithWindows as FlatToggle, "desc.startWithWindows"), (trayAnimated as FlatToggle, "desc.trayAnimated"),
+                     (barsEnabled as FlatToggle, "desc.barsEnabled"), (startWithWindows as FlatToggle, "desc.startWithWindows"),
                      (hoverPause as FlatToggle, "desc.hoverPause"), (hideRead as FlatToggle, "desc.hideRead"), (tbAuto as FlatToggle, "desc.tbAuto"),
                      (themeAccent as FlatToggle, "desc.themeAccent"), (edgeFade as FlatToggle, "desc.edgeFade"), (breakingSound as FlatToggle, "desc.breakingSound")
                  })
@@ -2374,7 +2370,6 @@ public sealed class SettingsPanel : UserControl
         host.StartHistoryBackfill();
         host.SetBarsEnabled(barsEnabled.Checked);
         if (!host.HostedByOpsis) StartupRegistration.Set(startWithWindows.Checked);
-        c.TrayIconAnimated = trayAnimated.Checked;
         host.SetCategory(chosen);
         if ((feedsChanged || newsSettingsChanged) && string.Equals(chosen, previousActive, StringComparison.OrdinalIgnoreCase)) host.ReloadNews();
         host.SaveConfig();

@@ -3,6 +3,11 @@
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
 Detailed notes per release: `docs/releases/RELEASE-<version>.md` and the GitHub releases.
 
+## 0.19.2 — 2026-11-03
+- **The notification-area icon is still.** It no longer moves; it keeps showing the live weather symbol and the highest alert (drawn again when they change) and the tooltip says it in words. The switch "Animated icon in the notification area" is gone from the settings (the settings window keeps its animated title-bar icon).
+- **Fix: "auto scroll up".** A scrolling page of the settings jumped when a control at its bottom got the focus (found by the new `--audit-scroll`: 1 of 66 checks moved the page by 400 px), and a live page can snap back to the top when its content changes. All scrolling pages of the settings and the list of the family window now keep their place (`StableScrollPanel` of Opsis.UI 0.2.2 / `StableFlowPanel`); the audit reports 0 of 66 moved. `tools/ci-audit.ps1` runs it with the other audits.
+- Tests: Opsis.UI 47 (scroll position kept after layout changes, no jump on focus, padded pages); Crawler 448.
+
 ## 0.19.1 — 2026-11-03
 - **Fix (real migration bug): the setup never removed an older per-user installation.** The setup looked for the per-user uninstall entry under a key written with two opening braces (a typo: `{{` is the escape of `[Setup]` values, not of Pascal strings), so it never found it, and nothing of the removal of 0.18.6 ever ran. Found by the new installer end-to-end test on a clean machine (old per-user 0.17.0 with its program running → new setup: two copies, the entry, the folder, the Start menu folder and the start-up value of the old one were all still there). Now the key is the one of the program (`InstallMigration.UninstallKey`) and three tests compare the Pascal constants with the program's.
 - **Fix: a start-up entry was left after an uninstall.** When the user chose "Start with Windows" the program wrote its own per-user value, and the uninstaller did not know it: Windows then tried to start a program that no longer exists. The uninstaller now removes the start-up value (HKCU and HKLM).

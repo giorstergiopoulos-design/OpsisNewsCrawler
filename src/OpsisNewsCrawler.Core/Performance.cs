@@ -8,21 +8,18 @@ public enum PerformanceMode { Auto, Low, Balanced, High }
 /// <summary>What was found about this PC (a few quick Win32 readings, no WMI, no hardware monitor).</summary>
 public sealed record HardwareSpecs(int LogicalCores, double RamGb, bool HasGpu, bool OnBattery, bool BatterySaver);
 
-public enum TrayAnimation { Off, Slow, Full }
-
 /// <summary>
 /// What each tier changes. One table, applied in one place (<c>TickerHost.ApplyPerformance</c>):
-/// scroll step (30 / 50 / 66 frames per second), how often the taskbar is polled, the splash and minimise animations, the notification-area icon
-/// (still / every other frame / every frame) and how often feeds, prices and weather are refreshed (a factor on the user's intervals).
+/// scroll step (30 / 50 / 66 frames per second), how often the taskbar is polled, the splash and minimise animations and how often feeds, prices and weather are refreshed (a factor on the user's intervals).
 /// The scroll speed the user sees never changes: the scroll is time based.
 /// </summary>
-public sealed record PerformanceProfile(PerformanceTier Tier, int ScrollIntervalMs, int TaskbarPollMs, bool SimpleAnimations, TrayAnimation Tray, double RefreshFactor)
+public sealed record PerformanceProfile(PerformanceTier Tier, int ScrollIntervalMs, int TaskbarPollMs, bool SimpleAnimations, double RefreshFactor)
 {
     public static PerformanceProfile For(PerformanceTier tier) => tier switch
     {
-        PerformanceTier.Low => new(PerformanceTier.Low, 33, 90, true, TrayAnimation.Off, 2.0),
-        PerformanceTier.Balanced => new(PerformanceTier.Balanced, 20, 45, false, TrayAnimation.Slow, 1.0),
-        _ => new(PerformanceTier.High, 15, 30, false, TrayAnimation.Full, 1.0),
+        PerformanceTier.Low => new(PerformanceTier.Low, 33, 90, true, 2.0),
+        PerformanceTier.Balanced => new(PerformanceTier.Balanced, 20, 45, false, 1.0),
+        _ => new(PerformanceTier.High, 15, 30, false, 1.0),
     };
 
     /// <summary>The profile in use (set by the host after each evaluation; read by the tray icon, the timers and the animations).</summary>

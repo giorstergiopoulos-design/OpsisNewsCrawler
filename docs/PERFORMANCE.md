@@ -23,10 +23,9 @@ The free GitHub runner (2 vCPU, ~7 GB, no GPU) is therefore a *Low* PC — the n
 | scroll step | every 33 ms (~30 fps) | 20 ms (50 fps) | 15 ms (66 fps) |
 | taskbar polling | 90 ms | 45 ms | 30 ms |
 | splash / minimise animations | simple fade | full | full |
-| notification-area icon | still (live weather / alert symbols still update) | every other frame | every frame |
 | refresh of news, prices, weather, disasters | intervals × 2 | as set | as set |
 
-The scroll speed the user sees never changes (the scroll is time based); the user's own intervals are never made shorter. The switch "Animated icon in the notification area" can still turn the icon animation off in every tier.
+The scroll speed the user sees never changes (the scroll is time based); the user's own intervals are never made shorter. The notification-area icon of the program is always still (since 0.19.2); it shows the live weather and the highest alert.
 
 ## Automatic changes
 - Evaluated at the start, when the settings change and **every minute**.
