@@ -87,6 +87,8 @@ internal sealed class ArticlePreviewForm : Form
             : " · " + newItem.PublishedAt.ToLocalTime().ToString("dd/MM HH:mm", CultureInfo.InvariantCulture);
         meta = newItem.Source + time;
         body = newItem.Summary is { Length: > 0 } s && !s.StartsWith(newItem.Title, StringComparison.OrdinalIgnoreCase) ? s : "";
+        // why the program thinks this is urgent ("3 sources in 4 min · official warning")
+        if (newItem.Why is { Length: > 0 } why) body = Loc.T("why.prefix", why) + (body.Length > 0 ? "\n" + body : "");
 
         if (!string.IsNullOrEmpty(newItem.ImageUrl))
         {

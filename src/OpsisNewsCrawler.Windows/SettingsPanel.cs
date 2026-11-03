@@ -167,6 +167,8 @@ public sealed class SettingsPanel : UserControl
     private FlatCheckBox weatherAlerts = null!;
     private FlatComboBox alertCity = null!;
     private FlatText keywords = null!;
+    private FlatComboBox breakingSensitivity = null!;
+    private FlatButton forgetBreaking = null!;
     private FlatNumber maxAge = null!;
     private FlatNumber duration = null!;
     private List<LiveFeed> workLive = new();
@@ -1711,8 +1713,15 @@ public sealed class SettingsPanel : UserControl
         flow.Controls.Add(breakingEnabled);
         breakingSound = new FlatToggle { RowWidth = 600, Text = Loc.T("pk.alert.sound.when.something") };
         flow.Controls.Add(breakingSound);
+        breakingSensitivity = new FlatComboBox { Width = 300 };
+        breakingSensitivity.SetItems(new[] { L("breaking.sens.strict"), L("breaking.sens.normal"), L("breaking.sens.sensitive") }, 1);
+        flow.Controls.Add(Row(L("breaking.sensitivity"), breakingSensitivity, 330));
+        flow.Controls.Add(Note(L("breaking.sensitivity.note"), 700));
         keywords = new FlatText { Width = 520 };
         flow.Controls.Add(Row(L("lbl.keywords"), keywords, 330));
+        forgetBreaking = new FlatButton { Text = L("breaking.forget") };
+        forgetBreaking.Click += (_, _) => { host.ForgetBreakingFeedback(); forgetBreaking.Text = L("breaking.forgotten"); };
+        flow.Controls.Add(forgetBreaking);
         maxAge = new FlatNumber();
         maxAge.Configure(10, 1440, 10);
         flow.Controls.Add(Row(L("lbl.maxAge"), maxAge, 330));
@@ -1930,6 +1939,8 @@ public sealed class SettingsPanel : UserControl
             weatherAlerts.Checked = c.WeatherAlertsEnabled;
             alertCity.SelectSilently(string.IsNullOrEmpty(c.AlertCityId) ? 0 : Math.Max(0, GreekCities.All.ToList().FindIndex(x => x.Id == c.AlertCityId) + 1));
             keywords.Value = string.Join("; ", c.BreakingKeywords);
+            breakingSensitivity.SelectSilently((int)BreakingEngine.ParseSensitivity(c.BreakingSensitivity));
+            forgetBreaking.Text = L("breaking.forget");
             maxAge.SetValueSilently(c.BreakingMaxAgeMinutes);
             duration.SetValueSilently(c.BreakingDurationMinutes);
             workLive = c.LiveFeeds.Select(f => new LiveFeed(f.Name, f.Url) { Enabled = f.Enabled }).ToList();
@@ -2353,6 +2364,7 @@ public sealed class SettingsPanel : UserControl
         c.WeatherAlertsEnabled = weatherAlerts.Checked;
         c.AlertCityId = alertCity.SelectedIndex > 0 && alertCity.SelectedIndex <= GreekCities.All.Count ? GreekCities.All[alertCity.SelectedIndex - 1].Id : "";
         c.BreakingKeywords = keywords.Value.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+        c.BreakingSensitivity = BreakingEngine.SensitivityText((BreakingSensitivity)Math.Clamp(breakingSensitivity.SelectedIndex, 0, 2));
         c.BreakingMaxAgeMinutes = maxAge.Value;
         c.BreakingDurationMinutes = duration.Value;
         c.LiveFeeds = workLive.Select(f => new LiveFeed(f.Name, f.Url) { Enabled = f.Enabled }).ToList();

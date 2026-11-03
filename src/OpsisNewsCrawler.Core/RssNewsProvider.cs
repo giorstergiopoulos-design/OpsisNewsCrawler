@@ -61,7 +61,7 @@ public sealed class RssNewsProvider : IDisposable
     public RssNewsProvider()
     {
         http = new HttpClient { Timeout = TimeSpan.FromSeconds(15), MaxResponseContentBufferSize = MaxFeedBytes };
-        http.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible; OpsisNewsCrawler/0.19.2)");
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible; OpsisNewsCrawler/0.20.0)");
         http.DefaultRequestHeaders.Accept.ParseAdd("application/rss+xml, application/atom+xml, application/xml, text/xml, */*");
     }
 
@@ -81,7 +81,17 @@ public sealed class RssNewsProvider : IDisposable
         var result = new List<NewsItem>();
         var seenUrls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var seenTitles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var seenWords = new List<HashSet<string>>();
+        var seenWords = new List<(HashSet<string> Words, int Index)>();
+        var titleIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        // The publishers whose copy of a story was folded into the kept one: the urgent-news engine counts them as confirmations.
+        var folded = new Dictionary<int, List<StoryReport>>();
+        void Fold(int index, NewsItem copy)
+        {
+            if (copy.PublishedAt == DateTimeOffset.MinValue) return;
+            var host = Uri.TryCreate(copy.Url, UriKind.Absolute, out var u) ? u.Host : "";
+            if (!folded.TryGetValue(index, out var list)) folded[index] = list = new List<StoryReport>();
+            if (list.Count < 12) list.Add(new StoryReport(copy.Source, host, copy.PublishedAt));
+        }
         for (var i = 0; i < maxPerFeed; i++)
         {
             foreach (var feed in perFeed)
@@ -91,14 +101,20 @@ public sealed class RssNewsProvider : IDisposable
                 var titleKey = NormalizeTitle(item.Title);
                 if (!seenUrls.Add(CanonicalizeUrl(item.Url))) continue;
                 // Different publishers frequently syndicate the same story with different URLs.
-                if (titleKey.Length >= 18 && !seenTitles.Add(titleKey)) continue;
+                if (titleKey.Length >= 18)
+                {
+                    if (titleIndex.TryGetValue(titleKey, out var sameTitle)) { Fold(sameTitle, item); continue; }
+                    titleIndex[titleKey] = result.Count;
+                }
                 // ...and with different wording: the same story from another source (round-robin keeps the first source's version).
                 var words = HeadlineDedup.Words(item.Title);
-                if (seenWords.Any(w => HeadlineDedup.AreSameStory(w, words))) continue;
-                seenWords.Add(words);
+                var match = seenWords.FirstOrDefault(w => HeadlineDedup.AreSameStory(w.Words, words));
+                if (match.Words is not null) { Fold(match.Index, item); continue; }
+                seenWords.Add((words, result.Count));
                 result.Add(item);
             }
         }
+        foreach (var (index, reports) in folded) result[index] = result[index] with { StoryReports = reports };
         return FilterAndOrder(result, maxAgeHours, newestFirst, DateTimeOffset.UtcNow);
     }
 

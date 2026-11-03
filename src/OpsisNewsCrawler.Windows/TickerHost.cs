@@ -22,6 +22,9 @@ public sealed class TickerHost : IDisposable
     private readonly CancellationTokenSource cts = new();
     private readonly ReadStore readStore = new();
 
+    /// <summary>What the user taught the program about urgent news ("not breaking", muted source / topic); local only.</summary>
+    private readonly BreakingFeedback breakingFeedback = BreakingFeedback.Load();
+
     /// <summary>Articles kept with Ctrl+click.</summary>
     public ReadLaterStore ReadLater { get; } = new();
     private List<NewsItem> allItems = new();
@@ -329,6 +332,23 @@ public sealed class TickerHost : IDisposable
             }
             if (Config.HideRead) PushAll();
             w.ShowToast(Loc.T("pk.marked.as.read"));
+        };
+        w.BreakingFeedbackRequested += (item, kind) =>
+        {
+            switch (kind)
+            {
+                case BreakingFeedbackKind.NotBreaking: breakingFeedback.Reject(item); break;
+                case BreakingFeedbackKind.MuteSource: breakingFeedback.MuteSource(item); break;
+                case BreakingFeedbackKind.MuteTopic: breakingFeedback.MuteTopic(item); break;
+            }
+            breakingFeedback.Save();
+            // the urgent state is recomputed at once: the story (or the source) leaves the red bar
+            breakingItems.RemoveAll(i => !string.IsNullOrEmpty(i.Url) && (string.Equals(i.Url, item.Url, StringComparison.OrdinalIgnoreCase)
+                || kind == BreakingFeedbackKind.MuteSource && BreakingEngine.Publisher(i) == BreakingEngine.Publisher(item)));
+            if (breakingActive && breakingItems.Count == 0) EndBreaking();
+            DetectBreaking(allItems);
+            PushAll();
+            w.ShowToast(Loc.T("breaking.feedbackSaved"));
         };
         // Every bar has its own speed (and so has the second half of a split bar): the wheel changes only the bar it is turned over.
         w.ScrollSpeedChanged += speed => { SetBarSpeed(w, false, (int)Math.Round(speed)); };
@@ -1108,13 +1128,25 @@ public sealed class TickerHost : IDisposable
 
     private bool HasLive => Config.LiveFeeds.Any(f => f.Enabled && Breaking.ToPlayableUrl(f.Url) is not null);
 
+    /// <summary>The settings button "forget my choices": the muted sources / topics and the "not breaking" answers are cleared.</summary>
+    public void ForgetBreakingFeedback()
+    {
+        breakingFeedback.Clear();
+        breakingFeedback.Save();
+    }
+
     /// <summary>Finds new urgent headlines; the first time one is seen the intro plays and the bar turns red.</summary>
     private void DetectBreaking(List<NewsItem> items)
     {
         if (!Config.BreakingEnabled || (!Config.MainSlots().Has(SlotKind.News) && !breakingActive)) return;
-        var maxAge = TimeSpan.FromMinutes(Config.BreakingMaxAgeMinutes);
-        var urgent = items.Where(i => !NewsKeywordFilter.IsMuted(i, Config.MutedNewsKeywords) && Breaking.IsBreaking(i, Config.BreakingKeywords, maxAge) && !readStore.IsRead(i.Url))
-            .Select(i => i with { Breaking = true }).ToList();
+        var engine = new BreakingEngine(new BreakingOptions(BreakingEngine.ParseSensitivity(Config.BreakingSensitivity), Config.BreakingKeywords,
+            TimeSpan.FromMinutes(Config.BreakingMaxAgeMinutes), breakingFeedback));
+        // Several signals, not one word: confirmation by other publishers, speed, freshness, source reliability, disaster data, negative filters (see BreakingEngine).
+        // All headlines take part (the read ones too), so that a story keeps its confirmations; only unread ones are announced.
+        var candidates = items.Where(i => !NewsKeywordFilter.IsMuted(i, Config.MutedNewsKeywords)).ToList();
+        var urgent = engine.Urgent(candidates, hazardEvents, DateTimeOffset.Now)
+            .Where(a => !readStore.IsRead(a.Item.Url))
+            .Select(a => a.Item with { Breaking = true, Why = BreakingWhy.Text(a.Reasons) }).ToList();
         if (urgent.Count == 0) return;
 
         var isNew = urgent.Where(i => !readStore.IsRead("breaking:" + i.Url)).ToList();

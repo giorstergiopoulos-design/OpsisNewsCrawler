@@ -128,6 +128,9 @@ public sealed class TickerWindow : Form
     /// <summary>Mark an article as read from its context menu.</summary>
     public event Action<NewsItem>? ItemMarkReadRequested;
 
+    /// <summary>The user says an urgent headline is not breaking news, or mutes its source / topic (the engine adapts locally).</summary>
+    public event Action<NewsItem, BreakingFeedbackKind>? BreakingFeedbackRequested;
+
     /// <summary>Shows a short message on the bar.</summary>
     public void ShowToast(string text)
     {
@@ -369,6 +372,13 @@ public sealed class TickerWindow : Form
         {
             menu.Items.Add(Loc.T("menu.readLater"), null, (_, _) => ItemSaveRequested?.Invoke(item));
             menu.Items.Add(Loc.T("menu.markRead"), null, (_, _) => ItemMarkReadRequested?.Invoke(item));
+            if (item.Breaking && !string.IsNullOrEmpty(item.Url))
+            {
+                menu.Items.Add(new ToolStripSeparator());
+                menu.Items.Add(Loc.T("menu.notBreaking"), null, (_, _) => BreakingFeedbackRequested?.Invoke(item, BreakingFeedbackKind.NotBreaking));
+                menu.Items.Add(Loc.T("menu.muteSource"), null, (_, _) => BreakingFeedbackRequested?.Invoke(item, BreakingFeedbackKind.MuteSource));
+                menu.Items.Add(Loc.T("menu.muteTopic"), null, (_, _) => BreakingFeedbackRequested?.Invoke(item, BreakingFeedbackKind.MuteTopic));
+            }
         }
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(Loc.T("menu.copyLink"), null, (_, _) =>

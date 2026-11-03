@@ -19,6 +19,12 @@ jobs:
         run: dotnet build OpsisNewsCrawler.sln --configuration Release --no-restore
       - name: Run core tests
         run: dotnet test tests/OpsisNewsCrawler.Core.Tests/OpsisNewsCrawler.Core.Tests.csproj --configuration Release
+      - name: Urgent-news detector precision and recall
+        if: always()
+        shell: pwsh
+        run: |
+          $f = Get-ChildItem tests/OpsisNewsCrawler.Core.Tests/bin -Recurse -Filter breaking-metrics.md | Select-Object -First 1
+          if ($f) { Get-Content $f.FullName | Tee-Object -FilePath $env:GITHUB_STEP_SUMMARY -Append } else { "No breaking-metrics.md found" }
       - name: Settings and layout audit (en, el, de, ar)
         shell: pwsh
         run: ./tools/ci-audit.ps1 -Out "$env:RUNNER_TEMP/opsis-ci-audit"

@@ -270,8 +270,14 @@ public sealed class AppConfig
     public GreekCity ResolveAlertCity() =>
         GreekCities.Find(AlertCityId) ?? GreekCities.Find(WeatherCities.FirstOrDefault()) ?? GreekCities.Find("athens") ?? GreekCities.All[0];
 
-    /// <summary>Words that mark a headline as urgent (compared without accents and case).</summary>
-    public List<string> BreakingKeywords { get; set; } = new(Breaking.DefaultKeywords);
+    /// <summary>
+    /// "Extra words I care about" (compared without accents and case): a small hint for the urgent-news score, never a reason alone. The urgent words of
+    /// the program (BREAKING, ΕΚΤΑΚΤΟ ...) are built in, so older files that list them have them removed.
+    /// </summary>
+    public List<string> BreakingKeywords { get; set; } = new();
+
+    /// <summary>How easily news counts as urgent: "strict" | "normal" | "sensitive" (see <see cref="BreakingEngine"/>).</summary>
+    public string BreakingSensitivity { get; set; } = "normal";
 
     /// <summary>Only headlines published in the last N minutes count.</summary>
     public int BreakingMaxAgeMinutes { get; set; } = 180;
@@ -544,8 +550,10 @@ public sealed class AppConfig
         Portfolio = (Portfolio ?? new()).Where(p => p is not null && !string.IsNullOrWhiteSpace(p.Code) && p.Quantity > 0 && p.AvgCost >= 0)
             .Select(p => { p.Currency = string.IsNullOrWhiteSpace(p.Currency) ? "EUR" : p.Currency.Trim().ToUpperInvariant(); p.Market ??= ""; return p; }).Take(500).ToList();
         PriceAlerts = (PriceAlerts ?? new()).Where(x => x is not null && !string.IsNullOrWhiteSpace(x.Code) && x.Threshold > 0).ToList();
-        BreakingKeywords = (BreakingKeywords ?? new()).Where(k => !string.IsNullOrWhiteSpace(k)).Select(k => k.Trim()).Distinct().ToList();
-        if (BreakingKeywords.Count == 0) BreakingKeywords = new(Breaking.DefaultKeywords);
+        var builtIn = new HashSet<string>(Breaking.DefaultKeywords.Select(Breaking.Normalize));
+        BreakingKeywords = (BreakingKeywords ?? new()).Where(k => !string.IsNullOrWhiteSpace(k)).Select(k => k.Trim())
+            .Where(k => !builtIn.Contains(Breaking.Normalize(k))).Distinct(StringComparer.OrdinalIgnoreCase).Take(50).ToList();
+        BreakingSensitivity = BreakingEngine.SensitivityText(BreakingEngine.ParseSensitivity(BreakingSensitivity));
         BreakingMaxAgeMinutes = Math.Clamp(BreakingMaxAgeMinutes, 10, 1440);
         if (BarBackdrop is not ("acrylic" or "blur" or "gradient")) BarBackdrop = "acrylic";
         if (TaskbarBarBackdrop is not ("acrylic" or "blur" or "gradient")) TaskbarBarBackdrop = "blur";
