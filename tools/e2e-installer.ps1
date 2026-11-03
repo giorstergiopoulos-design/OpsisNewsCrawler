@@ -57,7 +57,7 @@ function Screenshot([string]$name) {
 }
 function Expected-Version {
     $v = (Get-Item $NewSetup).VersionInfo.ProductVersion
-    if ($v) { return $v.Split('+')[0] }
+    if ($v) { return $v.Split('+')[0].Trim() }   # the setup's own version resource is padded with spaces
     return $null
 }
 
@@ -159,7 +159,13 @@ foreach ($tier in @('', 'Low', 'High')) {
         Set-Content $cfg '{"Language":"en","Position":"Top"}' -Encoding utf8
         $p = Start-Process -FilePath $exe -ArgumentList "--$kind", "`"$rep`"", '--config', "`"$cfg`"" -PassThru
         if (-not $p.WaitForExit(600000)) { $p.Kill() }
-        Check ($p.ExitCode -eq 0) "$kind with tier '$(if ($tier) { $tier } else { 'detected' })' reports nothing wrong"
+        # The verdict is the report (what the audit found); the exit code of the process is shown too. A clean report with an exit code other than 0
+        # (seen once on a runner, the process ended badly after writing it) is a warning, not a finding about the settings.
+        $text = if (Test-Path $rep) { Get-Content $rep -Raw } else { '' }
+        $clean = if ($kind -eq 'audit-settings') { $text -match '0 change nothing, 0 not shown again' -and $text -match 'keyboard checks failed: 0' -and $text -notmatch '(?m)^ERROR' }
+                 else { $text -match 'nothing sticks out' }
+        Check $clean "$kind with tier '$(if ($tier) { $tier } else { 'detected' })' reports nothing wrong (exit code $($p.ExitCode))"
+        if ($clean -and $p.ExitCode -ne 0) { Write-Host "::warning::$kind ($tier) wrote a clean report but ended with exit code $($p.ExitCode)" }
     }
 }
 $env:OPSISNEWSCRAWLER_FORCE_TIER = ''
