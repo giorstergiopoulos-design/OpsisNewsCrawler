@@ -3,6 +3,11 @@
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
 Detailed notes per release: `docs/releases/RELEASE-<version>.md` and the GitHub releases.
 
+## 0.20.2 — 2026-11-04
+- **Fix: garbled text in the Opsis tray submenu.** The entries "Welcome guide" and "The Opsis family" of the News Crawler submenu in Opsis' tray menu showed unreadable symbols instead of the dash and the Greek words. The two strings in `OpsisNewsCrawlerPlugin.cs` had been saved double-encoded since 0.15.0 (UTF-8 bytes read as the Greek Windows code page cp1253 and written back as UTF-8; the result is valid UTF-8, so it compiled and no test noticed). Corrected.
+- **New test `EncodingHygieneTests`**: scans every .cs / .json / .iss / .md / .ps1 / .yml / .csproj / .bat / .txt file of the repository for double-encoded text (round trip through cp1253 / cp1252, plus the signature of lossy damage). Nothing else was found.
+- **How it got in (most likely)**: a script that opened the file with the system default encoding. On this PC that is cp1253 for Python `open()` without `encoding=` and for PowerShell 5.1 `Get-Content` / `Set-Content` without `-Encoding UTF8`. 0.15.0 also had to repair the language files of 0.14.7 damaged the same way. Rule added to `CLAUDE.md`: scripts that edit files always name the encoding.
+
 ## 0.20.1 — 2026-11-04
 - **Plugin contract extended (optional, assembly version stays 0.8.0.0):** `PluginWidget`, `IPluginWidgetProvider`, `PluginFeedItem`, `PluginFeed`, `PluginFeeds`. A plugin can register text feeds that the user chooses as the content of a bar (Settings > Bars; spec `feed:<key>`, `SlotKind.Feed`) and offer widgets for the Opsis desktop. Needed by the "San simera" plugin: an old contract DLL without these types made Opsis 2.4.2 fail to load it ("Could not load type IPluginWidgetProvider").
 - New test project `tests/OpsisNewsCrawler.Plugin.Tests`: loads the plugin's own copy of the contract in a separate load context and compares every public signature with ours. Details: `docs/PLUGIN-FEEDS-AND-WIDGETS.md`.
