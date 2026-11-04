@@ -138,7 +138,7 @@ public static class InstallMigration
     }
 }
 
-/// <summary>The result of the last update attempt, written by the helper that runs the setup after the program ended and read at the next start.</summary>
+/// <summary>The result of the last update attempt, written by the update helper (the program itself with --apply-update) that runs the setup after the program ended and read at the next start.</summary>
 public static class UpdateResultLog
 {
     public static string DefaultPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OpsisNewsCrawler", "update", "last-update.log");
@@ -148,13 +148,25 @@ public static class UpdateResultLog
         public bool Failed => !string.Equals(Result, "ok", StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>"2026-10-30T10:00:00+02:00|failed|1223|0.18.6|text": the format the helper script appends (the text never contains a bar).</summary>
+    /// <summary>"2026-10-30T10:00:00+02:00|failed|1223|0.18.6|text": the format the update helper appends (the text never contains a bar).</summary>
     public static Entry? Parse(string? line)
     {
         if (string.IsNullOrWhiteSpace(line)) return null;
         var parts = line.Split('|', 5);
         if (parts.Length < 4 || !DateTimeOffset.TryParse(parts[0], out var at) || !int.TryParse(parts[2], out var code)) return null;
         return new Entry(at, parts[1], code, parts[3], parts.Length > 4 ? parts[4] : "");
+    }
+
+    /// <summary>Appends one result in the format of <see cref="Parse"/> (the text never contains a bar or a line break).</summary>
+    public static void Append(string path, string result, int exitCode, string version, string text)
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            var clean = (text ?? "").Replace('|', ' ').Replace('\r', ' ').Replace('\n', ' ');
+            File.AppendAllText(path, $"{DateTimeOffset.Now:O}|{result}|{exitCode}|{version}|{clean}{Environment.NewLine}", Encoding.UTF8);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
 
     /// <summary>The last entry of the log, or null.</summary>
@@ -186,27 +198,11 @@ public static class UpdateResultLog
     }
 }
 
-/// <summary>Builds the PowerShell of the update helper (pure text, so the rules can be tested): wait, check the hash, run the setup elevated, log the result, reopen.</summary>
-public static class UpdateHelperScript
+/// <summary>The setup arguments of an update (pure text, so the rules can be tested).</summary>
+public static class UpdateSetupArguments
 {
-    public static string Quote(string s) => "'" + s.Replace("'", "''") + "'";
-
-    public static string Build(int waitForPid, string setupPath, string sha256, string logPath, string version, string setupArguments, string? reopenExe)
-    {
-        var q = Quote;
-        var sb = new StringBuilder();
-        sb.AppendLine("$ErrorActionPreference = 'Stop'");
-        sb.AppendLine($"$log = {q(logPath)}");
-        sb.AppendLine($"function Log($result, $code, $text) {{ try {{ New-Item -ItemType Directory -Force -Path (Split-Path -Parent $log) | Out-Null; Add-Content -LiteralPath $log -Value ((Get-Date -Format o) + '|' + $result + '|' + $code + '|' + {q(version)} + '|' + ($text -replace '[|\\r\\n]', ' ')) }} catch {{ }} }}");
-        sb.AppendLine("try {");
-        sb.AppendLine($"  try {{ Wait-Process -Id {waitForPid} -Timeout 120 -ErrorAction SilentlyContinue }} catch {{ }}");
-        sb.AppendLine($"  if ((Get-FileHash -LiteralPath {q(setupPath)} -Algorithm SHA256).Hash.ToLowerInvariant() -ne {q(sha256)}) {{ Log 'failed' 2 'the downloaded setup does not match its SHA-256'; exit 2 }}");
-        // The setup is machine-wide (administrator): ask Windows for the elevation explicitly; a refused UAC prompt is a result, not silence.
-        sb.AppendLine($"  try {{ $p = Start-Process -FilePath {q(setupPath)} -ArgumentList {setupArguments} -Verb RunAs -Wait -PassThru }} catch {{ Log 'failed' 1223 ('the setup could not be started (UAC refused?): ' + $_.Exception.Message); exit 3 }}");
-        sb.AppendLine("  if ($p.ExitCode -ne 0) { Log 'failed' $p.ExitCode 'the setup ended with an error'; exit 4 }");
-        sb.AppendLine("  Log 'ok' 0 ''");
-        if (!string.IsNullOrEmpty(reopenExe)) sb.AppendLine($"  if (Test-Path -LiteralPath {q(reopenExe)}) {{ Start-Process -FilePath {q(reopenExe)} }}");
-        sb.AppendLine("} catch { Log 'failed' 5 $_.Exception.Message; exit 5 }");
-        return sb.ToString();
-    }
+    /// <summary>Silent, no restart of Windows; standalone also lets the installer close the program (Restart Manager), hosted installs the plugin files into Opsis.</summary>
+    public static string Build(bool hostedByOpsis) => hostedByOpsis
+        ? "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /MODE=integrated"
+        : "/SILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS /MODE=separate";
 }

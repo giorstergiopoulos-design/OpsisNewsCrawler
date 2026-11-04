@@ -3,6 +3,13 @@
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
 Detailed notes per release: `docs/releases/RELEASE-<version>.md` and the GitHub releases.
 
+## 0.20.3 — 2026-11-04
+- **Release hygiene.** `Directory.Build.props`: deterministic, path-mapped builds (`/src/`), no symbol files, so program files and the portable zip carry no local folder, build-agent folder, user name or e-mail address; the committed `libs/Opsis.UI.dll` was rebuilt the same way (it carried a build path). Tracked docs and tests no longer name local folders. New tests `ReleaseHygieneTests` scan the built files, the committed binaries, the newest portable zip and every tracked text file.
+- **Same publisher everywhere** (`giorstergiopoulos-design`): Company / Product / Description / Copyright / repository / MIT in every exe and dll, and `AppPublisher`, URLs and `VersionInfo*` in the installer; tests read the version information.
+- **Inno Setup 7**: the script refuses older compilers (`#if Ver < EncodeVer(7,0,0)`); `tools/ci-install-inno.ps1` tries winget (`JRSoftware.InnoSetup` 7), otherwise the CI build continues with a visible warning and `CiAllowOlderInno` (NOT VERIFIED on a runner).
+- **The updater starts no hidden PowerShell.** The helper is the program itself (`OpsisNewsCrawler.exe --apply-update`): waits for the old process, checks the SHA-256 again, runs the setup elevated, logs the result and reopens the program. The Authenticode check of the WebView2 installer uses WinVerifyTrust instead of PowerShell. A test fails if a source file contains `ExecutionPolicy`, `-WindowStyle` or `powershell.exe`.
+- **Licence**: `LICENSE` is the standard MIT text (test), `PackageLicenseExpression` MIT; explained in the README.
+
 ## 0.20.2 — 2026-11-04
 - **Fix: garbled text in the Opsis tray submenu.** The entries "Welcome guide" and "The Opsis family" of the News Crawler submenu in Opsis' tray menu showed unreadable symbols instead of the dash and the Greek words. The two strings in `OpsisNewsCrawlerPlugin.cs` had been saved double-encoded since 0.15.0 (UTF-8 bytes read as the Greek Windows code page cp1253 and written back as UTF-8; the result is valid UTF-8, so it compiled and no test noticed). Corrected.
 - **Hosted in Opsis, the tray submenu no longer offers the welcome guide and the Opsis family window** (Opsis provides them once itself); the standalone program keeps them. Test `TrayMenuTests`.

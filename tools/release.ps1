@@ -54,7 +54,8 @@ if (-not $iscc) {
 }
 if (-not $iscc) { throw "Inno Setup (ISCC.exe) not found - install it from https://jrsoftware.org/isdl.php" }
 "Inno Setup: $iscc"
-& $iscc "/DBinDir=Output\stage" "$r\OpsisNewsCrawler.iss" | Select-String "Error|Successful"
+$extra = if ($env:OPSIS_CI_ALLOW_OLD_INNO) { @("/DCiAllowOlderInno=1") } else { @() }
+& $iscc "/DBinDir=Output\stage" @extra "$r\OpsisNewsCrawler.iss" | Select-String "Error|Successful"
 if ($LASTEXITCODE -ne 0) { throw "installer compile failed" }
 
 $h = (Get-FileHash "$r\Output\OpsisNewsCrawler-Setup.exe" -Algorithm SHA256).Hash.ToLower()

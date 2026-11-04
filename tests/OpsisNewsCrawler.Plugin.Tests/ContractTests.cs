@@ -11,7 +11,9 @@ namespace OpsisNewsCrawler.Plugin.Tests;
 /// </summary>
 public class ContractTests
 {
-    private static string ReferencePath => Path.Combine(AppContext.BaseDirectory, "reference", "OpsisNewsCrawler.Plugin.Abstractions.san-shmera.dll");
+    // The plugin's own copy of the contract (22 016 bytes, SHA-256 F3074836696EAD48ACC38F9E1E483BF0F3636EFE7A483C3E841AF47FF6374D63) carries its author's build paths, so it is
+    // not kept in this repository: its public surface is, as text. To refresh the text from a DLL, set OPSIS_REFERENCE_DLL to its path and run the test WriteTheReferenceSurface.
+    private static string SurfaceFile => Path.Combine(AppContext.BaseDirectory, "reference", "san-shmera-surface.txt");
 
     private static string Describe(MemberInfo m) => m switch
     {
@@ -27,34 +29,36 @@ public class ContractTests
             t.GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly).Select(Describe))));
 
     [Fact]
-    public void TheReferenceContractHasTheFrozenAssemblyVersion()
+    public void TheContractKeepsTheFrozenAssemblyVersion() =>
+        Assert.Equal(new Version(0, 8, 0, 0), typeof(PluginFeeds).Assembly.GetName().Version);
+
+    [Fact]
+    public void EveryPublicSignatureOfThePluginsContractIsInOurContract()
     {
-        var ours = typeof(PluginFeeds).Assembly.GetName();
-        Assert.Equal(new Version(0, 8, 0, 0), ours.Version);
-        var ctx = new AssemblyLoadContext("reference", isCollectible: true);
-        try
+        var ours = Surface(typeof(PluginFeeds).Assembly);
+        var lines = File.ReadAllLines(SurfaceFile).Where(l => l.Length > 0 && !l.StartsWith('#')).ToList();
+        Assert.True(lines.Count > 20, "the reference surface is empty");
+        foreach (var line in lines)
         {
-            var reference = ctx.LoadFromAssemblyPath(ReferencePath);
-            Assert.Equal(ours.Version, reference.GetName().Version);
-            Assert.Equal(ours.Name, reference.GetName().Name);
+            var bar = line.IndexOf('|');
+            var type = line[..bar]; var member = line[(bar + 1)..];
+            Assert.True(ours.ContainsKey(type), "missing type " + type);
+            if (member.Length > 0) Assert.True(ours[type].Contains(member), $"{type}: signature {member} is not in our contract");
         }
-        finally { ctx.Unload(); }
     }
 
     [Fact]
-    public void EveryPublicTypeOfThePluginsContractIsInOurContractWithTheSameSignatures()
+    public void WriteTheReferenceSurface()
     {
-        var ctx = new AssemblyLoadContext("reference2", isCollectible: true);
+        var dll = Environment.GetEnvironmentVariable("OPSIS_REFERENCE_DLL");
+        if (string.IsNullOrEmpty(dll)) return;   // only when asked for
+        var ctx = new AssemblyLoadContext("reference-writer", isCollectible: true);
         try
         {
-            var theirs = Surface(ctx.LoadFromAssemblyPath(ReferencePath));
-            var ours = Surface(typeof(PluginFeeds).Assembly);
-            foreach (var (type, members) in theirs)
-            {
-                Assert.True(ours.ContainsKey(type), "missing type " + type);
-                foreach (var m in members)
-                    Assert.True(ours[type].Contains(m), $"{type}: signature {m} is not in our contract");
-            }
+            var surface = Surface(ctx.LoadFromAssemblyPath(dll));
+            var text = new List<string> { "# Public surface of the plugin's own copy of OpsisNewsCrawler.Plugin.Abstractions (type|member), written by ContractTests.WriteTheReferenceSurface" };
+            foreach (var (type, members) in surface) { text.Add(type + "|"); text.AddRange(members.Select(m => type + "|" + m)); }
+            File.WriteAllLines(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "reference", "san-shmera-surface.txt"), text);
         }
         finally { ctx.Unload(); }
     }

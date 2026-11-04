@@ -88,7 +88,7 @@ public sealed class SuiteDetectorTests
         public List<UninstallEntry> Entries { get; } = new();
         public bool FileExists(string path) => Files.Contains(path);
         public string? FileVersion(string path) => Versions.TryGetValue(path, out var v) ? v : null;
-        public string Expand(string text) => text.Replace("%LocalAppData%", @"C:\Users\u\AppData\Local").Replace("%ProgramFiles%", @"C:\Program Files");
+        public string Expand(string text) => text.Replace("%LocalAppData%", @"D:\Home\u\AppData\Local").Replace("%ProgramFiles%", @"C:\Program Files");
         public IReadOnlyList<UninstallEntry> UninstallEntries() => Entries;
     }
 
@@ -99,8 +99,8 @@ public sealed class SuiteDetectorTests
     public void FindsAnAppByItsFileAndReadsTheVersion()
     {
         var p = new FakeProbe();
-        p.Files.Add(@"C:\Users\u\AppData\Local\A\a.exe");
-        p.Versions[@"C:\Users\u\AppData\Local\A\a.exe"] = "1.2.3";
+        p.Files.Add(@"D:\Home\u\AppData\Local\A\a.exe");
+        p.Versions[@"D:\Home\u\AppData\Local\A\a.exe"] = "1.2.3";
         var info = SuiteDetector.Detect(App("a", "App A", @"%LocalAppData%\A\a.exe"), p);
         Assert.True(info.Installed);
         Assert.Equal("1.2.3", info.Version);

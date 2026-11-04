@@ -6,7 +6,7 @@ namespace OpsisNewsCrawler.Core.Tests;
 /// <summary>The move from a per-user installation to the machine-wide one, the start-up entry and the update helper: all on a MemoryRegistry and temp folders, never the real registry.</summary>
 public class InstallMigrationTests
 {
-    private const string UserDir = @"C:\Users\x\AppData\Local\Programs\Opsis News Crawler";
+    private const string UserDir = @"D:\Home\x\AppData\Local\Programs\Opsis News Crawler";
     private const string MachineDir = @"C:\Program Files\Opsis News Crawler";
 
     private static MemoryRegistry WithCopies(bool perUser, bool machine)
@@ -59,8 +59,8 @@ public class InstallMigrationTests
     [Theory]
     [InlineData(@"""C:\Program Files\Opsis News Crawler\OpsisNewsCrawler.exe""", false)]
     [InlineData(@"C:\Program Files\Opsis News Crawler\OpsisNewsCrawler.exe", false)]
-    [InlineData(@"""C:\w\OpsisNewsCrawler\src\OpsisNewsCrawler.App\bin\Release\net10.0-windows\OpsisNewsCrawler.exe""", true)]   // the build under test (the 0.18.5 audit bug)
-    [InlineData(@"""C:\Users\x\AppData\Local\Programs\Opsis News Crawler\OpsisNewsCrawler.exe""", true)]                         // the old per-user copy
+    [InlineData(@"""D:\build\OpsisNewsCrawler\src\OpsisNewsCrawler.App\bin\Release\net10.0-windows\OpsisNewsCrawler.exe""", true)]   // the build under test (the 0.18.5 audit bug)
+    [InlineData(@"""D:\Home\x\AppData\Local\Programs\Opsis News Crawler\OpsisNewsCrawler.exe""", true)]                         // the old per-user copy
     [InlineData(@"""C:\Program Files\Opsis News Crawler2\OpsisNewsCrawler.exe""", true)]                                            // a folder that only starts like ours
     [InlineData("", false)]
     [InlineData(null, false)]
@@ -87,7 +87,7 @@ public class InstallMigrationTests
     [InlineData(UserDir + @"\OpsisNewsCrawler.exe", true)]
     [InlineData(UserDir + @"2\OpsisNewsCrawler.exe", false)]      // another folder with a similar name
     [InlineData(MachineDir + @"\OpsisNewsCrawler.exe", false)]    // the new machine-wide program is never ended by the migration
-    [InlineData(@"C:\w\OpsisNewsCrawler\x.exe", false)]
+    [InlineData(@"D:\build\OpsisNewsCrawler\x.exe", false)]
     [InlineData(null, false)]
     public void OnlyProcessesInsideTheOldFolderMayBeEnded(string? exe, bool expected) => Assert.Equal(expected, InstallMigration.IsInside(exe, UserDir));
 
@@ -172,24 +172,45 @@ public class UpdateResultTests
     public void MissingLogIsNotAnError() => Assert.Null(UpdateResultLog.TakeUnseenFailure(TempLog()));
 
     [Fact]
-    public void HelperScriptRunsTheSetupElevatedChecksTheHashLogsAndReopens()
+    public void SetupArgumentsAreSilentAndNeverRestartWindows()
     {
-        var script = UpdateHelperScript.Build(1234, @"C:\Users\o'neil\update\Setup.exe", new string('a', 64), @"C:\Users\o'neil\update\last-update.log", "0.18.6",
-            "'/SILENT','/NORESTART'", @"C:\Program Files\Opsis News Crawler\OpsisNewsCrawler.exe");
-        Assert.Contains("Wait-Process -Id 1234", script);
-        Assert.Contains("-Verb RunAs -Wait -PassThru", script);                    // the setup is machine-wide: UAC is asked for explicitly
-        Assert.Contains("Get-FileHash", script);
-        Assert.Contains("Log 'failed' 1223", script);                              // a refused UAC prompt is a logged result
-        Assert.Contains("Log 'ok' 0", script);
-        Assert.Contains("C:\\Users\\o''neil\\update\\Setup.exe", script);          // apostrophes in a path are quoted
-        Assert.Contains("Start-Process -FilePath 'C:\\Program Files\\Opsis News Crawler\\OpsisNewsCrawler.exe'", script);
-        Assert.DoesNotContain("-WindowStyle", script);
+        var standalone = UpdateSetupArguments.Build(false);
+        var hosted = UpdateSetupArguments.Build(true);
+        Assert.Contains("/NORESTART", standalone); Assert.Contains("/NORESTART", hosted);
+        Assert.Contains("/CLOSEAPPLICATIONS", standalone);              // the installer closes the running program itself
+        Assert.Contains("/MODE=separate", standalone); Assert.Contains("/MODE=integrated", hosted);
+        Assert.Contains("/VERYSILENT", hosted); Assert.DoesNotContain("/CLOSEAPPLICATIONS", hosted);   // inside Opsis the helper waits until Opsis is closed
     }
 
     [Fact]
-    public void HostedUpdateDoesNotReopenTheProgram()
+    public void TheUpdateHelperLogsResultsInTheFormatThatIsReadAtTheNextStart()
     {
-        var script = UpdateHelperScript.Build(1, "s.exe", new string('b', 64), "l.log", "0.18.6", "'/VERYSILENT'", null);
-        Assert.DoesNotContain("Test-Path -LiteralPath", script.Split("Get-FileHash")[1].Split("Log 'ok'")[1]);
+        var path = TempLog();
+        try
+        {
+            UpdateResultLog.Append(path, "failed", 1223, "0.20.3", "the setup could not be started | (UAC refused?)\r\nsecond line");
+            var e = UpdateResultLog.Last(path)!;
+            Assert.True(e.Failed); Assert.Equal(1223, e.ExitCode); Assert.Equal("0.20.3", e.Version);
+            Assert.DoesNotContain('|', e.Message); Assert.DoesNotContain('\n', e.Message);
+            Assert.NotNull(UpdateResultLog.TakeUnseenFailure(path));
+            UpdateResultLog.Append(path, "ok", 0, "0.20.3", "");
+            Assert.False(UpdateResultLog.Last(path)!.Failed);
+        }
+        finally { Directory.Delete(Path.GetDirectoryName(path)!, true); }
+    }
+
+    [Fact]
+    public void NoSourceFileStartsAScriptEngine()
+    {
+        // an update must never run a hidden PowerShell with a bypassed execution policy: the helper is the program itself
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !dir.GetFiles("*.sln").Any()) dir = dir.Parent;
+        foreach (var file in Directory.EnumerateFiles(Path.Combine(dir!.FullName, "src"), "*.cs", SearchOption.AllDirectories).Where(f => !f.Contains("\\obj\\") && !f.Contains("\\bin\\")))
+        {
+            var text = File.ReadAllText(file);
+            Assert.DoesNotContain("ExecutionPolicy", text);
+            Assert.DoesNotContain("-WindowStyle", text);
+            Assert.DoesNotContain("\"powershell.exe\"", text);
+        }
     }
 }

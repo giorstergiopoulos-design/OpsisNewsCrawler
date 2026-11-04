@@ -1,0 +1,198 @@
+# Public surface of the plugin's own copy of OpsisNewsCrawler.Plugin.Abstractions (type|member), written by ContractTests.WriteTheReferenceSurface
+OpsisNewsCrawler.Plugin.Abstractions.IOpsisNewsCrawlerPlugin|
+OpsisNewsCrawler.Plugin.Abstractions.IOpsisNewsCrawlerPlugin|Event NavigationRequested:System.Action`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]
+OpsisNewsCrawler.Plugin.Abstractions.IOpsisNewsCrawlerPlugin|Method add_NavigationRequested(System.Action`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.IOpsisNewsCrawlerPlugin|Method get_Id():System.String
+OpsisNewsCrawler.Plugin.Abstractions.IOpsisNewsCrawlerPlugin|Method get_Name():System.String
+OpsisNewsCrawler.Plugin.Abstractions.IOpsisNewsCrawlerPlugin|Method get_Version():System.String
+OpsisNewsCrawler.Plugin.Abstractions.IOpsisNewsCrawlerPlugin|Method GetAboutInfo():OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo
+OpsisNewsCrawler.Plugin.Abstractions.IOpsisNewsCrawlerPlugin|Method GetNavigationItems():System.Collections.Generic.IReadOnlyList`1[[OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem, OpsisNewsCrawler.Plugin.Abstractions, Version=0.8.0.0, Culture=neutral, PublicKeyToken=null]]
+OpsisNewsCrawler.Plugin.Abstractions.IOpsisNewsCrawlerPlugin|Method GetTrayMenuItems():System.Collections.Generic.IReadOnlyList`1[[OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem, OpsisNewsCrawler.Plugin.Abstractions, Version=0.8.0.0, Culture=neutral, PublicKeyToken=null]]
+OpsisNewsCrawler.Plugin.Abstractions.IOpsisNewsCrawlerPlugin|Method Pause():System.Void
+OpsisNewsCrawler.Plugin.Abstractions.IOpsisNewsCrawlerPlugin|Method Refresh():System.Void
+OpsisNewsCrawler.Plugin.Abstractions.IOpsisNewsCrawlerPlugin|Method remove_NavigationRequested(System.Action`1[[System.String, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.IOpsisNewsCrawlerPlugin|Method Resume():System.Void
+OpsisNewsCrawler.Plugin.Abstractions.IOpsisNewsCrawlerPlugin|Method SetLanguage(System.String):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.IOpsisNewsCrawlerPlugin|Method SetMode(System.String):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.IOpsisNewsCrawlerPlugin|Method SetPosition(System.String):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.IOpsisNewsCrawlerPlugin|Method SetTheme(System.Boolean,System.Int32,System.Int32,System.Int32,System.Int32,System.Int32,System.Int32,System.Double):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.IOpsisNewsCrawlerPlugin|Method Start():System.Void
+OpsisNewsCrawler.Plugin.Abstractions.IOpsisNewsCrawlerPlugin|Method Stop():System.Void
+OpsisNewsCrawler.Plugin.Abstractions.IOpsisNewsCrawlerPlugin|Property Id:System.String
+OpsisNewsCrawler.Plugin.Abstractions.IOpsisNewsCrawlerPlugin|Property Name:System.String
+OpsisNewsCrawler.Plugin.Abstractions.IOpsisNewsCrawlerPlugin|Property Version:System.String
+OpsisNewsCrawler.Plugin.Abstractions.IPluginProfileAware|
+OpsisNewsCrawler.Plugin.Abstractions.IPluginProfileAware|Method SetHardwareProfile(System.String):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.IPluginWidgetProvider|
+OpsisNewsCrawler.Plugin.Abstractions.IPluginWidgetProvider|Method GetWidgets():System.Collections.Generic.IReadOnlyList`1[[OpsisNewsCrawler.Plugin.Abstractions.PluginWidget, OpsisNewsCrawler.Plugin.Abstractions, Version=0.8.0.0, Culture=neutral, PublicKeyToken=null]]
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|Constructor .ctor(System.String,System.String,System.String,System.String,System.String,System.String,System.Collections.Generic.IReadOnlyList`1[[OpsisNewsCrawler.Plugin.Abstractions.PluginAboutSection, OpsisNewsCrawler.Plugin.Abstractions, Version=0.8.0.0, Culture=neutral, PublicKeyToken=null]])
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|Method <Clone>$():OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|Method Deconstruct(System.String&,System.String&,System.String&,System.String&,System.String&,System.String&,System.Collections.Generic.IReadOnlyList`1[[OpsisNewsCrawler.Plugin.Abstractions.PluginAboutSection, OpsisNewsCrawler.Plugin.Abstractions, Version=0.8.0.0, Culture=neutral, PublicKeyToken=null]]&):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|Method Equals(OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo):System.Boolean
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|Method Equals(System.Object):System.Boolean
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|Method get_Author():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|Method get_DescriptionEl():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|Method get_DescriptionEn():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|Method get_License():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|Method get_Name():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|Method get_Sections():System.Collections.Generic.IReadOnlyList`1[[OpsisNewsCrawler.Plugin.Abstractions.PluginAboutSection, OpsisNewsCrawler.Plugin.Abstractions, Version=0.8.0.0, Culture=neutral, PublicKeyToken=null]]
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|Method get_Version():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|Method GetHashCode():System.Int32
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|Method op_Equality(OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo,OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo):System.Boolean
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|Method op_Inequality(OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo,OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo):System.Boolean
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|Method set_Author(System.String):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|Method set_DescriptionEl(System.String):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|Method set_DescriptionEn(System.String):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|Method set_License(System.String):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|Method set_Name(System.String):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|Method set_Sections(System.Collections.Generic.IReadOnlyList`1[[OpsisNewsCrawler.Plugin.Abstractions.PluginAboutSection, OpsisNewsCrawler.Plugin.Abstractions, Version=0.8.0.0, Culture=neutral, PublicKeyToken=null]]):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|Method set_Version(System.String):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|Method ToString():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|Property Author:System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|Property DescriptionEl:System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|Property DescriptionEn:System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|Property License:System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|Property Name:System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|Property Sections:System.Collections.Generic.IReadOnlyList`1[[OpsisNewsCrawler.Plugin.Abstractions.PluginAboutSection, OpsisNewsCrawler.Plugin.Abstractions, Version=0.8.0.0, Culture=neutral, PublicKeyToken=null]]
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutInfo|Property Version:System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutSection|
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutSection|Constructor .ctor(System.String,System.String,System.String)
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutSection|Method <Clone>$():OpsisNewsCrawler.Plugin.Abstractions.PluginAboutSection
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutSection|Method Deconstruct(System.String&,System.String&,System.String&):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutSection|Method Equals(OpsisNewsCrawler.Plugin.Abstractions.PluginAboutSection):System.Boolean
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutSection|Method Equals(System.Object):System.Boolean
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutSection|Method get_Text():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutSection|Method get_TitleEl():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutSection|Method get_TitleEn():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutSection|Method GetHashCode():System.Int32
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutSection|Method op_Equality(OpsisNewsCrawler.Plugin.Abstractions.PluginAboutSection,OpsisNewsCrawler.Plugin.Abstractions.PluginAboutSection):System.Boolean
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutSection|Method op_Inequality(OpsisNewsCrawler.Plugin.Abstractions.PluginAboutSection,OpsisNewsCrawler.Plugin.Abstractions.PluginAboutSection):System.Boolean
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutSection|Method set_Text(System.String):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutSection|Method set_TitleEl(System.String):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutSection|Method set_TitleEn(System.String):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutSection|Method ToString():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutSection|Property Text:System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutSection|Property TitleEl:System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginAboutSection|Property TitleEn:System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeed|
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeed|Constructor .ctor(System.String,System.String,System.String,System.Func`1[[System.Collections.Generic.IReadOnlyList`1[[OpsisNewsCrawler.Plugin.Abstractions.PluginFeedItem, OpsisNewsCrawler.Plugin.Abstractions, Version=0.8.0.0, Culture=neutral, PublicKeyToken=null]], System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]])
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeed|Method <Clone>$():OpsisNewsCrawler.Plugin.Abstractions.PluginFeed
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeed|Method Deconstruct(System.String&,System.String&,System.String&,System.Func`1[[System.Collections.Generic.IReadOnlyList`1[[OpsisNewsCrawler.Plugin.Abstractions.PluginFeedItem, OpsisNewsCrawler.Plugin.Abstractions, Version=0.8.0.0, Culture=neutral, PublicKeyToken=null]], System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]&):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeed|Method Equals(OpsisNewsCrawler.Plugin.Abstractions.PluginFeed):System.Boolean
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeed|Method Equals(System.Object):System.Boolean
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeed|Method get_GetItems():System.Func`1[[System.Collections.Generic.IReadOnlyList`1[[OpsisNewsCrawler.Plugin.Abstractions.PluginFeedItem, OpsisNewsCrawler.Plugin.Abstractions, Version=0.8.0.0, Culture=neutral, PublicKeyToken=null]], System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeed|Method get_Key():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeed|Method get_TitleEl():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeed|Method get_TitleEn():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeed|Method GetHashCode():System.Int32
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeed|Method op_Equality(OpsisNewsCrawler.Plugin.Abstractions.PluginFeed,OpsisNewsCrawler.Plugin.Abstractions.PluginFeed):System.Boolean
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeed|Method op_Inequality(OpsisNewsCrawler.Plugin.Abstractions.PluginFeed,OpsisNewsCrawler.Plugin.Abstractions.PluginFeed):System.Boolean
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeed|Method set_GetItems(System.Func`1[[System.Collections.Generic.IReadOnlyList`1[[OpsisNewsCrawler.Plugin.Abstractions.PluginFeedItem, OpsisNewsCrawler.Plugin.Abstractions, Version=0.8.0.0, Culture=neutral, PublicKeyToken=null]], System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeed|Method set_Key(System.String):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeed|Method set_TitleEl(System.String):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeed|Method set_TitleEn(System.String):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeed|Method ToString():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeed|Property GetItems:System.Func`1[[System.Collections.Generic.IReadOnlyList`1[[OpsisNewsCrawler.Plugin.Abstractions.PluginFeedItem, OpsisNewsCrawler.Plugin.Abstractions, Version=0.8.0.0, Culture=neutral, PublicKeyToken=null]], System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeed|Property Key:System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeed|Property TitleEl:System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeed|Property TitleEn:System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeedItem|
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeedItem|Constructor .ctor(System.String,System.String=)
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeedItem|Method <Clone>$():OpsisNewsCrawler.Plugin.Abstractions.PluginFeedItem
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeedItem|Method Deconstruct(System.String&,System.String&):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeedItem|Method Equals(OpsisNewsCrawler.Plugin.Abstractions.PluginFeedItem):System.Boolean
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeedItem|Method Equals(System.Object):System.Boolean
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeedItem|Method get_Text():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeedItem|Method get_Url():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeedItem|Method GetHashCode():System.Int32
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeedItem|Method op_Equality(OpsisNewsCrawler.Plugin.Abstractions.PluginFeedItem,OpsisNewsCrawler.Plugin.Abstractions.PluginFeedItem):System.Boolean
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeedItem|Method op_Inequality(OpsisNewsCrawler.Plugin.Abstractions.PluginFeedItem,OpsisNewsCrawler.Plugin.Abstractions.PluginFeedItem):System.Boolean
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeedItem|Method set_Text(System.String):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeedItem|Method set_Url(System.String):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeedItem|Method ToString():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeedItem|Property Text:System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeedItem|Property Url:System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeeds|
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeeds|Event Changed:System.Action
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeeds|Method add_Changed(System.Action):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeeds|Method All():System.Collections.Generic.IReadOnlyList`1[[OpsisNewsCrawler.Plugin.Abstractions.PluginFeed, OpsisNewsCrawler.Plugin.Abstractions, Version=0.8.0.0, Culture=neutral, PublicKeyToken=null]]
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeeds|Method Find(System.String):OpsisNewsCrawler.Plugin.Abstractions.PluginFeed
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeeds|Method Register(OpsisNewsCrawler.Plugin.Abstractions.PluginFeed):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeeds|Method remove_Changed(System.Action):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginFeeds|Method Unregister(System.String):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem|
+OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem|Constructor .ctor(System.String,System.String,System.String,System.Action,System.Boolean=)
+OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem|Method <Clone>$():OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem
+OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem|Method Deconstruct(System.String&,System.String&,System.String&,System.Action&,System.Boolean&):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem|Method Equals(OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem):System.Boolean
+OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem|Method Equals(System.Object):System.Boolean
+OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem|Method get_Invoke():System.Action
+OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem|Method get_IsSeparator():System.Boolean
+OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem|Method get_Key():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem|Method get_TitleEl():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem|Method get_TitleEn():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem|Method GetHashCode():System.Int32
+OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem|Method op_Equality(OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem,OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem):System.Boolean
+OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem|Method op_Inequality(OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem,OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem):System.Boolean
+OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem|Method set_Invoke(System.Action):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem|Method set_IsSeparator(System.Boolean):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem|Method set_Key(System.String):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem|Method set_TitleEl(System.String):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem|Method set_TitleEn(System.String):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem|Method ToString():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem|Property Invoke:System.Action
+OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem|Property IsSeparator:System.Boolean
+OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem|Property Key:System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem|Property TitleEl:System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginMenuItem|Property TitleEn:System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem|
+OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem|Constructor .ctor(System.String,System.String,System.String,System.Func`1[[System.Windows.Forms.Control, System.Windows.Forms, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]],System.Int32=)
+OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem|Method <Clone>$():OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem
+OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem|Method Deconstruct(System.String&,System.String&,System.String&,System.Func`1[[System.Windows.Forms.Control, System.Windows.Forms, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]&,System.Int32&):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem|Method Equals(OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem):System.Boolean
+OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem|Method Equals(System.Object):System.Boolean
+OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem|Method get_CreatePage():System.Func`1[[System.Windows.Forms.Control, System.Windows.Forms, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]
+OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem|Method get_Key():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem|Method get_Order():System.Int32
+OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem|Method get_TitleEl():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem|Method get_TitleEn():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem|Method GetHashCode():System.Int32
+OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem|Method op_Equality(OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem,OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem):System.Boolean
+OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem|Method op_Inequality(OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem,OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem):System.Boolean
+OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem|Method set_CreatePage(System.Func`1[[System.Windows.Forms.Control, System.Windows.Forms, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem|Method set_Key(System.String):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem|Method set_Order(System.Int32):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem|Method set_TitleEl(System.String):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem|Method set_TitleEn(System.String):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem|Method ToString():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem|Property CreatePage:System.Func`1[[System.Windows.Forms.Control, System.Windows.Forms, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]
+OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem|Property Key:System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem|Property Order:System.Int32
+OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem|Property TitleEl:System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginNavigationItem|Property TitleEn:System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginWidget|
+OpsisNewsCrawler.Plugin.Abstractions.PluginWidget|Constructor .ctor(System.String,System.String,System.String,System.Func`1[[System.Windows.Forms.Control, System.Windows.Forms, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]],System.String=)
+OpsisNewsCrawler.Plugin.Abstractions.PluginWidget|Method <Clone>$():OpsisNewsCrawler.Plugin.Abstractions.PluginWidget
+OpsisNewsCrawler.Plugin.Abstractions.PluginWidget|Method Deconstruct(System.String&,System.String&,System.String&,System.Func`1[[System.Windows.Forms.Control, System.Windows.Forms, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]&,System.String&):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginWidget|Method Equals(OpsisNewsCrawler.Plugin.Abstractions.PluginWidget):System.Boolean
+OpsisNewsCrawler.Plugin.Abstractions.PluginWidget|Method Equals(System.Object):System.Boolean
+OpsisNewsCrawler.Plugin.Abstractions.PluginWidget|Method get_CreateContent():System.Func`1[[System.Windows.Forms.Control, System.Windows.Forms, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]
+OpsisNewsCrawler.Plugin.Abstractions.PluginWidget|Method get_Key():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginWidget|Method get_ReplacesBuiltIn():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginWidget|Method get_TitleEl():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginWidget|Method get_TitleEn():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginWidget|Method GetHashCode():System.Int32
+OpsisNewsCrawler.Plugin.Abstractions.PluginWidget|Method op_Equality(OpsisNewsCrawler.Plugin.Abstractions.PluginWidget,OpsisNewsCrawler.Plugin.Abstractions.PluginWidget):System.Boolean
+OpsisNewsCrawler.Plugin.Abstractions.PluginWidget|Method op_Inequality(OpsisNewsCrawler.Plugin.Abstractions.PluginWidget,OpsisNewsCrawler.Plugin.Abstractions.PluginWidget):System.Boolean
+OpsisNewsCrawler.Plugin.Abstractions.PluginWidget|Method set_CreateContent(System.Func`1[[System.Windows.Forms.Control, System.Windows.Forms, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginWidget|Method set_Key(System.String):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginWidget|Method set_ReplacesBuiltIn(System.String):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginWidget|Method set_TitleEl(System.String):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginWidget|Method set_TitleEn(System.String):System.Void
+OpsisNewsCrawler.Plugin.Abstractions.PluginWidget|Method ToString():System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginWidget|Property CreateContent:System.Func`1[[System.Windows.Forms.Control, System.Windows.Forms, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]
+OpsisNewsCrawler.Plugin.Abstractions.PluginWidget|Property Key:System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginWidget|Property ReplacesBuiltIn:System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginWidget|Property TitleEl:System.String
+OpsisNewsCrawler.Plugin.Abstractions.PluginWidget|Property TitleEn:System.String

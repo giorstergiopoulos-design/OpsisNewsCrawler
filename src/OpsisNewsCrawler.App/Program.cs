@@ -7,8 +7,9 @@ internal static class Program
 {
     // WinForms, the clipboard, drag and drop and WebView2 (live preview) all need a single-threaded apartment.
     [STAThread]
-    private static void Main(string[] args)
+    private static int Main(string[] args)
     {
+        if (args.Length > 0 && args[0] == UpdateHelper.Switch) return UpdateHelper.Run(args[1..]);   // the update helper: no window, no script engine
         if (Array.IndexOf(args, "--make-icon") is >= 0 and var iconAt && iconAt + 1 < args.Length)
         {
             // Writes the program icon (Assets\app.ico) from the drawing in AppIconArt; also a strip of animation frames next to it.
@@ -40,7 +41,7 @@ internal static class Program
                 }
                 small.Save(Path.ChangeExtension(target, ".sizes.png"));
             }
-            return;
+            return 0;
         }
 
         if (Array.IndexOf(args, "--snapshot") is >= 0 and var at && at + 1 < args.Length)
@@ -50,14 +51,14 @@ internal static class Program
             using var snapHost = new TickerHost(cfgAt >= 0 && cfgAt + 1 < args.Length ? args[cfgAt + 1] : null);
             using var snapForm = new SettingsForm(snapHost);
             snapForm.SaveSnapshots(args[at + 1]);
-            return;
+            return 0;
         }
 
         if (Array.IndexOf(args, "--snapshot-bar") is >= 0 and var barAt && barAt + 1 < args.Length)
         {
             ApplicationConfiguration.Initialize();
             BarSnapshot.Save(args[barAt + 1]);
-            return;
+            return 0;
         }
 
         if (Array.IndexOf(args, "--snapshot-welcome") is >= 0 and var wAt && wAt + 1 < args.Length)
@@ -66,7 +67,7 @@ internal static class Program
             var cfgW = Array.IndexOf(args, "--config");
             using var wHost = new TickerHost(cfgW >= 0 && cfgW + 1 < args.Length ? args[cfgW + 1] : null);
             SuiteSnapshots.Welcome(args[wAt + 1]);
-            return;
+            return 0;
         }
 
         if (Array.IndexOf(args, "--snapshot-suite") is >= 0 and var sAt && sAt + 1 < args.Length)
@@ -75,7 +76,7 @@ internal static class Program
             var cfgS = Array.IndexOf(args, "--config");
             using var sHost = new TickerHost(cfgS >= 0 && cfgS + 1 < args.Length ? args[cfgS + 1] : null);
             SuiteSnapshots.Suite(args[sAt + 1], sHost.DataDirectory);
-            return;
+            return 0;
         }
 
         if (Array.IndexOf(args, "--snapshot-minimise") is >= 0 and var mAt && mAt + 1 < args.Length)
@@ -84,7 +85,7 @@ internal static class Program
             var cfgM = Array.IndexOf(args, "--config");
             using var mHost = new TickerHost(cfgM >= 0 && cfgM + 1 < args.Length ? args[cfgM + 1] : null);
             SuiteSnapshots.Minimise(args[mAt + 1]);
-            return;
+            return 0;
         }
         if (Array.IndexOf(args, "--audit-settings") is >= 0 and var auAt && auAt + 1 < args.Length)
         {
@@ -92,13 +93,13 @@ internal static class Program
             var cfgAu = Array.IndexOf(args, "--config");
             using var auHost = new TickerHost(cfgAu >= 0 && cfgAu + 1 < args.Length ? args[cfgAu + 1] : null);
             Environment.ExitCode = SettingsAudit.Run(auHost, args[auAt + 1]) ? 0 : 1;   // CI fails on a finding
-            return;
+            return 0;
         }
         if (Array.IndexOf(args, "--make-brand-art") is >= 0 and var baAt && baAt + 1 < args.Length)
         {
             ApplicationConfiguration.Initialize();
             BrandArt.SaveAll(args[baAt + 1]);
-            return;
+            return 0;
         }
         if (Array.IndexOf(args, "--snapshot-geo") is >= 0 and var geAt && geAt + 2 < args.Length)
         {
@@ -106,13 +107,13 @@ internal static class Program
             var cfgGe = Array.IndexOf(args, "--config");
             using var geHost = new TickerHost(cfgGe >= 0 && cfgGe + 1 < args.Length ? args[cfgGe + 1] : null);
             GeoSnapshot.Run(geHost, args[geAt + 1], args[geAt + 2]);
-            return;
+            return 0;
         }
         if (Array.IndexOf(args, "--snapshot-live-icon") is >= 0 and var liAt && liAt + 1 < args.Length)
         {
             ApplicationConfiguration.Initialize();
             LiveIconSnapshot.Save(args[liAt + 1]);
-            return;
+            return 0;
         }
 
         if (Array.IndexOf(args, "--snapshot-hazard-card") is >= 0 and var hcAt && hcAt + 1 < args.Length)
@@ -120,21 +121,21 @@ internal static class Program
             ApplicationConfiguration.Initialize();
             var result = HazardCardSnapshot.Save(args[hcAt + 1]);
             File.WriteAllText(args[hcAt + 1] + ".txt", result);
-            return;
+            return 0;
         }
 
         if (Array.IndexOf(args, "--snapshot-hazard-bar") is >= 0 and var hbAt && hbAt + 1 < args.Length)
         {
             ApplicationConfiguration.Initialize();
             HazardBarSnapshot.Save(args[hbAt + 1]);
-            return;
+            return 0;
         }
 
         if (Array.IndexOf(args, "--snapshot-hazard-icons") is >= 0 and var hiAt && hiAt + 1 < args.Length)
         {
             ApplicationConfiguration.Initialize();
             HazardIconSheet.Save(args[hiAt + 1]);
-            return;
+            return 0;
         }
 
         if (Array.IndexOf(args, "--snapshot-tall") is >= 0 and var taAt && taAt + 2 < args.Length)
@@ -143,7 +144,7 @@ internal static class Program
             var cfgTa = Array.IndexOf(args, "--config");
             using var taHost = new TickerHost(cfgTa >= 0 && cfgTa + 1 < args.Length ? args[cfgTa + 1] : null);
             TallSnapshot.Run(taHost, args[taAt + 1], int.Parse(args[taAt + 2]), taAt + 3 < args.Length && int.TryParse(args[taAt + 3], out var tallHeight) ? tallHeight : 2200);
-            return;
+            return 0;
         }
         if (Array.IndexOf(args, "--audit-scroll") is >= 0 and var scAt && scAt + 1 < args.Length)
         {
@@ -151,7 +152,7 @@ internal static class Program
             var cfgSc = Array.IndexOf(args, "--config");
             using var scHost = new TickerHost(cfgSc >= 0 && cfgSc + 1 < args.Length ? args[cfgSc + 1] : null);
             Environment.ExitCode = ScrollAudit.Run(scHost, args[scAt + 1]) ? 0 : 1;
-            return;
+            return 0;
         }
         if (Array.IndexOf(args, "--audit-layout") is >= 0 and var lyAt && lyAt + 1 < args.Length)
         {
@@ -159,7 +160,7 @@ internal static class Program
             var cfgLy = Array.IndexOf(args, "--config");
             using var lyHost = new TickerHost(cfgLy >= 0 && cfgLy + 1 < args.Length ? args[cfgLy + 1] : null);
             Environment.ExitCode = LayoutAudit.Run(lyHost, args[lyAt + 1]) ? 0 : 1;
-            return;
+            return 0;
         }
         if (Array.IndexOf(args, "--snapshot-portfolio") is >= 0 and var pfAt && pfAt + 1 < args.Length)
         {
@@ -167,7 +168,7 @@ internal static class Program
             var cfgPf = Array.IndexOf(args, "--config");
             using var pfHost = new TickerHost(cfgPf >= 0 && cfgPf + 1 < args.Length ? args[cfgPf + 1] : null);
             pfHost.SnapshotPortfolio(args[pfAt + 1], 14);
-            return;
+            return 0;
         }
 
         if (Array.IndexOf(args, "--snapshot-analysis") is >= 0 and var anAt && anAt + 2 < args.Length)
@@ -176,7 +177,7 @@ internal static class Program
             var cfgAn = Array.IndexOf(args, "--config");
             using var anHost = new TickerHost(cfgAn >= 0 && cfgAn + 1 < args.Length ? args[cfgAn + 1] : null);
             anHost.SnapshotAnalysis(args[anAt + 1], int.Parse(args[anAt + 2]), 10);
-            return;
+            return 0;
         }
 
         // A probe (own --config, snapshot, audit, test switch) never touches the real registry (start-up entry, uninstall entries).
@@ -197,7 +198,7 @@ internal static class Program
                 ApplicationConfiguration.Initialize();
                 MessageBox.Show(Loc.T("app.alreadyRunning"), Loc.T("app.name"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
-            return;
+            return 0;
         }
 
         ApplicationConfiguration.Initialize();
@@ -367,5 +368,6 @@ internal static class Program
         }
 
         Application.Run(host.Window);
+        return 0;
     }
 }

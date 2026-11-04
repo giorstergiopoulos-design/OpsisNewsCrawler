@@ -21,7 +21,15 @@ function Missing-Languages($iscc) {
     $wanted | Where-Object { -not (Test-Path (Join-Path $dir $_)) }
 }
 
+function Inno-Major($iscc) { try { [int](((Get-Item $iscc).VersionInfo.ProductVersion -split '\.')[0]) } catch { 0 } }
 $iscc = Find-Iscc
+# The script needs Inno Setup 7. winget carries it (manifest JRSoftware.InnoSetup, version 7); Chocolatey only has 6.x. NOT VERIFIED on a runner: when 7 cannot be installed
+# the build continues with the old compiler and the script is told so on purpose (CiAllowOlderInno), with a visible warning.
+if ((-not $iscc -or (Inno-Major $iscc) -lt 7) -and (Get-Command winget -ErrorAction SilentlyContinue)) {
+    "Trying Inno Setup 7 with winget"
+    winget install --id JRSoftware.InnoSetup -e --version 7 --silent --accept-package-agreements --accept-source-agreements
+    $iscc = Find-Iscc
+}
 if (-not $iscc) { choco install innosetup -y --no-progress; $iscc = Find-Iscc }
 if (-not $iscc) { throw 'Inno Setup is not installed and could not be installed' }
 "Inno Setup found: $iscc"
@@ -42,3 +50,7 @@ if ($missing.Count -gt 0) {
     throw "Inno Setup at $iscc still lacks: $($missing -join ', ')"
 }
 "Inno Setup: $iscc"
+if ((Inno-Major $iscc) -lt 7) {
+    Write-Host "::warning::Inno Setup 7 could not be installed on this runner; building with $((Get-Item $iscc).VersionInfo.ProductVersion) (CiAllowOlderInno)."
+    if ($env:GITHUB_ENV) { "OPSIS_CI_ALLOW_OLD_INNO=1" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8 }
+}

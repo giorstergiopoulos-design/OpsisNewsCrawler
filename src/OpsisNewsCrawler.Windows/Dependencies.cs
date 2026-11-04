@@ -78,30 +78,7 @@ internal static class Dependencies
         }
     }
 
-    /// <summary>True when the file has a valid Authenticode signature whose signer is Microsoft Corporation.</summary>
-    private static async Task<bool> SignedByMicrosoftAsync(string file)
-    {
-        try
-        {
-            // The path travels in an environment variable, never inside the script text; the script only prints the subject of a VALID signature.
-            var command = "$s = Get-AuthenticodeSignature -LiteralPath $env:OPSIS_SIGCHECK_FILE; if ($s.Status -eq 'Valid') { [Console]::Out.Write($s.SignerCertificate.Subject) } else { exit 1 }";
-            var info = new ProcessStartInfo("powershell.exe")
-            {
-                ArgumentList = { "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", command },
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true
-            };
-            info.Environment["OPSIS_SIGCHECK_FILE"] = file;
-            using var ps = Process.Start(info);
-            if (ps is null) return false;
-            var subject = await ps.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
-            await ps.WaitForExitAsync().ConfigureAwait(false);
-            return ps.ExitCode == 0 && DownloadPolicy.IsMicrosoftSigner(subject);
-        }
-        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
-        {
-            return false;
-        }
-    }
+    /// <summary>True when the file has a valid Authenticode signature whose signer is Microsoft Corporation (checked with the Windows API, no script engine).</summary>
+    private static Task<bool> SignedByMicrosoftAsync(string file) =>
+        Task.Run(() => Authenticode.ValidSignerSubject(file) is { } subject && DownloadPolicy.IsMicrosoftSigner(subject));
 }

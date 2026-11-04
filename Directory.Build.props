@@ -1,0 +1,21 @@
+<Project>
+  <!-- Release hygiene: reproducible builds that carry no trace of the machine they were built on (no local paths, no user name), no symbol files in the downloads,
+       and the same publisher / product information in every exe and dll. -->
+  <PropertyGroup>
+    <Authors>giorstergiopoulos-design</Authors>
+    <Company>giorstergiopoulos-design</Company>
+    <Product>Opsis News Crawler</Product>
+    <Description>Opsis News Crawler: a news and market ticker bar for Windows</Description>
+    <Copyright>Copyright (c) 2026 giorstergiopoulos-design</Copyright>
+    <RepositoryUrl>https://github.com/giorstergiopoulos-design/OpsisNewsCrawler</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/giorstergiopoulos-design/OpsisNewsCrawler</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+    <DeterministicSourcePaths>true</DeterministicSourcePaths>
+    <PathMap>$(MSBuildThisFileDirectory)=/src/</PathMap>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+</Project>

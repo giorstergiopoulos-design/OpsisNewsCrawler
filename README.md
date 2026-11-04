@@ -228,3 +228,7 @@ Needs the .NET 10 SDK and Inno Setup 6/7. Layout: `src/OpsisNewsCrawler.Core` (m
 ## Άδεια / License
 
 [MIT](LICENSE) © 2026 giorstergiopoulos-design
+
+Ελληνικά: ελεύθερη χρήση, αντιγραφή, τροποποίηση και διανομή, με την προϋπόθεση να διατηρείται η σημείωση πνευματικών δικαιωμάτων και η άδεια· το λογισμικό παρέχεται «ως έχει», χωρίς εγγύηση. Εκδότης όλων των αρχείων: giorstergiopoulos-design.
+
+English: you may use, copy, modify and distribute the program as long as the copyright notice and the licence text are kept; it is provided "as is", without warranty. Publisher of all files: giorstergiopoulos-design.

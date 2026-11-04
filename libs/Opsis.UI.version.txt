@@ -1,1 +1,1 @@
-Opsis.UI 599108d (0.2.2+, AssemblyVersion 0.1.0.0), built 2026-11-03
+Opsis.UI 599108d (0.2.2+, AssemblyVersion 0.1.0.0), rebuilt 2026-11-04 deterministic (no build paths, no symbols)

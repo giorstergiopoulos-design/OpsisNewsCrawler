@@ -72,21 +72,21 @@ internal static class UpdateInstaller
     }
 
     /// <summary>
-    /// Starts a hidden helper that waits for this process to end, checks the hash of the file once more, runs the setup silently and
-    /// (standalone only) opens the program again. The caller must end the process right after this call.
+    /// Starts the helper (this program with <c>--apply-update</c>: no script engine) that waits for this process to end, checks the hash of the file once more,
+    /// runs the setup elevated and (standalone only) opens the program again. The caller must end the process right after this call.
+    /// When no copy of the program can act as the helper (hosted and not found), the setup is started elevated directly and the installer closes what it must.
     /// </summary>
     public static void LaunchAfterExit(string setupPath, string sha256, bool hostedByOpsis)
     {
-        var exe = Environment.ProcessPath ?? "";
-        var args = hostedByOpsis
-            ? "'/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/MODE=integrated'"
-            : "'/SILENT','/SUPPRESSMSGBOXES','/NORESTART','/CLOSEAPPLICATIONS','/MODE=separate'";
-        var script = UpdateHelperScript.Build(Environment.ProcessId, setupPath, sha256, UpdateResultLog.DefaultPath, AboutTexts.Version, args, hostedByOpsis ? null : exe);
-        Process.Start(new ProcessStartInfo("powershell.exe")
+        var exe = UpdateHelper.HelperExecutable();
+        if (exe is null)
         {
-            ArgumentList = { "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-Command", script },
-            UseShellExecute = false,
-            CreateNoWindow = true
-        });
+            Process.Start(new ProcessStartInfo(setupPath, UpdateSetupArguments.Build(hostedByOpsis) + " /CLOSEAPPLICATIONS") { UseShellExecute = true, Verb = "runas" });
+            return;
+        }
+        var info = new ProcessStartInfo(exe) { UseShellExecute = false, CreateNoWindow = true };
+        foreach (var a in new[] { UpdateHelper.Switch, Environment.ProcessId.ToString(), setupPath, sha256, UpdateResultLog.DefaultPath, AboutTexts.Version, hostedByOpsis ? "hosted" : "standalone", hostedByOpsis ? "" : exe })
+            info.ArgumentList.Add(a);
+        Process.Start(info);
     }
 }

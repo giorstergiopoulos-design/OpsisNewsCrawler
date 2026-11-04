@@ -1,4 +1,4 @@
-﻿; Inno Setup 6/7 script for Opsis News Crawler. Saved as UTF-8 with BOM so the Greek texts display correctly.
+﻿; Inno Setup 7 script for Opsis News Crawler. Saved as UTF-8 with BOM so the Greek texts display correctly.
 ; Run it through Run-OpsisNewsCrawler-Build.bat (option 2 or 3) after the "bin" folder has been created.
 ;
 ; Two ways to install (chosen on the second wizard page):
@@ -8,8 +8,16 @@
 ;   * Separate: the stand-alone app (tray icon, own settings window, optional start with Windows).
 ; The wizard looks for Opsis (uninstall entry, default folders) and proposes the integrated install when it finds it.
 ; Test switches: /MODE=integrated | /MODE=separate (silent installs), /PLUGINROOT=<folder> (instead of %AppData%\Opsis\plugins).
+; The script is written for Inno Setup 7 (the recommended version). CI machines that can only get an older compiler define CiAllowOlderInno on purpose.
+#if Ver < EncodeVer(7,0,0)
+  #ifndef CiAllowOlderInno
+    #error This script needs Inno Setup 7 or newer (https://jrsoftware.org/isdl.php).
+  #endif
+#endif
 #define MyAppName "Opsis News Crawler"
-#define MyAppVersion "0.20.2"
+#define MyPublisher "giorstergiopoulos-design"
+#define MyAppUrl "https://github.com/giorstergiopoulos-design/OpsisNewsCrawler"
+#define MyAppVersion "0.20.3"
 #ifndef BinDir
 #define BinDir "bin"
 #endif
@@ -21,7 +29,16 @@
 AppId={{B7E3C9A2-5D41-4F68-9A0E-3C1D7F52A8B4}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
-AppPublisher=Opsis
+AppPublisher={#MyPublisher}
+AppPublisherURL={#MyAppUrl}
+AppSupportURL={#MyAppUrl}/issues
+AppUpdatesURL={#MyAppUrl}/releases
+VersionInfoCompany={#MyPublisher}
+VersionInfoDescription={#MyAppName} Setup
+VersionInfoVersion={#MyAppVersion}.0
+VersionInfoProductName={#MyAppName}
+VersionInfoProductVersion={#MyAppVersion}
+VersionInfoCopyright=Copyright (c) 2026 {#MyPublisher}
 SetupIconFile=src\OpsisNewsCrawler.Windows\Assets\app.ico
 ; Wizard pictures drawn from the app artwork (BrandArt, --make-brand-art): 100 / 125 / 150 / 200 %
 WizardImageFile=installer\wizard\large-100.bmp,installer\wizard\large-125.bmp,installer\wizard\large-150.bmp,installer\wizard\large-200.bmp
