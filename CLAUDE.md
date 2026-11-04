@@ -100,3 +100,6 @@ Fourteen UI languages like Opsis: `Core/Locales/<code>.json` (el, en generated b
 
 ## 0.20.0 additions
 - **Urgent news is scored, not keyword-matched**: `Core/BreakingEngine.cs` (stories, confirmation by independent publishers, speed, freshness, source weight, hazard data, negative filters, sensitivity thresholds 72/58/42), `Core/BreakingFeedback.cs` (local "not breaking" / muted source / muted topic, `breaking-feedback.json`), `Core/BreakingWhy.cs` (reason codes to localized sentence, `why.*` keys). `RssNewsProvider` keeps the publishers folded by its near-duplicate removal as `NewsItem.StoryReports`. `AppConfig.BreakingKeywords` = "extra words I care about" (built-in urgent words are in the engine), `BreakingSensitivity`. Details and limits: `docs/BREAKING-NEWS.md`. Tuning rule: change a weight only together with the labelled corpus `tests/.../BreakingCorpus.cs` (precision >= 92 %, recall >= 85 %, Strict no false alarm); the CI step "Urgent-news detector precision and recall" prints the numbers.
+
+## 0.20.2 additions
+- **Encoding rule for scripts**: any script that edits a source file names UTF-8 explicitly (Python `open(p, encoding="utf-8")`, PowerShell `-Encoding UTF8`); the default on this PC is cp1253 and silently double-encodes Greek text. `EncodingHygieneTests` scans the whole repository and fails on such text.
