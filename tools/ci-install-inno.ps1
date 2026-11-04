@@ -21,20 +21,29 @@ function Missing-Languages($iscc) {
     $wanted | Where-Object { -not (Test-Path (Join-Path $dir $_)) }
 }
 
-function Inno-Major($iscc) { try { [int](((Get-Item $iscc).VersionInfo.ProductVersion -split '\.')[0]) } catch { 0 } }
+# "Inno Setup 7.1.1 Command-Line Compiler": the version is read from the compiler itself (the file version of the old ISCC.exe is empty).
+function Inno-Major($iscc) { try { $line = (& $iscc '/?' 2>&1 | Select-Object -First 3) -join ' '; if ($line -match 'Inno Setup (\d+)') { [int]$Matches[1] } else { 0 } } catch { 0 } }
 $iscc = Find-Iscc
-# The script needs Inno Setup 7. winget carries it (manifest JRSoftware.InnoSetup, version 7); Chocolatey only has 6.x. NOT VERIFIED on a runner: when 7 cannot be installed
-# the build continues with the old compiler and the script is told so on purpose (CiAllowOlderInno), with a visible warning.
-if ((-not $iscc -or (Inno-Major $iscc) -lt 7) -and (Get-Command winget -ErrorAction SilentlyContinue)) {
-    "Trying Inno Setup 7 with winget"
-    winget install --id JRSoftware.InnoSetup -e --version 7 --silent --accept-package-agreements --accept-source-agreements
-    $iscc = Find-Iscc
+# The script needs Inno Setup 7. Source (free, official): the GitHub release of jrsoftware/issrc that https://jrsoftware.org/isdl.php links to
+# (innosetup-7.1.1-x64.exe, signed by "Pyrsys B.V."); the signature is checked before it runs. Installed per user, so no administrator is needed.
+# Chocolatey (6.7.1) and the winget manifest are not used: they do not give version 7 here.
+$inno7Url = 'https://github.com/jrsoftware/issrc/releases/download/is-7_1_1/innosetup-7.1.1-x64.exe'
+if (-not $iscc -or (Inno-Major $iscc) -lt 7) {
+    "Installing Inno Setup 7 from $inno7Url"
+    try {
+        $setup = Join-Path ([IO.Path]::GetTempPath()) 'innosetup-7-x64.exe'
+        Invoke-WebRequest -Uri $inno7Url -OutFile $setup -UseBasicParsing
+        $sig = Get-AuthenticodeSignature $setup
+        if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notmatch 'Pyrsys') { throw "unexpected signature: $($sig.Status) $($sig.SignerCertificate.Subject)" }
+        Start-Process $setup -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', '/CURRENTUSER' -Wait
+        $iscc = Find-Iscc
+    } catch { Write-Host "::warning::Inno Setup 7 download/install failed: $($_.Exception.Message)" }
 }
 if (-not $iscc) { choco install innosetup -y --no-progress; $iscc = Find-Iscc }
 if (-not $iscc) { throw 'Inno Setup is not installed and could not be installed' }
 "Inno Setup found: $iscc"
 $missing = @(Missing-Languages $iscc)
-if ($missing.Count -gt 0) {
+if ($missing.Count -gt 0 -and (Inno-Major $iscc) -lt 7) {
     "Language files missing: $($missing -join ', ') - upgrading Inno Setup with Chocolatey"
     choco upgrade innosetup -y --no-progress
     $iscc = Find-Iscc

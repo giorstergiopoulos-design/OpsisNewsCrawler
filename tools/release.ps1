@@ -41,21 +41,18 @@ if ($opsisCopy) {
 }
 "contract version: $contract"
 
-# Any installed Inno Setup (5, 6, 7...): the newest folder name wins; an ISCC on the PATH is used first.
-$iscc = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source
-if (-not $iscc) {
-  $iscc = @("$env:LOCALAPPDATA\Programs", $env:ProgramFiles, ${env:ProgramFiles(x86)}) |
-    Where-Object { $_ -and (Test-Path $_) } |
-    ForEach-Object { Get-ChildItem $_ -Directory -Filter "Inno Setup*" -ErrorAction SilentlyContinue } |
-    Sort-Object Name -Descending |
-    ForEach-Object { Join-Path $_.FullName "ISCC.exe" } |
-    Where-Object { Test-Path $_ } |
-    Select-Object -First 1
-}
+# Any installed Inno Setup (5, 6, 7...): the newest real install folder wins (the ISCC.exe on the PATH is, on a CI runner, a shim of an older version); the PATH is the last resort.
+$iscc = @("$env:LOCALAPPDATA\Programs", $env:ProgramFiles, ${env:ProgramFiles(x86)}) |
+  Where-Object { $_ -and (Test-Path $_) } |
+  ForEach-Object { Get-ChildItem $_ -Directory -Filter "Inno Setup*" -ErrorAction SilentlyContinue } |
+  Sort-Object Name -Descending |
+  ForEach-Object { Join-Path $_.FullName "ISCC.exe" } |
+  Where-Object { Test-Path $_ } |
+  Select-Object -First 1
+if (-not $iscc) { $iscc = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source }
 if (-not $iscc) { throw "Inno Setup (ISCC.exe) not found - install it from https://jrsoftware.org/isdl.php" }
 "Inno Setup: $iscc"
-$extra = if ($env:OPSIS_CI_ALLOW_OLD_INNO) { @("/DCiAllowOlderInno=1") } else { @() }
-& $iscc "/DBinDir=Output\stage" @extra "$r\OpsisNewsCrawler.iss" | Select-String "Error|Successful"
+& $iscc "/DBinDir=Output\stage" "$r\OpsisNewsCrawler.iss" | Select-String "Error|Successful"
 if ($LASTEXITCODE -ne 0) { throw "installer compile failed" }
 
 $h = (Get-FileHash "$r\Output\OpsisNewsCrawler-Setup.exe" -Algorithm SHA256).Hash.ToLower()

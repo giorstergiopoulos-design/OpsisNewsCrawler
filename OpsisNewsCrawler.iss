@@ -8,9 +8,9 @@
 ;   * Separate: the stand-alone app (tray icon, own settings window, optional start with Windows).
 ; The wizard looks for Opsis (uninstall entry, default folders) and proposes the integrated install when it finds it.
 ; Test switches: /MODE=integrated | /MODE=separate (silent installs), /PLUGINROOT=<folder> (instead of %AppData%\Opsis\plugins).
-; The script is written for Inno Setup 7 (the recommended version). CI machines that can only get an older compiler define CiAllowOlderInno on purpose.
+; The script is written for Inno Setup 7 (the recommended version). A CI machine that cannot get it sets the environment variable OPSIS_CI_ALLOW_OLD_INNO=1 on purpose.
 #if Ver < EncodeVer(7,0,0)
-  #ifndef CiAllowOlderInno
+  #if GetEnv("OPSIS_CI_ALLOW_OLD_INNO") == ""
     #error This script needs Inno Setup 7 or newer (https://jrsoftware.org/isdl.php).
   #endif
 #endif
