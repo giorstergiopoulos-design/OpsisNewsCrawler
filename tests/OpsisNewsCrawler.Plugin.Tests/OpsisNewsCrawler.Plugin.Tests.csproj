@@ -16,6 +16,7 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../../src/OpsisNewsCrawler.OpsisPlugin/OpsisNewsCrawler.OpsisPlugin.csproj" />
     <ProjectReference Include="../../src/OpsisNewsCrawler.Plugin.Abstractions/OpsisNewsCrawler.Plugin.Abstractions.csproj" />
     <None Include="reference/*.dll" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

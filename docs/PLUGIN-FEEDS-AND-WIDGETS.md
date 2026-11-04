@@ -19,6 +19,9 @@ Source of the request: `C:\w\PLUGIN-CONTRACT-2026-11.md` (the "San simera" / Chr
 ## Compatibility
 `tests/OpsisNewsCrawler.Plugin.Tests` loads the plugin's own copy of the contract (`reference/OpsisNewsCrawler.Plugin.Abstractions.san-shmera.dll`, 22 016 bytes, SHA-256 `F3074836696EAD48ACC38F9E1E483BF0F3636EFE7A483C3E841AF47FF6374D63`) in its own load context and checks that every public type and member signature of it exists in the contract built here, that the assembly version is 0.8.0.0, and that the built DLL contains the text `PluginFeeds` (the check a host can do: an old 15 KB contract DLL lacks it and the plugin fails with "Could not load type IPluginWidgetProvider").
 
+## Tray menu inside Opsis (0.20.2)
+`GetTrayMenuItems` offers Settings, Refresh, Pause / Resume, Close and Open (`OpsisNewsCrawlerPlugin.BuildTrayMenu`). It does **not** offer `news.welcome` (welcome guide) or `news.suite` (the Opsis family): Opsis provides those once for the whole family, so they must not appear several times. The standalone program keeps both entries in its own tray menu. Tested in `TrayMenuTests`.
+
 ## Trust
 Opsis asks for the SHA-256 of a plugin DLL before it loads it (`%AppData%\Opsis\plugin-trust.json`); this does not change.
 

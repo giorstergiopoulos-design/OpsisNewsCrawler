@@ -5,6 +5,7 @@ Detailed notes per release: `docs/releases/RELEASE-<version>.md` and the GitHub 
 
 ## 0.20.2 — 2026-11-04
 - **Fix: garbled text in the Opsis tray submenu.** The entries "Welcome guide" and "The Opsis family" of the News Crawler submenu in Opsis' tray menu showed unreadable symbols instead of the dash and the Greek words. The two strings in `OpsisNewsCrawlerPlugin.cs` had been saved double-encoded since 0.15.0 (UTF-8 bytes read as the Greek Windows code page cp1253 and written back as UTF-8; the result is valid UTF-8, so it compiled and no test noticed). Corrected.
+- **Hosted in Opsis, the tray submenu no longer offers the welcome guide and the Opsis family window** (Opsis provides them once itself); the standalone program keeps them. Test `TrayMenuTests`.
 - **New test `EncodingHygieneTests`**: scans every .cs / .json / .iss / .md / .ps1 / .yml / .csproj / .bat / .txt file of the repository for double-encoded text (round trip through cp1253 / cp1252, plus the signature of lossy damage). Nothing else was found.
 - **How it got in (most likely)**: a script that opened the file with the system default encoding. On this PC that is cp1253 for Python `open()` without `encoding=` and for PowerShell 5.1 `Get-Content` / `Set-Content` without `-Encoding UTF8`. 0.15.0 also had to repair the language files of 0.14.7 damaged the same way. Rule added to `CLAUDE.md`: scripts that edit files always name the encoding.
 
