@@ -19,6 +19,8 @@ jobs:
         run: dotnet build OpsisNewsCrawler.sln --configuration Release --no-restore
       - name: Run core tests
         run: dotnet test tests/OpsisNewsCrawler.Core.Tests/OpsisNewsCrawler.Core.Tests.csproj --configuration Release
+      - name: Plugin contract tests
+        run: dotnet test tests/OpsisNewsCrawler.Plugin.Tests/OpsisNewsCrawler.Plugin.Tests.csproj --configuration Release
       - name: Urgent-news detector precision and recall
         if: always()
         shell: pwsh

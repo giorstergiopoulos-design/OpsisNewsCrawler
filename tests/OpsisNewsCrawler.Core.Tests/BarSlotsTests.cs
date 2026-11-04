@@ -42,3 +42,25 @@ public class BarSlotsTests
         Assert.Equal("", BarSpec.Clean("junk", _ => true));
     }
 }
+
+public class FeedSlotTests
+{
+    [Fact]
+    public void FeedSpecRoundTrips()
+    {
+        var slot = BarSlot.Parse("feed:san-simera");
+        Assert.NotNull(slot);
+        Assert.Equal(SlotKind.Feed, slot!.Value.Kind);
+        Assert.Equal("san-simera", slot.Value.Category);
+        Assert.Equal("feed:san-simera", slot.Value.ToSpec());
+        Assert.Null(BarSlot.Parse("feed:"));
+    }
+
+    [Fact]
+    public void FeedCountsAsNewsForLegacy()
+    {
+        Assert.Equal(BarContent.Both, new BarSlots(new BarSlot(SlotKind.Feed, "x"), new BarSlot(SlotKind.Stocks)).ToLegacy());
+        Assert.Equal(BarContent.News, new BarSlots(new BarSlot(SlotKind.Feed, "x"), null).ToLegacy());
+        Assert.Equal("feed:x", BarSpec.Clean("feed:x", _ => false));
+    }
+}

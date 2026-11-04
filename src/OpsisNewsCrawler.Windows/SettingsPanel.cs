@@ -2546,6 +2546,7 @@ public sealed class SettingsPanel : UserControl
             labels.Add(Loc.T("content.weather"));
             choices.Add(new BarSlot(SlotKind.Hazards));
             labels.Add(Loc.T("hazard.slot"));
+            foreach (var f in OpsisNewsCrawler.Plugin.Abstractions.PluginFeeds.All()) { choices.Add(new BarSlot(SlotKind.Feed, f.Key)); labels.Add(Loc.Pick(f.TitleEl, f.TitleEn)); }
 
             suppress = true;
             try
@@ -2559,7 +2560,7 @@ public sealed class SettingsPanel : UserControl
 
         private int IndexOf(BarSlot slot)
         {
-            var i = choices.FindIndex(x => x.Kind == slot.Kind && (slot.Kind != SlotKind.News || string.Equals(x.Category ?? "", slot.Category ?? "", StringComparison.OrdinalIgnoreCase)));
+            var i = choices.FindIndex(x => x.Kind == slot.Kind && (slot.Kind is not (SlotKind.News or SlotKind.Feed) || string.Equals(x.Category ?? "", slot.Category ?? "", StringComparison.OrdinalIgnoreCase)));
             return Math.Max(0, i);
         }
 

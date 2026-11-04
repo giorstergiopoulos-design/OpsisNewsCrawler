@@ -232,6 +232,7 @@ public sealed class TickerHost : IDisposable
     {
         this.configPath = configPath ?? AppConfig.DefaultPath;
         this.hostWindowDetector = hostWindowDetector;
+        OpsisNewsCrawler.Plugin.Abstractions.PluginFeeds.Changed += OnPluginFeedsChanged;
         Config = AppConfig.Load(this.configPath);
 
         State.SetMode(Config.Mode);
@@ -1046,11 +1047,30 @@ public sealed class TickerHost : IDisposable
         w.SetItemsB(ItemsFor(second), st.ScrollOffsetB);
     }
 
+    /// <summary>The lines of a feed that a plugin registered (a text feed for a bar); a failing plugin gives an empty bar, never an exception.</summary>
+    private static IReadOnlyList<NewsItem> PluginFeedForDisplay(string? key)
+    {
+        var feed = OpsisNewsCrawler.Plugin.Abstractions.PluginFeeds.Find(key);
+        if (feed is null) return Array.Empty<NewsItem>();
+        try
+        {
+            var title = Loc.Pick(feed.TitleEl, feed.TitleEn);
+            var now = DateTimeOffset.Now;
+            return feed.GetItems().Select(i => new NewsItem(i.Text, i.Url ?? "", title, now)).ToList();
+        }
+        catch (Exception ex)
+        {
+            Log.Write($"Plugin feed '{key}' failed: {ex.Message}");
+            return Array.Empty<NewsItem>();
+        }
+    }
+
     private IReadOnlyList<NewsItem> ItemsFor(BarSlot slot) => slot.Kind switch
     {
         SlotKind.Stocks => StocksForDisplay(),
         SlotKind.Weather => WeatherForDisplay(),
         SlotKind.Hazards => HazardsForDisplay(),
+        SlotKind.Feed => PluginFeedForDisplay(slot.Category),
         _ => IsActiveCategory(slot.Category) ? NewsForDisplay() : CategoryNewsForDisplay(slot.Category!)
     };
 
@@ -1794,11 +1814,19 @@ public sealed class TickerHost : IDisposable
         }
     }
 
+    private void OnPluginFeedsChanged()
+    {
+        if (disposed || !Window.IsHandleCreated) return;
+        try { Window.BeginInvoke(new Action(() => { if (!disposed) PushAll(); })); }
+        catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException) { }
+    }
+
     public void Dispose()
     {
         if (disposed) return;
         disposed = true;
         Loc.Changed -= OnLanguageChanged;
+        OpsisNewsCrawler.Plugin.Abstractions.PluginFeeds.Changed -= OnPluginFeedsChanged;
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplaysChanged;
         Microsoft.Win32.SystemEvents.PowerModeChanged -= OnPowerModeChanged;
         cts.Cancel();

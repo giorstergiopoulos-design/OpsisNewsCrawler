@@ -74,6 +74,33 @@ public interface IOpsisNewsCrawlerPlugin
     event Action<string>? NavigationRequested;
 }
 
+/// <summary>A widget a plugin offers to the host's desktop surface; <see cref="ReplacesBuiltIn"/> names a built-in widget (e.g. "calendar") that it replaces.</summary>
+public sealed record PluginWidget(string Key, string TitleEl, string TitleEn, Func<Control> CreateContent, string? ReplacesBuiltIn = null);
+
+/// <summary>Optional capability (the host checks with <c>is</c>): the plugin offers widgets.</summary>
+public interface IPluginWidgetProvider
+{
+    IReadOnlyList<PluginWidget> GetWidgets();
+}
+
+/// <summary>One line of a plugin feed (text, with an optional link opened on click).</summary>
+public sealed record PluginFeedItem(string Text, string? Url = null);
+
+/// <summary>A text feed a plugin registers; the user can choose it as the content of a bar of the News Crawler. <see cref="GetItems"/> is called on the UI thread.</summary>
+public sealed record PluginFeed(string Key, string TitleEl, string TitleEn, Func<IReadOnlyList<PluginFeedItem>> GetItems);
+
+/// <summary>The registry of plugin feeds, shared by the plugin and the News Crawler through this contract DLL.</summary>
+public static class PluginFeeds
+{
+    private static readonly object Gate = new(); private static readonly List<PluginFeed> Feeds = new();
+    /// <summary>Raised after a feed was added, replaced or removed.</summary>
+    public static event Action? Changed;
+    public static void Register(PluginFeed feed) { lock (Gate) { Feeds.RemoveAll(f => string.Equals(f.Key, feed.Key, StringComparison.OrdinalIgnoreCase)); Feeds.Add(feed); } Changed?.Invoke(); }
+    public static void Unregister(string key) { int removed; lock (Gate) removed = Feeds.RemoveAll(f => string.Equals(f.Key, key, StringComparison.OrdinalIgnoreCase)); if (removed > 0) Changed?.Invoke(); }
+    public static IReadOnlyList<PluginFeed> All() { lock (Gate) return Feeds.ToList(); }
+    public static PluginFeed? Find(string? key) { if (string.IsNullOrWhiteSpace(key)) return null; lock (Gate) return Feeds.FirstOrDefault(f => string.Equals(f.Key, key, StringComparison.OrdinalIgnoreCase)); }
+}
+
 /// <summary>
 /// Optional capability (the host checks with <c>is</c>, so plugins that do not implement it keep working): the host's
 /// hardware tier ("Low", "Balanced" or "High"). A plugin should lighten its animations and polling on "Low".

@@ -1,17 +1,18 @@
 namespace OpsisNewsCrawler.Core;
 
 /// <summary>What one part of a bar shows.</summary>
-public enum SlotKind { News, Stocks, Weather, Hazards }
+public enum SlotKind { News, Stocks, Weather, Hazards, Feed }
 
 /// <summary>One half (or the whole) of a bar. <see cref="Category"/> is the id of a news category; null = the category that is active.</summary>
 public readonly record struct BarSlot(SlotKind Kind, string? Category = null)
 {
-    /// <summary>"news", "news:&lt;category id&gt;", "stocks" or "weather" (the form saved in the configuration).</summary>
+    /// <summary>"news", "news:&lt;category id&gt;", "feed:&lt;plugin feed key&gt;", "stocks" or "weather" (the form saved in the configuration).</summary>
     public string ToSpec() => Kind switch
     {
         SlotKind.Stocks => "stocks",
         SlotKind.Weather => "weather",
         SlotKind.Hazards => "hazards",
+        SlotKind.Feed => "feed:" + Category,
         _ => string.IsNullOrWhiteSpace(Category) ? "news" : "news:" + Category
     };
 
@@ -23,6 +24,7 @@ public readonly record struct BarSlot(SlotKind Kind, string? Category = null)
         if (spec.Equals("weather", StringComparison.OrdinalIgnoreCase)) return new BarSlot(SlotKind.Weather);
         if (spec.Equals("hazards", StringComparison.OrdinalIgnoreCase)) return new BarSlot(SlotKind.Hazards);
         if (spec.Equals("news", StringComparison.OrdinalIgnoreCase)) return new BarSlot(SlotKind.News);
+        if (spec.StartsWith("feed:", StringComparison.OrdinalIgnoreCase) && spec.Length > 5) return new BarSlot(SlotKind.Feed, spec[5..]);
         if (spec.StartsWith("news:", StringComparison.OrdinalIgnoreCase) && spec.Length > 5) return new BarSlot(SlotKind.News, spec[5..]);
         return null;
     }
@@ -42,8 +44,9 @@ public sealed record BarSlots(BarSlot A, BarSlot? B)
     /// <summary>The closest of the old four-value setting (for code that only needs to know "does this bar show news").</summary>
     public BarContent ToLegacy()
     {
-        if (Has(SlotKind.News) && Has(SlotKind.Stocks)) return BarContent.Both;
-        if (Has(SlotKind.News)) return BarContent.News;
+        var newsLike = Has(SlotKind.News) || Has(SlotKind.Feed);   // a plugin feed is text like news
+        if (newsLike && Has(SlotKind.Stocks)) return BarContent.Both;
+        if (newsLike) return BarContent.News;
         if (Has(SlotKind.Stocks)) return BarContent.Stocks;
         return BarContent.Weather;   // weather and hazards have no old equivalent
     }

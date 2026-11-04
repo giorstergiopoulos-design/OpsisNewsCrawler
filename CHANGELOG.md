@@ -3,6 +3,10 @@
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
 Detailed notes per release: `docs/releases/RELEASE-<version>.md` and the GitHub releases.
 
+## 0.20.1 — 2026-11-04
+- **Plugin contract extended (optional, assembly version stays 0.8.0.0):** `PluginWidget`, `IPluginWidgetProvider`, `PluginFeedItem`, `PluginFeed`, `PluginFeeds`. A plugin can register text feeds that the user chooses as the content of a bar (Settings > Bars; spec `feed:<key>`, `SlotKind.Feed`) and offer widgets for the Opsis desktop. Needed by the "San simera" plugin: an old contract DLL without these types made Opsis 2.4.2 fail to load it ("Could not load type IPluginWidgetProvider").
+- New test project `tests/OpsisNewsCrawler.Plugin.Tests`: loads the plugin's own copy of the contract in a separate load context and compares every public signature with ours. Details: `docs/PLUGIN-FEEDS-AND-WIDGETS.md`.
+
 ## 0.20.0 — 2026-11-03
 - **Smart detection of real breaking news.** The bar no longer turns red because one headline contains a word like "BREAKING". `Core/BreakingEngine.cs` scores every story from many signals: confirmation by independent publishers inside a short window (headlines are grouped into stories by word overlap, in any language; the publishers folded away by the near-duplicate removal still count), speed (a burst in the last 10 minutes), freshness (minutes, not hours), reliability of the source (agencies, official bodies), objective disaster data from the existing hazards feed (magnitude, alert level, the same kind and place), and a small weight for urgent words and for the user's own extra words. Negative filters: opinion / analysis / interview / lists, sports and showbiz hyperbole, past events and anniversaries, announcements of future events, clickbait, questions. A headline with one of those never passes on the strength of other signals.
 - **Sensitivity** (Strict / Normal / Sensitive = threshold 72 / 58 / 42 of 100) in Settings > Breaking news; the old keyword box is now "Extra words I care about" (the built-in urgent words in 14 languages are no longer listed).
