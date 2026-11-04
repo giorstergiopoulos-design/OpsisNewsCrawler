@@ -88,20 +88,22 @@ public sealed class OpsisNewsCrawlerPlugin : IOpsisNewsCrawlerPlugin, IPluginPro
             new PluginAboutSection("Άδεια χρήσης", "License", AboutTexts.License),
         });
 
-    public IReadOnlyList<PluginMenuItem> GetTrayMenuItems() => new[]
+    public IReadOnlyList<PluginMenuItem> GetTrayMenuItems() => BuildTrayMenu(
+        () => NavigationRequested?.Invoke(NavigationKey), Refresh,
+        () => { if (_controller.Host.Paused) Resume(); else Pause(); }, CloseCrawler, OpenCrawler);
+
+    /// <summary>
+    /// The commands the crawler adds to Opsis' tray menu. The welcome guide and the Opsis family window are NOT here: inside Opsis the host offers them itself,
+    /// once (the standalone program has them in its own tray menu).
+    /// </summary>
+    public static IReadOnlyList<PluginMenuItem> BuildTrayMenu(Action settings, Action refresh, Action pauseResume, Action close, Action open) => new[]
     {
         new PluginMenuItem("news.separator", "", "", () => { }, IsSeparator: true),
-        new PluginMenuItem("news.settings", "News Crawler — Ρυθμίσεις", "News Crawler — Settings", () => NavigationRequested?.Invoke(NavigationKey)),
-        new PluginMenuItem("news.refresh", "News Crawler — Ανανέωση", "News Crawler — Refresh", Refresh),
-        new PluginMenuItem("news.pause", "News Crawler — Παύση / Συνέχεια", "News Crawler — Pause / Resume", () =>
-        {
-            if (_controller.Host.Paused) Resume(); else Pause();
-        }),
-        // The guide and the family window are offered here; inside Opsis they are never shown by themselves (Opsis has its own).
-        new PluginMenuItem("news.welcome", "News Crawler — Οδηγός καλωσορίσματος", "News Crawler — Welcome guide", () => _controller.Host.ShowWelcome()),
-        new PluginMenuItem("news.suite", "News Crawler — Η οικογένεια Opsis", "News Crawler — The Opsis family", () => _controller.Host.ShowSuite()),
-        new PluginMenuItem("news.close", "News Crawler — Κλείσιμο", "News Crawler — Close", CloseCrawler),
-        new PluginMenuItem("news.open", "News Crawler — Άνοιγμα", "News Crawler — Open", OpenCrawler),
+        new PluginMenuItem("news.settings", "News Crawler — Ρυθμίσεις", "News Crawler — Settings", settings),
+        new PluginMenuItem("news.refresh", "News Crawler — Ανανέωση", "News Crawler — Refresh", refresh),
+        new PluginMenuItem("news.pause", "News Crawler — Παύση / Συνέχεια", "News Crawler — Pause / Resume", pauseResume),
+        new PluginMenuItem("news.close", "News Crawler — Κλείσιμο", "News Crawler — Close", close),
+        new PluginMenuItem("news.open", "News Crawler — Άνοιγμα", "News Crawler — Open", open),
     };
 
     public IReadOnlyList<PluginNavigationItem> GetNavigationItems() =>
