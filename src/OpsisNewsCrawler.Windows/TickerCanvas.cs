@@ -108,18 +108,46 @@ internal sealed class TickerCanvas : Control
     private Font badgeFont = new("Segoe UI", 7.5f, FontStyle.Bold);
     private float fontScale = 1f;
 
+    private string fontFamilyName = "Segoe UI";
+    private float textPercent = 1f;
+
     /// <summary>Text, icons and gaps follow the height of the bar: 1 = the normal 42 px strip.</summary>
     public void SetFontScale(float scale)
     {
         scale = Math.Clamp(scale, 0.7f, 3f);
         if (Math.Abs(scale - fontScale) < 0.01f) return;
         fontScale = scale;
+        RebuildFonts();
+    }
+
+    /// <summary>The font of the text (empty or not installed = Segoe UI) and its size in percent of the normal size for this bar height.</summary>
+    public void SetTextStyle(string? family, int percent)
+    {
+        var name = string.IsNullOrWhiteSpace(family) || !FontInstalled(family) ? "Segoe UI" : family.Trim();
+        var factor = Math.Clamp(percent, AppConfig.MinFontPercent, AppConfig.MaxFontPercent) / 100f;
+        if (name == fontFamilyName && Math.Abs(factor - textPercent) < 0.001f) return;
+        fontFamilyName = name;
+        textPercent = factor;
+        RebuildFonts();
+    }
+
+    private static readonly Lazy<HashSet<string>> InstalledFonts = new(() =>
+    {
+        using var all = new System.Drawing.Text.InstalledFontCollection();
+        return new HashSet<string>(all.Families.Select(f => f.Name), StringComparer.OrdinalIgnoreCase);
+    });
+
+    public static bool FontInstalled(string family) => InstalledFonts.Value.Contains(family.Trim());
+
+    private void RebuildFonts()
+    {
         titleFont.Dispose();
         sourceFont.Dispose();
         badgeFont.Dispose();
-        titleFont = new Font("Segoe UI", 10f * scale, FontStyle.Regular);
-        sourceFont = new Font("Segoe UI", 10f * scale, FontStyle.Bold);
-        badgeFont = new Font("Segoe UI", 7.5f * scale, FontStyle.Bold);
+        var size = fontScale * textPercent;
+        titleFont = new Font(fontFamilyName, 10f * size, FontStyle.Regular);
+        sourceFont = new Font(fontFamilyName, 10f * size, FontStyle.Bold);
+        badgeFont = new Font(fontFamilyName, 7.5f * size, FontStyle.Bold);
         BuildLayout();
         Invalidate();
     }

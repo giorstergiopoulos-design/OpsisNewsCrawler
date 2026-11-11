@@ -366,6 +366,23 @@ public sealed class TickerHost : IDisposable
         return (Or(Config.MonitorSpeed), Config.MonitorSpeedB);
     }
 
+    /// <summary>Font, text size and (where the bar is free to have one) height of a bar, from the settings of that bar.</summary>
+    private void ApplyTextAndSize(TickerWindow w, TickerPosition position)
+    {
+        var main = ReferenceEquals(w, Window);
+        var second = ReferenceEquals(w, SecondWindow);
+        var mini = ReferenceEquals(w, miniWeather);
+        var (family, percent) = main ? (Config.MainFontFamily, Config.MainFontPercent)
+            : second ? (Config.SecondFontFamily, Config.SecondFontPercent)
+            : mini ? (Config.MiniFontFamily, Config.MiniFontPercent)
+            : (Config.MonitorFontFamily, Config.MonitorFontPercent);
+        w.SetTextStyle(family, percent);
+        // The desktop bar has its own height setting; a bar inside the taskbar takes the height of the taskbar.
+        if (mini || second || position == TickerPosition.TaskbarIntegrated) return;
+        var height = main ? Config.MainBarHeight : Config.MonitorBarHeight;
+        w.SetBarHeight(height > 0 ? height : 42);
+    }
+
     private void ApplySpeeds(TickerWindow w)
     {
         var (a, b) = SpeedsOf(w);
@@ -554,6 +571,7 @@ public sealed class TickerHost : IDisposable
         w.ShowPreview = Config.ShowPreview;
         w.ShowIcons = Config.ShowIcons;
         ApplySpeeds(w);
+        ApplyTextAndSize(w, position);
         w.SetThemeModeName(Config.ThemeMode);
         w.EdgeFade = Config.EdgeFade;
         w.SetShape(Config.BarShape);

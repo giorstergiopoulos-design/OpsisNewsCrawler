@@ -167,6 +167,11 @@ public sealed class SettingsPanel : UserControl
     private FlatCheckBox weatherAlerts = null!;
     private FlatComboBox alertCity = null!;
     private FlatText keywords = null!;
+    private FlatComboBox mainFont = null!, secondFont = null!, miniFont = null!, monitorFont = null!;
+    private FlatNumber mainFontPct = null!, secondFontPct = null!, miniFontPct = null!, monitorFontPct = null!;
+    private FlatToggle mainHeightAuto = null!, monitorHeightAuto = null!;
+    private FlatNumber mainHeight = null!, monitorHeight = null!;
+    private List<string> fontNames = new();
     private FlatList historyList = null!;
     private FlatList historyPreview = null!;
     private Label historyStatus = null!;
@@ -1718,6 +1723,7 @@ public sealed class SettingsPanel : UserControl
         flow.Controls.Add(Note(L("note.transparency"), 640));
         themeNote = Note("", 640);
         flow.Controls.Add(themeNote);
+        flow.Controls.Add(BuildTextAndSize());
         return page;
     }
 
@@ -1853,6 +1859,58 @@ public sealed class SettingsPanel : UserControl
         RefreshHistoryFeeds();
         MarkDirty();
     }
+
+    // ---- font, text size and height of every bar ----------------------------------------------------------------------------------------------
+
+    private Control BuildTextAndSize()
+    {
+        using (var installed = new System.Drawing.Text.InstalledFontCollection())
+            fontNames = installed.Families.Select(f => f.Name).OrderBy(n => n, StringComparer.CurrentCultureIgnoreCase).ToList();
+        var items = new[] { L("text.defaultFont") }.Concat(fontNames).ToArray();
+
+        var card = new FlatCard(L("text.card"));
+        var inner = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        inner.Controls.Add(Note(L("text.note"), 700));
+
+        void Bar(string title, out FlatComboBox font, out FlatNumber pct, out FlatToggle? auto, out FlatNumber? height)
+        {
+            inner.Controls.Add(new Label { Text = title, AutoSize = true, Margin = new Padding(0, 10, 0, 2), Font = new Font(Font, FontStyle.Bold) });
+            font = new FlatComboBox { Width = 300 };
+            font.SetItems(items, 0);
+            inner.Controls.Add(Row(L("text.font"), font, 260));
+            pct = new FlatNumber();
+            pct.Configure(AppConfig.MinFontPercent, AppConfig.MaxFontPercent, 5);
+            inner.Controls.Add(Row(L("text.size"), pct, 260));
+            auto = null; height = null;
+        }
+
+        Bar(L("card.mainBar"), out mainFont, out mainFontPct, out _, out _);
+        mainHeightAuto = new FlatToggle { RowWidth = 600, Text = L("text.heightAuto") };
+        mainHeight = new FlatNumber(); mainHeight.Configure(24, 200, 2);
+        mainHeightAuto.CheckedChanged += (_, _) => mainHeight.Enabled = !mainHeightAuto.Checked;
+        inner.Controls.Add(mainHeightAuto);
+        inner.Controls.Add(Row(L("text.height"), mainHeight, 260));
+
+        Bar(L("card.secondBar"), out secondFont, out secondFontPct, out _, out _);
+        inner.Controls.Add(Note(L("text.secondHeight"), 700));
+
+        Bar(L("speed.mini"), out miniFont, out miniFontPct, out _, out _);
+        inner.Controls.Add(Note(L("text.miniHeight"), 700));
+
+        Bar(L("text.monitors"), out monitorFont, out monitorFontPct, out _, out _);
+        monitorHeightAuto = new FlatToggle { RowWidth = 600, Text = L("text.heightAuto") };
+        monitorHeight = new FlatNumber(); monitorHeight.Configure(24, 200, 2);
+        monitorHeightAuto.CheckedChanged += (_, _) => monitorHeight.Enabled = !monitorHeightAuto.Checked;
+        inner.Controls.Add(monitorHeightAuto);
+        inner.Controls.Add(Row(L("text.height"), monitorHeight, 260));
+
+        card.Controls.Add(inner);
+        return card;
+    }
+
+    private int FontIndex(string family) => string.IsNullOrWhiteSpace(family) ? 0 : Math.Max(0, fontNames.FindIndex(n => string.Equals(n, family, StringComparison.OrdinalIgnoreCase)) + 1);
+
+    private string FontAt(FlatComboBox combo) => combo.SelectedIndex > 0 && combo.SelectedIndex - 1 < fontNames.Count ? fontNames[combo.SelectedIndex - 1] : "";
 
     private Control BuildBreaking()
     {
@@ -2087,6 +2145,12 @@ public sealed class SettingsPanel : UserControl
             weatherAlerts.Checked = c.WeatherAlertsEnabled;
             alertCity.SelectSilently(string.IsNullOrEmpty(c.AlertCityId) ? 0 : Math.Max(0, GreekCities.All.ToList().FindIndex(x => x.Id == c.AlertCityId) + 1));
             keywords.Value = string.Join("; ", c.BreakingKeywords);
+            mainFont.SelectSilently(FontIndex(c.MainFontFamily)); mainFontPct.SetValueSilently(c.MainFontPercent);
+            secondFont.SelectSilently(FontIndex(c.SecondFontFamily)); secondFontPct.SetValueSilently(c.SecondFontPercent);
+            miniFont.SelectSilently(FontIndex(c.MiniFontFamily)); miniFontPct.SetValueSilently(c.MiniFontPercent);
+            monitorFont.SelectSilently(FontIndex(c.MonitorFontFamily)); monitorFontPct.SetValueSilently(c.MonitorFontPercent);
+            mainHeightAuto.Checked = c.MainBarHeight == 0; mainHeight.SetValueSilently(c.MainBarHeight == 0 ? 42 : c.MainBarHeight); mainHeight.Enabled = c.MainBarHeight != 0;
+            monitorHeightAuto.Checked = c.MonitorBarHeight == 0; monitorHeight.SetValueSilently(c.MonitorBarHeight == 0 ? 42 : c.MonitorBarHeight); monitorHeight.Enabled = c.MonitorBarHeight != 0;
             workDisabledFeeds = c.DisabledPluginFeeds.ToList();
             RefreshHistoryFeeds();
             breakingSensitivity.SelectSilently((int)BreakingEngine.ParseSensitivity(c.BreakingSensitivity));
@@ -2514,6 +2578,12 @@ public sealed class SettingsPanel : UserControl
         c.WeatherAlertsEnabled = weatherAlerts.Checked;
         c.AlertCityId = alertCity.SelectedIndex > 0 && alertCity.SelectedIndex <= GreekCities.All.Count ? GreekCities.All[alertCity.SelectedIndex - 1].Id : "";
         c.DisabledPluginFeeds = workDisabledFeeds.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        c.MainFontFamily = FontAt(mainFont); c.MainFontPercent = mainFontPct.Value;
+        c.SecondFontFamily = FontAt(secondFont); c.SecondFontPercent = secondFontPct.Value;
+        c.MiniFontFamily = FontAt(miniFont); c.MiniFontPercent = miniFontPct.Value;
+        c.MonitorFontFamily = FontAt(monitorFont); c.MonitorFontPercent = monitorFontPct.Value;
+        c.MainBarHeight = mainHeightAuto.Checked ? 0 : mainHeight.Value;
+        c.MonitorBarHeight = monitorHeightAuto.Checked ? 0 : monitorHeight.Value;
         c.BreakingKeywords = keywords.Value.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
         c.BreakingSensitivity = BreakingEngine.SensitivityText((BreakingSensitivity)Math.Clamp(breakingSensitivity.SelectedIndex, 0, 2));
         c.BreakingMaxAgeMinutes = maxAge.Value;

@@ -3,6 +3,9 @@
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
 Detailed notes per release: `docs/releases/RELEASE-<version>.md` and the GitHub releases.
 
+## 0.21.0 — 2026-11-11
+- **Font, text size and bar height for every bar** (Settings > Look > "Text and size of the bars"): main bar, bar inside the taskbar, desktop bar and the bars of the other monitors each have a font (any installed font; empty = Segoe UI), a text size of 60-160 % of the normal size for the bar height, and, for the main bar and the monitor bars, an optional fixed height (24-200 px; automatic = 42). The bar inside the taskbar keeps the height of the taskbar and the desktop bar keeps its own height setting (Bars page). Stored in `AppConfig.*FontFamily / *FontPercent / MainBarHeight / MonitorBarHeight`; applied in `TickerHost.ApplyTextAndSize`, drawn by `TickerCanvas.SetTextStyle`. 14 languages. Queued next: automatic text colour on transparent bars (with the taskbar transparency work).
+
 ## 0.20.4 — 2026-11-11
 - **New page Sources > History flow.** It lists the text flows that plugins register (`PluginFeeds.All()`, for example `san-simera` "On this day"), a switch for each (`AppConfig.DisabledPluginFeeds`; a switched-off flow shows nothing in any bar), a preview of the flow's lines (the plugin fills its flow a few seconds after it starts: "Loading..." and it asks again every 3 s, at most 10 times, and whenever `PluginFeeds.Changed` is raised), which bars show it, and a button that puts it in the right half of the main bar (slot `feed:<key>`). The bar content choosers are refreshed when a feed appears. No contract change (0.8.0.0), no API of Opsis 2.6.0. 14 languages.
 

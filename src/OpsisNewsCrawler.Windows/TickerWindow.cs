@@ -29,6 +29,13 @@ public sealed class TickerWindow : Form
         Reposition();
     }
 
+    /// <summary>Font and size (percent) of the text of this bar.</summary>
+    public void SetTextStyle(string? family, int percent)
+    {
+        canvas.SetTextStyle(family, percent);
+        canvasB.SetTextStyle(family, percent);
+    }
+
     public void SetCenterWhenStatic(bool value)
     {
         canvas.SetCenterWhenStatic(value);

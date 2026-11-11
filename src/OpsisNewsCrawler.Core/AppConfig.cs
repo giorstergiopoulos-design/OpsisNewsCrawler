@@ -276,6 +276,23 @@ public sealed class AppConfig
     /// </summary>
     public List<string> BreakingKeywords { get; set; } = new();
 
+    // ---- text and size of each bar (empty family = the default font; 100 % = the normal text size; height 0 = automatic) ----
+    public string MainFontFamily { get; set; } = "";
+    public int MainFontPercent { get; set; } = 100;
+    public int MainBarHeight { get; set; }
+    public string SecondFontFamily { get; set; } = "";
+    public int SecondFontPercent { get; set; } = 100;
+    public string MiniFontFamily { get; set; } = "";
+    public int MiniFontPercent { get; set; } = 100;
+    public string MonitorFontFamily { get; set; } = "";
+    public int MonitorFontPercent { get; set; } = 100;
+    public int MonitorBarHeight { get; set; }
+
+    public const int MinFontPercent = 60, MaxFontPercent = 160;
+    public static int CleanFontPercent(int value) => Math.Clamp(value, MinFontPercent, MaxFontPercent);
+    public static int CleanBarHeight(int value) => value <= 0 ? 0 : Math.Clamp(value, 24, 200);
+    public static string CleanFontFamily(string? value) { var name = (value ?? "").Trim(); return name.Length > 64 ? name[..64] : name; }
+
     /// <summary>Keys of the plugin feeds (history / calendar flows of plugins) that the user switched off; a switched-off feed shows nothing in the bars.</summary>
     public List<string> DisabledPluginFeeds { get; set; } = new();
 
@@ -556,6 +573,9 @@ public sealed class AppConfig
         var builtIn = new HashSet<string>(Breaking.DefaultKeywords.Select(Breaking.Normalize));
         BreakingKeywords = (BreakingKeywords ?? new()).Where(k => !string.IsNullOrWhiteSpace(k)).Select(k => k.Trim())
             .Where(k => !builtIn.Contains(Breaking.Normalize(k))).Distinct(StringComparer.OrdinalIgnoreCase).Take(50).ToList();
+        MainFontFamily = CleanFontFamily(MainFontFamily); SecondFontFamily = CleanFontFamily(SecondFontFamily); MiniFontFamily = CleanFontFamily(MiniFontFamily); MonitorFontFamily = CleanFontFamily(MonitorFontFamily);
+        MainFontPercent = CleanFontPercent(MainFontPercent); SecondFontPercent = CleanFontPercent(SecondFontPercent); MiniFontPercent = CleanFontPercent(MiniFontPercent); MonitorFontPercent = CleanFontPercent(MonitorFontPercent);
+        MainBarHeight = CleanBarHeight(MainBarHeight); MonitorBarHeight = CleanBarHeight(MonitorBarHeight);
         DisabledPluginFeeds = (DisabledPluginFeeds ?? new()).Where(k => !string.IsNullOrWhiteSpace(k)).Select(k => k.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).Take(100).ToList();
         BreakingSensitivity = BreakingEngine.SensitivityText(BreakingEngine.ParseSensitivity(BreakingSensitivity));
         BreakingMaxAgeMinutes = Math.Clamp(BreakingMaxAgeMinutes, 10, 1440);
