@@ -201,12 +201,84 @@ internal sealed class TickerCanvas : Control
     /// </summary>
     public void SetLook(Color title, Color source, Color hover, Color hoverText, bool surfaceIsDark)
     {
+        lookTimer.Stop();   // a smooth change in progress is replaced by this look
+        SetLookNow(title, source, hover, hoverText, surfaceIsDark);
+    }
+
+    private void SetLookNow(Color title, Color source, Color hover, Color hoverText, bool surfaceIsDark)
+    {
         titleColor = title;
         sourceColor = source;
         hoverOverlay = hover;
         hoverTitleColor = hoverText;
         darkSurface = surfaceIsDark;
         Invalidate();
+    }
+
+    // ---- smooth change of the text colours (the automatic colour of transparent bars): about 0.25 s, so the text never snaps ----
+    private readonly System.Windows.Forms.Timer lookTimer = new() { Interval = 30 };
+    private (Color Title, Color Source, Color Hover, Color HoverText) lookFrom, lookTo;
+    private bool lookToDark;
+    private int lookStep;
+    private const int LookSteps = 8;
+
+    public void SetLookSmooth(Color title, Color source, Color hover, Color hoverText, bool surfaceIsDark)
+    {
+        if (title == titleColor && source == sourceColor && hover == hoverOverlay && hoverText == hoverTitleColor && surfaceIsDark == darkSurface) return;
+        lookFrom = (titleColor, sourceColor, hoverOverlay, hoverTitleColor);
+        lookTo = (title, source, hover, hoverText);
+        lookToDark = surfaceIsDark;
+        lookStep = 0;
+        if (!lookTimerWired) { lookTimer.Tick += (_, _) => LookTick(); lookTimerWired = true; }
+        lookTimer.Start();
+    }
+
+    private bool lookTimerWired;
+
+    private static Color Lerp(Color a, Color b, double t) => Color.FromArgb(
+        (int)Math.Round(a.A + (b.A - a.A) * t), (int)Math.Round(a.R + (b.R - a.R) * t), (int)Math.Round(a.G + (b.G - a.G) * t), (int)Math.Round(a.B + (b.B - a.B) * t));
+
+    private void LookTick()
+    {
+        lookStep++;
+        var t = Math.Min(1.0, lookStep / (double)LookSteps);
+        var last = lookStep >= LookSteps;
+        SetLookNow(Lerp(lookFrom.Title, lookTo.Title, t), Lerp(lookFrom.Source, lookTo.Source, t), Lerp(lookFrom.Hover, lookTo.Hover, t), Lerp(lookFrom.HoverText, lookTo.HoverText, t), last ? lookToDark : darkSurface);
+        if (last) lookTimer.Stop();
+    }
+
+    private bool textShadow;
+
+    /// <summary>A soft shadow behind the text (a second help on a busy background).</summary>
+    public void SetTextShadow(bool value)
+    {
+        if (textShadow == value) return;
+        textShadow = value;
+        Invalidate();
+    }
+
+    private static double Luma(Color c) => (0.299 * c.R + 0.587 * c.G + 0.114 * c.B) / 255.0;
+
+    private void DrawText(Graphics g, string text, Font font, Color color, float x, float y)
+    {
+        if (textShadow)
+        {
+            using var shadow = new SolidBrush(Luma(color) > 0.5 ? Color.FromArgb(150, 0, 0, 0) : Color.FromArgb(150, 255, 255, 255));
+            g.DrawString(text, font, shadow, x + 1, y + 1, TextFormat);
+        }
+        using var brush = new SolidBrush(color);
+        g.DrawString(text, font, brush, x, y, TextFormat);
+    }
+
+    private void DrawText(Graphics g, string text, Font font, Color color, RectangleF rect, StringFormat format)
+    {
+        if (textShadow)
+        {
+            using var shadow = new SolidBrush(Luma(color) > 0.5 ? Color.FromArgb(150, 0, 0, 0) : Color.FromArgb(150, 255, 255, 255));
+            g.DrawString(text, font, shadow, new RectangleF(rect.X + 1, rect.Y + 1, rect.Width, rect.Height), format);
+        }
+        using var brush = new SolidBrush(color);
+        g.DrawString(text, font, brush, rect, format);
     }
 
     /// <summary>Opaque fill behind the content (e.g. the red breaking-news state). null = transparent background.</summary>
@@ -332,8 +404,22 @@ internal sealed class TickerCanvas : Control
         Invalidate();
     }
 
-    private static int Measure(string text, Font font) =>
-        (int)Math.Ceiling(MeasureGraphics.MeasureString(text, font, PointF.Empty, TextFormat).Width);
+    // Widths of texts: measured once per font and text (the strip is laid out again after every refresh and every change of font or size,
+    // and most headlines are the same as in the previous layout). Cleared when it grows too big or the fonts change.
+    private static readonly Dictionary<(string Font, float Size, FontStyle Style, string Text), int> MeasureCache = new();
+    private const int MeasureCacheLimit = 4000;
+
+    private static int Measure(string text, Font font)
+    {
+        var key = (font.Name, font.Size, font.Style, text);
+        if (MeasureCache.TryGetValue(key, out var cached)) return cached;
+        var width = (int)Math.Ceiling(MeasureGraphics.MeasureString(text, font, PointF.Empty, TextFormat).Width);
+        if (MeasureCache.Count >= MeasureCacheLimit) MeasureCache.Clear();
+        MeasureCache[key] = width;
+        return width;
+    }
+
+    internal static int MeasureCacheCount => MeasureCache.Count;
 
     /// <summary>Greek capitals are written without accents ("ΕΚΤΑΚΤΗ", not "ΈΚΤΑΚΤΗ").</summary>
     internal static string UpperNoAccents(string text) => Loc.Upper(text);
@@ -373,7 +459,39 @@ internal sealed class TickerCanvas : Control
         return new Rectangle(left, 4, e.Width - ItemGap + 2 * HoverPad, Math.Max(1, Height - 8));
     }
 
-    private (int Index, int Copy) HitTest(Point p)
+    /// <summary>The entry under a point. The entries are in order along the strip, so the candidates are found by a binary search instead of a walk over all of them.</summary>
+    internal (int Index, int Copy) HitTest(Point p)
+    {
+        if (liveVisible && LiveRect().Contains(p)) return (-1, 0);
+        if (Loc.IsRtl || entries.Count < 16) return HitTestLinear(p);
+        var copies = IsScrollable() ? 2 : 1;
+        for (var copy = 0; copy < copies; copy++)
+        {
+            // r.Left = base + X - HoverPad  <=  p.X  : the last entry with X <= p.X - base + HoverPad, and the one before it (neighbouring rectangles may overlap)
+            var x = p.X - (Origin() - ScrollPixels() + copy * loop) + HoverPad;
+            var j = LastEntryStartingAtOrBefore(x);
+            for (var i = Math.Max(0, j - 1); i <= Math.Max(0, j) && i < entries.Count; i++)
+            {
+                var r = ItemRect(i, copy);
+                if (p.X >= r.Left && p.X < r.Right) return (i, copy);
+            }
+        }
+        return (-1, 0);
+    }
+
+    private int LastEntryStartingAtOrBefore(int x)
+    {
+        int lo = 0, hi = entries.Count - 1, found = -1;
+        while (lo <= hi)
+        {
+            var mid = (lo + hi) / 2;
+            if (entries[mid].X <= x) { found = mid; lo = mid + 1; } else hi = mid - 1;
+        }
+        return found;
+    }
+
+    /// <summary>The original walk over every entry (kept for right-to-left, short lists and as the reference in the tests).</summary>
+    internal (int Index, int Copy) HitTestLinear(Point p)
     {
         if (liveVisible && LiveRect().Contains(p)) return (-1, 0);
         var copies = IsScrollable() ? 2 : 1;
@@ -650,11 +768,15 @@ internal sealed class TickerCanvas : Control
         var copies = IsScrollable() ? 2 : 1;
         for (var copy = 0; copy < copies; copy++)
         {
-            for (var i = 0; i < entries.Count; i++)
+            // start at the first entry whose right end is inside the window (binary search) and stop at the first one that starts after it
+            var baseLeft = Origin() + copy * loop - ScrollPixels();
+            var first = Loc.IsRtl ? 0 : Math.Max(0, LastEntryStartingAtOrBefore(-baseLeft) - 1);
+            for (var i = first; i < entries.Count; i++)
             {
                 var entry = entries[i];
-                var left = Origin() + entry.X + copy * loop - ScrollPixels();
-                if (left > Width || left + entry.Width < 0) continue;
+                var left = baseLeft + entry.X;
+                if (left > Width) { if (!Loc.IsRtl) break; continue; }
+                if (left + entry.Width < 0) continue;
                 DrawEntry(g, entry, left, y, i == hoverIndex && copy == hoverCopy, ItemRect(i, copy));
             }
         }
@@ -687,8 +809,7 @@ internal sealed class TickerCanvas : Control
         {
             HazardIcons.DrawContinent(g, new Rectangle(left, (Height - ContinentIconSize) / 2, ContinentIconSize, ContinentIconSize), (Continent)entry.Item.Icon);
             x += ContinentIconSize + IconGap;
-            using var nameBrush = new SolidBrush(titleColor);
-            g.DrawString(entry.Title, sourceFont, nameBrush, x, textY, TextFormat);
+            DrawText(g, entry.Title, sourceFont, titleColor, x, textY);
             return;
         }
         if (entry.Item.Kind == NewsItemKind.Weather)
@@ -702,13 +823,11 @@ internal sealed class TickerCanvas : Control
             x += IconSize + IconGap;
         }
 
-        using (var sourceBrush = new SolidBrush(sourceColor))
-            g.DrawString(entry.Source + ":", sourceFont, sourceBrush, x, textY, TextFormat);
+        DrawText(g, entry.Source + ":", sourceFont, sourceColor, x, textY);
         x += entry.SourceWidth + SourceTitleGap;
 
         var color = isQuote ? TrendColor(entry.Item.Trend) : hovered ? hoverTitleColor : titleColor;
-        using var titleBrush = new SolidBrush(color);
-        g.DrawString(entry.Title, titleFont, titleBrush, x, textY, TextFormat);
+        DrawText(g, entry.Title, titleFont, color, x, textY);
     }
 
     /// <summary>Mirrored entry: the icon is at the right end, then the source, then the title towards the left.</summary>
@@ -720,8 +839,7 @@ internal sealed class TickerCanvas : Control
         {
             HazardIcons.DrawContinent(g, new Rectangle((int)x - ContinentIconSize, (Height - ContinentIconSize) / 2, ContinentIconSize, ContinentIconSize), (Continent)entry.Item.Icon);
             x -= ContinentIconSize + IconGap;
-            using var nameBrush = new SolidBrush(titleColor);
-            g.DrawString(entry.Title, sourceFont, nameBrush, new RectangleF(x - contentWidth, textY, contentWidth, textHeight + 2), TextFormatRtl);
+            DrawText(g, entry.Title, sourceFont, titleColor, new RectangleF(x - contentWidth, textY, contentWidth, textHeight + 2), TextFormatRtl);
             return;
         }
         var isWeather = entry.Item.Kind == NewsItemKind.Weather;
@@ -736,14 +854,12 @@ internal sealed class TickerCanvas : Control
         }
 
         var sourceWidth = entry.SourceWidth;
-        using (var sourceBrush = new SolidBrush(sourceColor))
-            g.DrawString(entry.Source + ":", sourceFont, sourceBrush, new RectangleF(x - sourceWidth - 4, textY, sourceWidth + 8, textHeight + 2), TextFormatRtl);
+        DrawText(g, entry.Source + ":", sourceFont, sourceColor, new RectangleF(x - sourceWidth - 4, textY, sourceWidth + 8, textHeight + 2), TextFormatRtl);
         x -= sourceWidth + SourceTitleGap;
 
         var titleWidth = Math.Max(10, contentWidth - (hasIcon ? iconSize + IconGap : 0) - sourceWidth - SourceTitleGap);
         var color = isQuote ? TrendColor(entry.Item.Trend) : hovered ? hoverTitleColor : titleColor;
-        using var titleBrush = new SolidBrush(color);
-        g.DrawString(entry.Title, titleFont, titleBrush, new RectangleF(x - titleWidth - 4, textY, titleWidth + 8, textHeight + 2), TextFormatRtl);
+        DrawText(g, entry.Title, titleFont, color, new RectangleF(x - titleWidth - 4, textY, titleWidth + 8, textHeight + 2), TextFormatRtl);
     }
 
     private void DrawIcon(Graphics g, Entry entry, Rectangle rect)
@@ -786,8 +902,23 @@ internal sealed class TickerCanvas : Control
         FadeRegion(bmp, new Rectangle(bmp.Width - fade, 0, fade, bmp.Height), leftEdge: false);
     }
 
+    private static readonly Dictionary<int, float[]> FadeRamps = new();
+
+    /// <summary>The factor of every pixel column of an edge, from 0 at the outer end: computed once per width (it was computed for every pixel of every frame).</summary>
+    private static float[] FadeRamp(int width)
+    {
+        lock (FadeRamps)
+        {
+            if (FadeRamps.TryGetValue(width, out var ramp)) return ramp;
+            ramp = new float[width];
+            for (var x = 0; x < width; x++) { var t = (x + 0.5f) / width; ramp[x] = t * t; }
+            return FadeRamps[width] = ramp;
+        }
+    }
+
     private static void FadeRegion(Bitmap bmp, Rectangle area, bool leftEdge)
     {
+        var ramp = FadeRamp(area.Width);
         var data = bmp.LockBits(area, ImageLockMode.ReadWrite, PixelFormat.Format32bppPArgb);
         try
         {
@@ -800,9 +931,7 @@ internal sealed class TickerCanvas : Control
                 Marshal.Copy(rowPtr, row, 0, rowBytes);
                 for (var x = 0; x < area.Width; x++)
                 {
-                    var t = (x + 0.5f) / area.Width;           // 0 at the outer end of the strip, 1 at the inner end
-                    var factor = leftEdge ? t : 1 - t;
-                    factor *= factor;                          // gentle start
+                    var factor = leftEdge ? ramp[x] : ramp[area.Width - 1 - x];   // 0 at the outer end of the strip, 1 at the inner end, gentle start
                     var i = x * 4;
                     row[i] = (byte)(row[i] * factor);
                     row[i + 1] = (byte)(row[i + 1] * factor);

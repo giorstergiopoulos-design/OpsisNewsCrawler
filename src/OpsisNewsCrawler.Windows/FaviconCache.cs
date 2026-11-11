@@ -27,7 +27,25 @@ internal static class FaviconCache
     private static readonly ConcurrentDictionary<(string Host, bool DarkSurface), Bitmap?> Styled = new();
 
     /// <summary>Puts a picture in the cache without a download (snapshots and tests).</summary>
-    internal static void Seed(string host, Bitmap icon) => Cache[host] = FitSquare(icon);
+    internal static void Seed(string host, Bitmap icon) => Remember(host, FitSquare(icon));
+
+    /// <summary>The most sources whose icon is kept in memory: a long session with many feeds does not grow without limit (the oldest icon goes first and is fetched again when needed).</summary>
+    internal const int MaxIcons = 200;
+    private static readonly ConcurrentQueue<string> Order = new();
+
+    private static void Remember(string host, Bitmap? bmp)
+    {
+        if (Cache.TryAdd(host, bmp)) Order.Enqueue(host);
+        else Cache[host] = bmp;
+        while (Cache.Count > MaxIcons && Order.TryDequeue(out var oldest))
+        {
+            Cache.TryRemove(oldest, out _);
+            Styled.TryRemove((oldest, true), out _);
+            Styled.TryRemove((oldest, false), out _);
+        }
+    }
+
+    internal static int Count => Cache.Count;
 
     public static Bitmap? TryGet(string host) => Cache.TryGetValue(host, out var bmp) ? bmp : null;
 
@@ -113,7 +131,7 @@ internal static class FaviconCache
                 // No icon: the badge is used instead.
             }
 
-            Cache[host] = bmp;
+            Remember(host, bmp);
             Pending.TryRemove(host, out _);
             if (bmp is not null) onLoaded();
         });

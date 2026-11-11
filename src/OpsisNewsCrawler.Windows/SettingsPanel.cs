@@ -172,6 +172,8 @@ public sealed class SettingsPanel : UserControl
     private FlatToggle mainHeightAuto = null!, monitorHeightAuto = null!;
     private FlatNumber mainHeight = null!, monitorHeight = null!;
     private List<string> fontNames = new();
+    private FlatComboBox textColorMode = null!;
+    private FlatToggle textShadow = null!;
     private FlatList historyList = null!;
     private FlatList historyPreview = null!;
     private Label historyStatus = null!;
@@ -1872,6 +1874,13 @@ public sealed class SettingsPanel : UserControl
         var inner = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
         inner.Controls.Add(Note(L("text.note"), 700));
 
+        textColorMode = new FlatComboBox { Width = 380 };
+        textColorMode.SetItems(new[] { L("text.color.auto"), L("text.color.fixed") }, 0);
+        inner.Controls.Add(Row(L("text.color"), textColorMode, 260));
+        inner.Controls.Add(Note(L("text.color.note"), 700));
+        textShadow = new FlatToggle { RowWidth = 600, Text = L("text.shadow") };
+        inner.Controls.Add(textShadow);
+
         void Bar(string title, out FlatComboBox font, out FlatNumber pct, out FlatToggle? auto, out FlatNumber? height)
         {
             inner.Controls.Add(new Label { Text = title, AutoSize = true, Margin = new Padding(0, 10, 0, 2), Font = new Font(Font, FontStyle.Bold) });
@@ -2145,6 +2154,8 @@ public sealed class SettingsPanel : UserControl
             weatherAlerts.Checked = c.WeatherAlertsEnabled;
             alertCity.SelectSilently(string.IsNullOrEmpty(c.AlertCityId) ? 0 : Math.Max(0, GreekCities.All.ToList().FindIndex(x => x.Id == c.AlertCityId) + 1));
             keywords.Value = string.Join("; ", c.BreakingKeywords);
+            textColorMode.SelectSilently(string.Equals(c.TextColorMode, "fixed", StringComparison.OrdinalIgnoreCase) ? 1 : 0);
+            textShadow.Checked = c.TextShadow;
             mainFont.SelectSilently(FontIndex(c.MainFontFamily)); mainFontPct.SetValueSilently(c.MainFontPercent);
             secondFont.SelectSilently(FontIndex(c.SecondFontFamily)); secondFontPct.SetValueSilently(c.SecondFontPercent);
             miniFont.SelectSilently(FontIndex(c.MiniFontFamily)); miniFontPct.SetValueSilently(c.MiniFontPercent);
@@ -2578,6 +2589,8 @@ public sealed class SettingsPanel : UserControl
         c.WeatherAlertsEnabled = weatherAlerts.Checked;
         c.AlertCityId = alertCity.SelectedIndex > 0 && alertCity.SelectedIndex <= GreekCities.All.Count ? GreekCities.All[alertCity.SelectedIndex - 1].Id : "";
         c.DisabledPluginFeeds = workDisabledFeeds.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        c.TextColorMode = textColorMode.SelectedIndex == 1 ? "fixed" : "auto";
+        c.TextShadow = textShadow.Checked;
         c.MainFontFamily = FontAt(mainFont); c.MainFontPercent = mainFontPct.Value;
         c.SecondFontFamily = FontAt(secondFont); c.SecondFontPercent = secondFontPct.Value;
         c.MiniFontFamily = FontAt(miniFont); c.MiniFontPercent = miniFontPct.Value;

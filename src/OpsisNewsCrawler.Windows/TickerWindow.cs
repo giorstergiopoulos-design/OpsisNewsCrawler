@@ -89,7 +89,7 @@ public sealed class TickerWindow : Form
     private ArticlePreviewForm? preview;
     private NewsItem? pendingHoverItem;
     private Rectangle pendingHoverRect;
-    private long lastTickMs;
+    private readonly ScrollStepper stepper = new();
     private bool pausedByForeground;
     private bool manuallyPaused;
     private bool running;
@@ -143,9 +143,19 @@ public sealed class TickerWindow : Form
     {
         canvas.ShowToast(text);
         if (canvasB.Visible) canvasB.ShowToast(text);
-        var t = new System.Windows.Forms.Timer { Interval = 2100 };
-        t.Tick += (_, _) => { t.Dispose(); if (!IsDisposed) { canvas.Invalidate(); canvasB.Invalidate(); } };
-        t.Start();
+        // one timer for all messages (a new timer per message was created and thrown away every time)
+        toastTimer.Stop();
+        toastTimer.Start();
+    }
+
+    private readonly System.Windows.Forms.Timer toastTimer = CreateToastTimer();
+
+    private static System.Windows.Forms.Timer CreateToastTimer() => new() { Interval = 2100 };
+
+    private void OnToastTimer()
+    {
+        toastTimer.Stop();
+        if (!IsDisposed) { canvas.Invalidate(); canvasB.Invalidate(); }
     }
 
     /// <summary>The user right-clicked the strip and wants the settings.</summary>
@@ -352,6 +362,7 @@ public sealed class TickerWindow : Form
         LayoutCanvases();
 
         scrollTimer.Tick += (_, _) => ScrollTicker();
+        toastTimer.Tick += (_, _) => OnToastTimer();
         PowerChanged += ApplyPowerProfile;
         ApplyPowerProfile();
         focusTimer.Tick += (_, _) =>
@@ -471,7 +482,91 @@ public sealed class TickerWindow : Form
     /// Colours, transparency and backdrop of the strip. On the taskbar it copies the taskbar's own material
     /// (light/dark, acrylic, accent) so the two look like one surface; elsewhere it uses the Opsis/crawler theme.
     /// </summary>
+    // ---- automatic text colour on transparent bars ----------------------------------------------------------------------------------------------
+
+    private readonly ContrastChooser contrast = new();
+    private readonly System.Windows.Forms.Timer sampleDebounce = new() { Interval = 500 };
+    private readonly System.Windows.Forms.Timer sampleSlow = new() { Interval = 15000 };
+    private bool autoText = true;
+    private bool textShadow;
+
+    /// <summary>true = on a transparent bar the text is light or dark by what is behind it; false = the colour of the theme.</summary>
+    public bool AutoText
+    {
+        get => autoText;
+        set { if (autoText == value) return; autoText = value; contrast.Reset(); ApplyLook(); }
+    }
+
+    public bool TextShadow
+    {
+        get => textShadow;
+        set { if (textShadow == value) return; textShadow = value; canvas.SetTextShadow(value); canvasB.SetTextShadow(value); }
+    }
+
+    /// <summary>Only a plain themed bar with a see-through background: a chosen colour, the taskbar's own text colour, the breaking red and High Contrast keep their colours.</summary>
+    private bool AutoTextActive =>
+        autoText && !SystemInformation.HighContrast && !breaking && position != TickerPosition.TaskbarIntegrated && !MatchDeskStrip && ResolveTint() is null
+        && backdropStyle != "gradient" && (Theme.Opacity < 0.98 || backdropStyle is "blur" or "acrylic");
+
+    private bool sampleWired;
+
+    private void WireSampling()
+    {
+        if (sampleWired) return;
+        sampleWired = true;
+        sampleDebounce.Tick += (_, _) => { sampleDebounce.Stop(); TakeSample(); };
+        // the background can also change without any event (a window moves behind the bar): a slow look every 15 s, only while the bar is shown
+        sampleSlow.Tick += (_, _) => { if (Visible && AutoTextActive && !pausedByForeground) TakeSample(); };
+    }
+
+    /// <summary>The background may have changed (position, theme, wallpaper, display): measure once, after things have settled.</summary>
+    private void RequestSample()
+    {
+        if (IsDisposed || !AutoTextActive) { sampleSlow.Stop(); sampleDebounce.Stop(); return; }
+        WireSampling();
+        sampleDebounce.Stop();
+        sampleDebounce.Start();
+        if (!sampleSlow.Enabled) sampleSlow.Start();
+    }
+
+    private void TakeSample()
+    {
+        if (IsDisposed || !IsHandleCreated || !Visible || !AutoTextActive) return;
+        if (BackdropSampler.Sample(Bounds) is not { } luminance) return;
+        if (contrast.Update(luminance))
+        {
+            Log.Write($"Auto text colour: background luminance {luminance:0.00} -> {(contrast.UseDarkText == true ? "dark" : "light")} text");
+            ApplyAutoText(smooth: true);
+        }
+    }
+
+    private void ApplyAutoText(bool smooth)
+    {
+        if (!AutoTextActive || contrast.UseDarkText is not { } dark) return;
+        var text = dark ? Color.Black : Color.White;
+        var source = dark ? Color.FromArgb(0, 70, 140) : Color.FromArgb(205, 225, 255);
+        var hoverOverlay = dark ? Color.FromArgb(34, 0, 0, 0) : Color.FromArgb(48, 255, 255, 255);
+        if (smooth)
+        {
+            canvas.SetLookSmooth(text, source, hoverOverlay, text, !dark);
+            canvasB.SetLookSmooth(text, source, hoverOverlay, text, !dark);
+        }
+        else
+        {
+            canvas.SetLook(text, source, hoverOverlay, text, !dark);
+            canvasB.SetLook(text, source, hoverOverlay, text, !dark);
+        }
+    }
+
     public void ApplyLook()
+    {
+        ApplyLookCore();
+        if (IsDisposed) return;
+        if (AutoTextActive && contrast.UseDarkText is not null) ApplyAutoText(smooth: false);   // the chosen colours at once: the look was just reset
+        RequestSample();
+    }
+
+    private void ApplyLookCore()
     {
         if (IsDisposed) return;
         // The whole window is opaque; transparency is a property of the BACKGROUND only (DWM accent), so text and logos
@@ -566,6 +661,9 @@ public sealed class TickerWindow : Form
             PowerChanged -= ApplyPowerProfile;
             taskbarTimer.Dispose();
             scrollTimer.Dispose();
+            toastTimer.Dispose();
+            sampleDebounce.Dispose();
+            sampleSlow.Dispose();
             focusTimer.Dispose();
             hoverTimer.Dispose();
             preview?.Dispose();
@@ -695,9 +793,7 @@ public sealed class TickerWindow : Form
     private void ScrollTicker()
     {
         // Time based, so the speed does not depend on how precisely the timer fires.
-        var now = clock.ElapsedMilliseconds;
-        var dt = Math.Min(now - lastTickMs, 100) / 1000.0;
-        lastTickMs = now;
+        var dt = stepper.Step(clock.Elapsed.TotalSeconds);
 
         if (alertClock.IsRunning)
         {
@@ -1162,7 +1258,7 @@ public sealed class TickerWindow : Form
         Reposition();
         Show();
         taskbarTimer.Start();
-        lastTickMs = clock.ElapsedMilliseconds;
+        stepper.Restart(clock.Elapsed.TotalSeconds);
         focusTimer.Start();
         scrollTimer.Start();
     }

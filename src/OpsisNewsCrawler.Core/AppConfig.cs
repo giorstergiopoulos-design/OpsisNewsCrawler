@@ -276,6 +276,12 @@ public sealed class AppConfig
     /// </summary>
     public List<string> BreakingKeywords { get; set; } = new();
 
+    /// <summary>"auto" (the default): on a transparent bar the text turns light or dark so that it can always be read; "fixed": the colour of the theme.</summary>
+    public string TextColorMode { get; set; } = "auto";
+
+    /// <summary>A soft shadow behind the text of the bars (a second help for busy backgrounds).</summary>
+    public bool TextShadow { get; set; }
+
     // ---- text and size of each bar (empty family = the default font; 100 % = the normal text size; height 0 = automatic) ----
     public string MainFontFamily { get; set; } = "";
     public int MainFontPercent { get; set; } = 100;
@@ -573,6 +579,7 @@ public sealed class AppConfig
         var builtIn = new HashSet<string>(Breaking.DefaultKeywords.Select(Breaking.Normalize));
         BreakingKeywords = (BreakingKeywords ?? new()).Where(k => !string.IsNullOrWhiteSpace(k)).Select(k => k.Trim())
             .Where(k => !builtIn.Contains(Breaking.Normalize(k))).Distinct(StringComparer.OrdinalIgnoreCase).Take(50).ToList();
+        TextColorMode = string.Equals(TextColorMode, "fixed", StringComparison.OrdinalIgnoreCase) ? "fixed" : "auto";
         MainFontFamily = CleanFontFamily(MainFontFamily); SecondFontFamily = CleanFontFamily(SecondFontFamily); MiniFontFamily = CleanFontFamily(MiniFontFamily); MonitorFontFamily = CleanFontFamily(MonitorFontFamily);
         MainFontPercent = CleanFontPercent(MainFontPercent); SecondFontPercent = CleanFontPercent(SecondFontPercent); MiniFontPercent = CleanFontPercent(MiniFontPercent); MonitorFontPercent = CleanFontPercent(MonitorFontPercent);
         MainBarHeight = CleanBarHeight(MainBarHeight); MonitorBarHeight = CleanBarHeight(MonitorBarHeight);

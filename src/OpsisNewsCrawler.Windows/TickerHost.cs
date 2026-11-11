@@ -572,6 +572,8 @@ public sealed class TickerHost : IDisposable
         w.ShowIcons = Config.ShowIcons;
         ApplySpeeds(w);
         ApplyTextAndSize(w, position);
+        w.TextShadow = Config.TextShadow;
+        w.AutoText = !string.Equals(Config.TextColorMode, "fixed", StringComparison.OrdinalIgnoreCase);
         w.SetThemeModeName(Config.ThemeMode);
         w.EdgeFade = Config.EdgeFade;
         w.SetShape(Config.BarShape);
