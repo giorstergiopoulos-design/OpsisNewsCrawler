@@ -167,6 +167,12 @@ public sealed class SettingsPanel : UserControl
     private FlatCheckBox weatherAlerts = null!;
     private FlatComboBox alertCity = null!;
     private FlatText keywords = null!;
+    private FlatComboBox worldContinent = null!, worldCountry = null!;
+    private FlatList worldList = null!;
+    private WorldCountry? shownCountry;
+    private bool refreshingWorld;
+    private FlatComboBox worldFeedContinent = null!, worldFeedCountry = null!;
+    private FlatList worldFeedList = null!;
     private FlatComboBox mainFont = null!, secondFont = null!, miniFont = null!, monitorFont = null!;
     private FlatNumber mainFontPct = null!, secondFontPct = null!, miniFontPct = null!, monitorFontPct = null!;
     private FlatToggle mainHeightAuto = null!, monitorHeightAuto = null!;
@@ -821,6 +827,30 @@ public sealed class SettingsPanel : UserControl
         presetRow.Controls.Add(addPreset);
         right.Controls.Add(presetRow);
 
+        // News of the world: continent, then country, then the open feeds of its broadcasters and newspapers (checked when the list was made, see WorldFeeds).
+        right.Controls.Add(new Label { Text = L("worldfeeds.title"), AutoSize = true, Margin = new Padding(0, 10, 0, 4) });
+        right.Controls.Add(new Label { Text = L("worldfeeds.note"), AutoSize = true, MaximumSize = new Size(520, 0), ForeColor = Theme.TextMuted, Margin = new Padding(0, 0, 0, 4) });
+        var worldFeedRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
+        worldFeedContinent = new FlatComboBox { Width = 240 };
+        worldFeedContinent.SetItems(WorldPlaces.Continents.Select(c => c.DisplayName), 0);
+        worldFeedCountry = new FlatComboBox { Width = 270 };
+        worldFeedRow.Controls.Add(worldFeedContinent);
+        worldFeedRow.Controls.Add(worldFeedCountry);
+        right.Controls.Add(worldFeedRow);
+        worldFeedList = new FlatList { Width = 520, Height = 30 * 4 + 4 };
+        right.Controls.Add(worldFeedList);
+        var worldFeedButtons = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
+        var worldFeedAdd = new FlatButton { Text = L("worldfeeds.add") };
+        var worldFeedAddAll = new FlatButton { Text = L("worldfeeds.addAll") };
+        worldFeedButtons.Controls.Add(worldFeedAdd);
+        worldFeedButtons.Controls.Add(worldFeedAddAll);
+        right.Controls.Add(worldFeedButtons);
+        worldFeedContinent.SelectedIndexChanged += (_, _) => FillWorldFeedCountries();
+        worldFeedCountry.SelectedIndexChanged += (_, _) => FillWorldFeeds();
+        worldFeedAdd.Click += (_, _) => AddWorldFeeds(onlySelected: true);
+        worldFeedAddAll.Click += (_, _) => AddWorldFeeds(onlySelected: false);
+        FillWorldFeedCountries();
+
         root.Controls.Add(left);
         root.Controls.Add(right);
         page.Controls.Add(root);
@@ -1014,7 +1044,69 @@ public sealed class SettingsPanel : UserControl
         all.Click += (_, _) => { foreach (var c in shownCities) if (!workCities.Contains(c.Id)) workCities.Add(c.Id); ShowCities(); };
         none.Click += (_, _) => { foreach (var c in shownCities) workCities.Remove(c.Id); ShowCities(); };
         ShowCities();
+        flow.Controls.Add(BuildWorldBrowser());
         return page;
+    }
+
+    /// <summary>Continent, then country, then its main cities with a check box each; a ticked city joins the weather list (Europe first, Greece has its own list above).</summary>
+    private Control BuildWorldBrowser()
+    {
+        var card = new FlatCard(L("world.card"));
+        var inner = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        inner.Controls.Add(Note(L("world.note"), 700));
+        worldContinent = new FlatComboBox { Width = 380 };
+        worldContinent.SetItems(WorldPlaces.Continents.Select(c => c.DisplayName), 0);
+        inner.Controls.Add(Row(L("world.continent"), worldContinent, 260));
+        worldCountry = new FlatComboBox { Width = 380 };
+        inner.Controls.Add(Row(L("world.country"), worldCountry, 260));
+        worldList = new FlatList { Width = 740, Height = 30 * 6 + 4 };
+        worldList.SetShowChecks(true);
+        inner.Controls.Add(worldList);
+        card.Controls.Add(inner);
+
+        worldContinent.SelectedIndexChanged += (_, _) => FillWorldCountries();
+        worldCountry.SelectedIndexChanged += (_, _) => FillWorldCities();
+        worldList.ItemChecked += (index, isChecked) => WorldCityChecked(index, isChecked);
+        FillWorldCountries();
+        return card;
+    }
+
+    private void FillWorldCountries()
+    {
+        var continent = WorldPlaces.Continents.ElementAtOrDefault(Math.Max(0, worldContinent.SelectedIndex));
+        var names = continent is null ? new List<string>() : continent.Countries.OrderBy(c => c.DisplayName, StringComparer.CurrentCultureIgnoreCase).Select(c => c.DisplayName).ToList();
+        worldCountry.SetItems(names, 0);
+        FillWorldCities();
+    }
+
+    private void FillWorldCities()
+    {
+        var continent = WorldPlaces.Continents.ElementAtOrDefault(Math.Max(0, worldContinent.SelectedIndex));
+        shownCountry = continent?.Countries.OrderBy(c => c.DisplayName, StringComparer.CurrentCultureIgnoreCase).ElementAtOrDefault(Math.Max(0, worldCountry.SelectedIndex));
+        worldList.ClearRows();
+        if (shownCountry is null) return;
+        foreach (var city in shownCountry.Cities) worldList.AddRow(Loc.Pick(city.NameEl, city.NameEn), workCities.Contains(city.Id));
+    }
+
+    private void WorldCityChecked(int index, bool isChecked)
+    {
+        if (refreshingWorld || shownCountry is null || index < 0 || index >= shownCountry.Cities.Count) return;
+        var city = shownCountry.Cities[index];
+        if (isChecked)
+        {
+            if (workCustom.All(c => c.Id != city.Id))
+            {
+                if (workCustom.Count >= GreekCities.MaxCustom) { worldList.SetChecked(index, false); return; }
+                workCustom.Add(city);
+            }
+            if (!workCities.Contains(city.Id)) workCities.Add(city.Id);
+        }
+        else workCities.Remove(city.Id);
+        var keep = AlertCityIdSelected();
+        GreekCities.SetCustom(workCustom);
+        ShowCities();
+        FillAlertCities(keep);
+        MarkDirty();
     }
 
     /// <summary>The natural-disasters flow: its own page in the Sources group (where from, how far, how strong, how old, and the animated icon).</summary>
@@ -1070,6 +1162,16 @@ public sealed class SettingsPanel : UserControl
                                                  c.NameEn.Contains(term, StringComparison.OrdinalIgnoreCase)).ToList();
         cityList.ClearRows();
         foreach (var c in shownCities) cityList.AddRow(CityName(c) + (GreekCities.Custom.Contains(c) ? "  \u2605" : ""), workCities.Contains(c.Id));
+        RefreshWorldChecks();
+    }
+
+    /// <summary>The check marks of the world list follow the weather list (a city can be removed there).</summary>
+    private void RefreshWorldChecks()
+    {
+        if (worldList is null || shownCountry is null) return;
+        refreshingWorld = true;
+        try { for (var i = 0; i < shownCountry.Cities.Count; i++) worldList.SetChecked(i, workCities.Contains(shownCountry.Cities[i].Id)); }
+        finally { refreshingWorld = false; }
     }
 
     // ---- places found by name, postcode or coordinates -------------------------------------------
@@ -2900,6 +3002,45 @@ public sealed class SettingsPanel : UserControl
     }
 
     // ---- source handlers -------------------------------------------------------------------
+
+    private string WorldFeedContinentKey() => WorldPlaces.Continents.ElementAtOrDefault(Math.Max(0, worldFeedContinent.SelectedIndex))?.Key ?? "europe";
+
+    private void FillWorldFeedCountries()
+    {
+        worldFeedCountry.SetItems(WorldFeeds.Countries(WorldFeedContinentKey()).Select(c => c.Name), 0);
+        FillWorldFeeds();
+    }
+
+    private IReadOnlyList<WorldFeed> shownWorldFeeds = Array.Empty<WorldFeed>();
+
+    private void FillWorldFeeds()
+    {
+        var countries = WorldFeeds.Countries(WorldFeedContinentKey());
+        var country = countries.ElementAtOrDefault(Math.Max(0, worldFeedCountry.SelectedIndex));
+        shownWorldFeeds = country.Code is null ? Array.Empty<WorldFeed>() : WorldFeeds.Of(WorldFeedContinentKey(), country.Code);
+        worldFeedList.ClearRows();
+        foreach (var f in shownWorldFeeds) worldFeedList.AddRow($"{f.Name}   -   {new Uri(f.Url).Host}");
+        if (shownWorldFeeds.Count > 0) worldFeedList.SelectedIndex = 0;
+    }
+
+    /// <summary>Adds the chosen feed (or all feeds of the country) to the selected news category; a feed that is already there is skipped.</summary>
+    private void AddWorldFeeds(bool onlySelected)
+    {
+        if (SelectedCategory() is not { } cat) return;
+        var chosen = onlySelected
+            ? shownWorldFeeds.Where((_, i) => i == worldFeedList.SelectedIndex).ToList()
+            : shownWorldFeeds.ToList();
+        var added = 0;
+        foreach (var f in chosen)
+        {
+            if (cat.Feeds.Any(x => string.Equals(x.Url, f.Url, StringComparison.OrdinalIgnoreCase))) continue;
+            cat.Feeds.Add(new FeedSource(f.Name, f.Url));
+            added++;
+        }
+        ShowFeedsOfSelectedCategory();
+        discoverStatus.Text = added == 0 ? L("msg.exists") : Loc.T("worldfeeds.added", added);
+        if (added > 0) MarkDirty();
+    }
 
     private FeedCategory? SelectedCategory() =>
         categoryList.SelectedIndex >= 0 && categoryList.SelectedIndex < workCategories.Count ? workCategories[categoryList.SelectedIndex] : null;

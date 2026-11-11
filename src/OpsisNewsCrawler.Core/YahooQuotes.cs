@@ -105,6 +105,18 @@ public static class YahooPresets
             new("000001.SS", "SSE Composite (Κίνα)", "SSE Composite (China)"), new("^BSESN", "BSE Sensex (Ινδία)", "BSE Sensex (India)"), new("^KS11", "KOSPI (Ν. Κορέα)", "KOSPI (South Korea)"),
             new("^AXJO", "ASX 200 (Αυστραλία)", "ASX 200 (Australia)"), new("^GSPTSE", "S&P/TSX (Καναδάς)", "S&P/TSX (Canada)"), new("^BVSP", "Bovespa (Βραζιλία)", "Bovespa (Brazil)"),
         }),
+        // Stock indices of more countries (checked against the Yahoo chart service on 2026-11-11: 200 with prices); the country is in the name, so the search box finds them by country.
+        new Group("worldindices", new Item[]
+        {
+            new("^ATX", "ATX (Αυστρία)", "ATX (Austria)"), new("^BFX", "BEL 20 (Βέλγιο)", "BEL 20 (Belgium)"), new("^OMXC25", "OMX Copenhagen 25 (Δανία)", "OMX Copenhagen 25 (Denmark)"),
+            new("^OMXH25", "OMX Helsinki 25 (Φινλανδία)", "OMX Helsinki 25 (Finland)"), new("OBX.OL", "OBX (Νορβηγία)", "OBX (Norway)"), new("^OMX", "OMX Stockholm 30 (Σουηδία)", "OMX Stockholm 30 (Sweden)"),
+            new("PSI20.LS", "PSI (Πορτογαλία)", "PSI (Portugal)"), new("WIG20.WA", "WIG20 (Πολωνία)", "WIG20 (Poland)"), new("^ISEQ", "ISEQ (Ιρλανδία)", "ISEQ (Ireland)"),
+            new("XU100.IS", "BIST 100 (Τουρκία)", "BIST 100 (Turkey)"), new("^TA125.TA", "TA-125 (Ισραήλ)", "TA-125 (Israel)"), new("^TASI.SR", "Tadawul (Σαουδική Αραβία)", "Tadawul (Saudi Arabia)"),
+            new("^JKSE", "IDX Composite (Ινδονησία)", "IDX Composite (Indonesia)"), new("^KLSE", "FTSE Bursa Malaysia KLCI (Μαλαισία)", "FTSE Bursa Malaysia KLCI (Malaysia)"), new("^STI", "Straits Times (Σιγκαπούρη)", "Straits Times (Singapore)"),
+            new("^SET.BK", "SET (Ταϊλάνδη)", "SET (Thailand)"), new("^TWII", "TAIEX (Ταϊβάν)", "TAIEX (Taiwan)"), new("^NSEI", "Nifty 50 (Ινδία)", "Nifty 50 (India)"),
+            new("^MXX", "IPC (Μεξικό)", "IPC (Mexico)"), new("000300.SS", "CSI 300 (Κίνα)", "CSI 300 (China)"), new("^NZ50", "S&P/NZX 50 (Νέα Ζηλανδία)", "S&P/NZX 50 (New Zealand)"),
+            new("^CASE30", "EGX 30 (Αίγυπτος)", "EGX 30 (Egypt)"),
+        }),
         new Group("commodities", new Item[]
         {
             new("GC=F", "Χρυσός (συμβόλαια)", "Gold (futures)"), new("SI=F", "Άργυρος (συμβόλαια)", "Silver (futures)"), new("PL=F", "Πλατίνα (συμβόλαια)", "Platinum (futures)"),

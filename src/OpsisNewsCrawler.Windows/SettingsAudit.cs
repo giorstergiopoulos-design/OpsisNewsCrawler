@@ -16,7 +16,7 @@ public static class SettingsAudit
     private static readonly HashSet<string> Skipped = new(StringComparer.Ordinal) { "startWithWindows" };
 
     // Helper controls of forms (add a price alert, pick a market, pick a preset): they edit a list or a temporary choice, not a stored setting.
-    private static readonly HashSet<string> UiOnly = new(StringComparer.Ordinal) { "alertDirection", "alertInstrument", "marketCombo", "presets" };
+    private static readonly HashSet<string> UiOnly = new(StringComparer.Ordinal) { "alertDirection", "alertInstrument", "marketCombo", "presets", "worldContinent", "worldCountry", "worldFeedContinent", "worldFeedCountry" };
 
     /// <summary>Runs the audit and writes the report; returns true when nothing is wrong (used as the exit code of the command and by CI).</summary>
     public static bool Run(TickerHost host, string reportPath)

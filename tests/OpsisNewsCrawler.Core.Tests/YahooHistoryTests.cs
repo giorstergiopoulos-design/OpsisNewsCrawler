@@ -122,9 +122,9 @@ public class YahooCatalogTests
     }
 
     [Fact]
-    public void Presets_HaveSevenGroupsAndEachFitsTheLimit()
+    public void Presets_HaveEightGroupsAndEachFitsTheLimit()
     {
-        Assert.Equal(7, YahooPresets.All.Count);
+        Assert.Equal(8, YahooPresets.All.Count);   // 0.23.0 added "worldindices"
         // a "+ group" button adds one whole group, so a group must never be larger than the number of Yahoo instruments allowed
         Assert.All(YahooPresets.All, g => Assert.True(g.Items.Count <= YahooAccess.MaxInstruments, g.Key));
     }
