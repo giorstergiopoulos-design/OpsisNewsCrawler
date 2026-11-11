@@ -573,17 +573,19 @@ begin
   Result := RegQueryStringValue(Root, RunKeyPath, Name, Value) and (Value <> '');
 end;
 
-// Ends the programs whose image lies inside the old per-user folder (exact path, so a program in Program Files or a build folder is never touched).
+// Ends a running copy of the program before the old per-user copy is removed. No script engine is started: taskkill ends it by its image name.
+// (An earlier version asked a 32-bit PowerShell for the path of each process; a 32-bit PowerShell cannot read the path of a 64-bit process, so nothing was
+// ended and the folder stayed locked: "An earlier per-user copy could not be removed" on a machine where the old program was running.)
+// Setup would have to close the program anyway (AppMutex); a copy started from a build folder is ended too, and the log says so.
 procedure EndProgramsIn(Dir: String);
 var
   ResultCode: Integer;
-  Quoted, Params: String;
 begin
-  Quoted := Dir;
-  StringChangeEx(Quoted, '''', '''''', True);
-  Params := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "Get-Process OpsisNewsCrawler -ErrorAction SilentlyContinue | ' +
-            'Where-Object { $_.Path -and $_.Path.StartsWith(''' + Quoted + '\'', ''OrdinalIgnoreCase'') } | Stop-Process -Force"';
-  Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), Params, '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  if Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /T /IM {#MyAppExe}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+    Log('Old per-user copy ' + Dir + ': taskkill finished with exit code ' + IntToStr(ResultCode) + ' (128 = no program was running)')
+  else
+    Log('Old per-user copy ' + Dir + ': taskkill could not be started');
+  Sleep(1500);   // the files are released a moment after the process ends
 end;
 
 // Returns '' when the per-user copy is gone, otherwise the reason.
@@ -609,7 +611,12 @@ begin
     EndProgramsIn(Dir);
     // the uninstaller must lie in that folder: a value of the registry is never run from anywhere else
     if (Uninstaller <> '') and FileExists(Uninstaller) and (Pos(Lowercase(AddBackslash(Dir)), Lowercase(Uninstaller)) = 1) then
-      Exec(Uninstaller, '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    begin
+      if Exec(Uninstaller, '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+        Log('Old per-user uninstaller finished with exit code ' + IntToStr(ResultCode))
+      else
+        Log('Old per-user uninstaller could not be started');
+    end;
     Attempt := 0;
     while PerUserCopyThere(Dir) and (Attempt < 5) do
     begin
@@ -618,11 +625,16 @@ begin
     end;
     if PerUserCopyThere(Dir) then
     begin
+      Log('Old per-user copy is still there after the uninstaller: removing its entry and folder');
       // what is left of our own old copy: the uninstall entry and the folder (settings in %AppData% are not touched)
       RegDeleteKeyIncludingSubkeys(HKCU, OldUninstallKey);
       if DirExists(Dir) then DelTree(Dir, True, True, True);
     end;
-    if PerUserCopyThere(Dir) then Result := Dir;
+    if PerUserCopyThere(Dir) then
+    begin
+      Log('Old per-user copy could not be removed (registry entry: ' + IntToStr(Ord(RegKeyExists(HKCU, OldUninstallKey))) + ', folder: ' + IntToStr(Ord(DirExists(Dir))) + ')');
+      Result := Dir;
+    end;
   end
   else if RegKeyExists(HKCU, OldUninstallKey) then
   begin

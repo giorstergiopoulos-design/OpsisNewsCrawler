@@ -3,11 +3,13 @@
 #
 #   -Scenario fresh          new setup on a clean machine
 #   -Scenario from-per-user  the old per-user release (v0.17.0), started and with "Start with Windows", then the new machine-wide setup
-#   -Scenario from-latest    the newest published release (machine-wide), then the new setup (an update)
+#   -Scenario from-latest    the newest published release (machine-wide) RUNNING, then the new setup (an update; the installer closes the running program)
+#   -Scenario update-helper  the newest published release running, then the way the program updates itself: its own helper (--apply-update) waits for it to end, checks the
+#                            SHA-256, runs the setup elevated, writes last-update.log and opens the program again
 #
 # Results: <Out>\report.md (also the job summary), the Inno logs, crawler.log, a screenshot. Exit code 1 on any failed check.
 param(
-    [Parameter(Mandatory)][ValidateSet('fresh', 'from-per-user', 'from-latest')][string]$Scenario,
+    [Parameter(Mandatory)][ValidateSet('fresh', 'from-per-user', 'from-latest', 'update-helper')][string]$Scenario,
     [Parameter(Mandatory)][string]$NewSetup,
     [string]$Repository = 'giorstergiopoulos-design/OpsisNewsCrawler',
     [string]$PerUserTag = 'v0.17.0',
@@ -101,13 +103,56 @@ if ($Scenario -ne 'fresh') {
         Start-Sleep -Seconds 6
         Check (-not $old.HasExited) 'the old program is running before the upgrade'
     }
+    if ($Scenario -in 'from-latest', 'update-helper') {
+        # the real update: the old (machine-wide) program is RUNNING while the new version is installed
+        $oldExe = Join-Path $MachineDir 'OpsisNewsCrawler.exe'
+        $oldRunning = Start-Process -FilePath $oldExe -ArgumentList '--config', (Join-Path $Out 'old-running.json') -PassThru
+        Start-Sleep -Seconds 8
+        Check (-not $oldRunning.HasExited) "the old program ($tag) is running before the update"
+    }
 }
 
 # ---- 2. the new setup ------------------------------------------------------------------------------------------------------------------
 $newArgs = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/MODE=separate', '/BAR=above', '/DEPS=none')
 if ($Scenario -eq 'from-per-user') { $newArgs += '/TASKS="startup"' }
-$code = Run-Setup $NewSetup $newArgs 'new-setup.log'
-Check ($code -eq 0) "the new setup finished (exit code $code)"
+if ($Scenario -eq 'from-latest') { $newArgs += '/CLOSEAPPLICATIONS' }   # as the program starts the setup of an update
+if ($Scenario -eq 'update-helper') {
+    $oldVersion = [version](($oldExeInfo = (Get-Item $oldExe).VersionInfo.ProductVersion).Split('+')[0])
+    if ($oldVersion -lt [version]'0.20.3') {
+        Note "the published $tag has no update helper (needs 0.20.3 or newer): scenario update-helper skipped"
+        $report | Set-Content (Join-Path $Out 'report.md'); if ($env:GITHUB_STEP_SUMMARY) { $report | Add-Content $env:GITHUB_STEP_SUMMARY }
+        Stop-Process -Id $oldRunning.Id -Force -ErrorAction SilentlyContinue
+        exit 0
+    }
+    # what the program does when the user chooses "Install": start the helper, then quit. The helper is started from a copy (as the program does), here by the program's own switch.
+    $sha = (Get-FileHash $NewSetup -Algorithm SHA256).Hash.ToLowerInvariant()
+    $helperLog = Join-Path $Out 'last-update.log'
+    Remove-Item $helperLog -ErrorAction SilentlyContinue
+    $helperDir = Join-Path $Out 'helper-copy'
+    Remove-Item $helperDir -Recurse -Force -ErrorAction SilentlyContinue
+    robocopy (Split-Path $oldExe) $helperDir /E /XD plugins /NFL /NDL /NJH /NJS | Out-Null
+    $helper = Start-Process -FilePath (Join-Path $helperDir 'OpsisNewsCrawler.exe') -ArgumentList '--apply-update', $oldRunning.Id, "`"$NewSetup`"", $sha, "`"$helperLog`"", '0.0.0', 'standalone', "`"$oldExe`"" -PassThru
+    Start-Sleep -Seconds 1
+    Stop-Process -Id $oldRunning.Id -Force
+    $finished = $helper.WaitForExit(240000)
+    Check $finished 'the update helper finished'
+    Check ($finished -and $helper.ExitCode -eq 0) "the update helper succeeded (exit code $(if ($finished) { $helper.ExitCode } else { 'none' }))"
+    $logLine = if (Test-Path $helperLog) { (Get-Content $helperLog | Select-Object -Last 1) } else { '' }
+    Check ($logLine -like '*|ok|0|*') "last-update.log says the update worked: $logLine"
+    Start-Sleep -Seconds 8
+    $reopened = @(Get-Process OpsisNewsCrawler -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path -like "$MachineDir*" })
+    Check ($reopened.Count -ge 1) 'the helper opened the updated program again (from Program Files)'
+    $reopened | Stop-Process -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
+    Note 'the UAC prompt of the elevation (the runner is an administrator without prompts)'
+} else {
+    $code = Run-Setup $NewSetup $newArgs 'new-setup.log'
+    Check ($code -eq 0) "the new setup finished (exit code $code)"
+    if ($Scenario -eq 'from-latest') {
+        Start-Sleep -Seconds 1
+        Check ($oldRunning.HasExited -or -not (Get-Process -Id $oldRunning.Id -ErrorAction SilentlyContinue)) 'the installer closed the running old program'
+    }
+}
 Start-Sleep -Seconds 2
 
 $version = Expected-Version

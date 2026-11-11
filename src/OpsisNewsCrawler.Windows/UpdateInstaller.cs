@@ -84,7 +84,9 @@ internal static class UpdateInstaller
             Process.Start(new ProcessStartInfo(setupPath, UpdateSetupArguments.Build(hostedByOpsis) + " /CLOSEAPPLICATIONS") { UseShellExecute = true, Verb = "runas" });
             return;
         }
-        var info = new ProcessStartInfo(exe) { UseShellExecute = false, CreateNoWindow = true };
+        // the helper runs from a copy outside the installed folder (the setup replaces that folder); in place only when the copy cannot be made
+        var helperExe = UpdateHelper.PrepareCopy(exe, UpdateDir) ?? exe;
+        var info = new ProcessStartInfo(helperExe) { UseShellExecute = false, CreateNoWindow = true };
         foreach (var a in new[] { UpdateHelper.Switch, Environment.ProcessId.ToString(), setupPath, sha256, UpdateResultLog.DefaultPath, AboutTexts.Version, hostedByOpsis ? "hosted" : "standalone", hostedByOpsis ? "" : exe })
             info.ArgumentList.Add(a);
         Process.Start(info);

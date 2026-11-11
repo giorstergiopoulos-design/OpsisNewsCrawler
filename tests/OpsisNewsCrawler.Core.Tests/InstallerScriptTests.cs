@@ -52,3 +52,19 @@ public class InstallerScriptTests
         Assert.DoesNotContain("Root: HKA; Subkey: \"Software\\Microsoft\\Windows\\CurrentVersion\\Run\"", iss);                                              // and none is written any more
     }
 }
+
+public class InstallerNoScriptEngineTests
+{
+    [Fact]
+    public void TheInstallerOfTheProgramStartsNoScriptEngineAndEndsTheOldProgramWithTaskkill()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !dir.GetFiles("*.sln").Any()) dir = dir.Parent;
+        var iss = System.IO.File.ReadAllText(Path.Combine(dir!.FullName, "OpsisNewsCrawler.iss"), System.Text.Encoding.UTF8);
+        // a 32-bit PowerShell cannot read the path of a 64-bit process, so the old per-user program was never ended and the removal failed (found by installer-e2e)
+        Assert.DoesNotContain("powershell.exe", iss, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("WindowsPowerShell", iss, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("taskkill.exe", iss);
+        Assert.Contains("Old per-user copy", iss);   // the Inno log says what happened
+    }
+}

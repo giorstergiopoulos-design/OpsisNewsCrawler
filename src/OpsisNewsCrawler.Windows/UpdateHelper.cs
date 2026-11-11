@@ -57,6 +57,42 @@ public static class UpdateHelper
         return Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
     }
 
+    /// <summary>
+    /// A copy of the program folder (without the plugin copy for Opsis) in <paramref name="destinationRoot"/>\helper, from which the helper runs. The helper must NOT run from
+    /// the installed folder: the setup replaces the files of that folder, and a running helper would be a program that locks (and that the installer would try to close).
+    /// Returns the exe of the copy, or null when it could not be made (the caller then runs the helper in place).
+    /// </summary>
+    public static string? PrepareCopy(string exe, string destinationRoot)
+    {
+        try
+        {
+            var source = Path.GetDirectoryName(exe);
+            if (source is null) return null;
+            var target = Path.Combine(destinationRoot, "helper");
+            if (Directory.Exists(target)) Directory.Delete(target, recursive: true);
+            CopyFolder(source, target, skipTopLevel: "plugins");
+            var copy = Path.Combine(target, Path.GetFileName(exe));
+            return File.Exists(copy) ? copy : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    private static void CopyFolder(string source, string target, string? skipTopLevel)
+    {
+        Directory.CreateDirectory(target);
+        foreach (var file in Directory.GetFiles(source))
+            if (new FileInfo(file).Length <= 120L * 1024 * 1024) File.Copy(file, Path.Combine(target, Path.GetFileName(file)), overwrite: true);
+        foreach (var dir in Directory.GetDirectories(source))
+        {
+            var name = Path.GetFileName(dir);
+            if (skipTopLevel is not null && string.Equals(name, skipTopLevel, StringComparison.OrdinalIgnoreCase)) continue;
+            CopyFolder(dir, Path.Combine(target, name), null);
+        }
+    }
+
     /// <summary>The program that can act as the helper: this exe when standalone; inside Opsis the crawler's own exe, found above the plugin folder (null when it is not there).</summary>
     public static string? HelperExecutable()
     {
