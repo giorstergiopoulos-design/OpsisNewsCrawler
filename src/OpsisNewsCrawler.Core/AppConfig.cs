@@ -276,6 +276,9 @@ public sealed class AppConfig
     /// </summary>
     public List<string> BreakingKeywords { get; set; } = new();
 
+    /// <summary>Keys of the plugin feeds (history / calendar flows of plugins) that the user switched off; a switched-off feed shows nothing in the bars.</summary>
+    public List<string> DisabledPluginFeeds { get; set; } = new();
+
     /// <summary>How easily news counts as urgent: "strict" | "normal" | "sensitive" (see <see cref="BreakingEngine"/>).</summary>
     public string BreakingSensitivity { get; set; } = "normal";
 
@@ -553,6 +556,7 @@ public sealed class AppConfig
         var builtIn = new HashSet<string>(Breaking.DefaultKeywords.Select(Breaking.Normalize));
         BreakingKeywords = (BreakingKeywords ?? new()).Where(k => !string.IsNullOrWhiteSpace(k)).Select(k => k.Trim())
             .Where(k => !builtIn.Contains(Breaking.Normalize(k))).Distinct(StringComparer.OrdinalIgnoreCase).Take(50).ToList();
+        DisabledPluginFeeds = (DisabledPluginFeeds ?? new()).Where(k => !string.IsNullOrWhiteSpace(k)).Select(k => k.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).Take(100).ToList();
         BreakingSensitivity = BreakingEngine.SensitivityText(BreakingEngine.ParseSensitivity(BreakingSensitivity));
         BreakingMaxAgeMinutes = Math.Clamp(BreakingMaxAgeMinutes, 10, 1440);
         if (BarBackdrop is not ("acrylic" or "blur" or "gradient")) BarBackdrop = "acrylic";

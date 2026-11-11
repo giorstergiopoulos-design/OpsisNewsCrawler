@@ -1048,10 +1048,10 @@ public sealed class TickerHost : IDisposable
     }
 
     /// <summary>The lines of a feed that a plugin registered (a text feed for a bar); a failing plugin gives an empty bar, never an exception.</summary>
-    private static IReadOnlyList<NewsItem> PluginFeedForDisplay(string? key)
+    private IReadOnlyList<NewsItem> PluginFeedForDisplay(string? key)
     {
         var feed = OpsisNewsCrawler.Plugin.Abstractions.PluginFeeds.Find(key);
-        if (feed is null) return Array.Empty<NewsItem>();
+        if (feed is null || Config.DisabledPluginFeeds.Contains(feed.Key, StringComparer.OrdinalIgnoreCase)) return Array.Empty<NewsItem>();
         try
         {
             var title = Loc.Pick(feed.TitleEl, feed.TitleEn);

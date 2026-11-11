@@ -3,6 +3,9 @@
 The complete history (all versions, in Greek and English) is also inside the program: Settings → Information → History.
 Detailed notes per release: `docs/releases/RELEASE-<version>.md` and the GitHub releases.
 
+## 0.20.4 — 2026-11-11
+- **New page Sources > History flow.** It lists the text flows that plugins register (`PluginFeeds.All()`, for example `san-simera` "On this day"), a switch for each (`AppConfig.DisabledPluginFeeds`; a switched-off flow shows nothing in any bar), a preview of the flow's lines (the plugin fills its flow a few seconds after it starts: "Loading..." and it asks again every 3 s, at most 10 times, and whenever `PluginFeeds.Changed` is raised), which bars show it, and a button that puts it in the right half of the main bar (slot `feed:<key>`). The bar content choosers are refreshed when a feed appears. No contract change (0.8.0.0), no API of Opsis 2.6.0. 14 languages.
+
 ## 0.20.3 — 2026-11-04
 - **Release hygiene.** `Directory.Build.props`: deterministic, path-mapped builds (`/src/`), no symbol files, so program files and the portable zip carry no local folder, build-agent folder, user name or e-mail address; the committed `libs/Opsis.UI.dll` was rebuilt the same way (it carried a build path). Tracked docs and tests no longer name local folders. New tests `ReleaseHygieneTests` scan the built files, the committed binaries, the newest portable zip and every tracked text file.
 - **Same publisher everywhere** (`giorstergiopoulos-design`): Company / Product / Description / Copyright / repository / MIT in every exe and dll, and `AppPublisher`, URLs and `VersionInfo*` in the installer; tests read the version information.

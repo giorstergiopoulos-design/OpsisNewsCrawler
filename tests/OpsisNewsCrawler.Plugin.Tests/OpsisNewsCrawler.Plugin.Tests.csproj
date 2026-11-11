@@ -17,6 +17,8 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/OpsisNewsCrawler.OpsisPlugin/OpsisNewsCrawler.OpsisPlugin.csproj" />
+    <ProjectReference Include="../../src/OpsisNewsCrawler.Windows/OpsisNewsCrawler.Windows.csproj" />
+    <ProjectReference Include="../../src/OpsisNewsCrawler.Core/OpsisNewsCrawler.Core.csproj" />
     <ProjectReference Include="../../src/OpsisNewsCrawler.Plugin.Abstractions/OpsisNewsCrawler.Plugin.Abstractions.csproj" />
     <None Include="reference/*.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
