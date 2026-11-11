@@ -592,10 +592,11 @@ public sealed class TickerWindow : Form
             // On the taskbar: completely clear, only the text and the logos are drawn, in the taskbar's own text colour.
             var st = TaskbarStyle.Read();
             var darkSurface = !st.Light || st.AccentOnTaskbar;
-            // "Like the taskbar": the bar is completely clear, so what is seen is exactly the colour of the taskbar itself. Blur and acrylic would still blur and shift
-            // the colour even with no tint, so this mode uses no material at all (state 2 with no tint); the material choices belong to the other colour modes.
+            // "Like the taskbar": no tint at all, so what is seen is the colour of the taskbar itself. Measured on Windows 11: blur or acrylic with no tint differ from the bare
+            // taskbar by one unit of 255 (38,38,21 -> 39,39,22), while the transparent-gradient material is a light blue (178,200,216) and "disabled" is black: so this mode
+            // always uses blur, whatever material is chosen for the other colour modes.
             var clear = colorMode is "taskbar" or "theme" or "";
-            var material = clear ? "gradient" : backdropStyle;
+            var material = clear ? "blur" : backdropStyle;
             if (!clear && backdropStyle == "gradient")
             {
                 // The transparent-gradient material is the light blue: dark text reads on it.
@@ -1093,10 +1094,10 @@ public sealed class TickerWindow : Form
             // The taskbar can take the top of the z-order and its size / icons change: look again about every second, but touch the window only when something is really wrong
             // (see TaskbarMaintenance: re-setting the z-order and the backdrop every second made the bar flicker, and it fought with the tray overflow window).
             var style = taskbarTick % TaskbarMaintenance.CheckEvery == 0 ? TaskbarStyle.Read().ToString() : lastTaskbarStyle;
-            var todo = TaskbarMaintenance.Decide(taskbarTick, style != lastTaskbarStyle, TaskbarMaintenance.IsShellFlyout(Native.ForegroundClassName()), taskbarTick % TaskbarMaintenance.CheckEvery != 0 || Native.IsAtTopOfTopmost(Handle));
+            var todo = TaskbarMaintenance.Decide(taskbarTick, style != lastTaskbarStyle, TaskbarMaintenance.IsShellFlyout(Native.ForegroundClassName()), taskbarTick % TaskbarMaintenance.TopCheckEvery != 0 || Native.IsAtTopOfTopmost(Handle));
             lastTaskbarStyle = style;
-            if (todo.KeepOnTop) Native.KeepTopMost(Handle);
-            if (todo.ApplyLook) ApplyLook();
+            if (todo.KeepOnTop) { Log.Write("Bar inside the taskbar: a window lies above it (" + Native.TopmostAbove(Handle) + "), put back on top"); Native.KeepTopMost(Handle); }
+            if (todo.ApplyLook) { Log.Write("Bar inside the taskbar: look applied (the taskbar style changed, or the slow refresh)"); ApplyLook(); }
             if (todo.Reposition) Reposition();
             if (TaskbarAutoDetect && !measuring && (taskbarTick % 66 == 2 || measuredSpan is null && taskbarTick % 10 == 2))
                 MeasureTaskbarInBackground();

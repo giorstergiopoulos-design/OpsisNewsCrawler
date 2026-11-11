@@ -197,14 +197,38 @@ internal static class Native
         return GetClassName(fg, name, name.Capacity) > 0 ? name.ToString() : "";
     }
 
-    /// <summary>True when no visible always-on-top window lies above this one (so it does not need to be put on top again).</summary>
-    internal static bool IsAtTopOfTopmost(IntPtr hwnd)
+    /// <summary>
+    /// The nearest visible always-on-top window above this one that really covers part of it, or zero. Helper windows of the shell (for example the "ThumbnailDeviceHelperWnd"
+    /// that always lies above everything) are tiny or lie elsewhere and are ignored: putting this window above them is impossible (they put themselves back) and made the old
+    /// check ask every second.
+    /// </summary>
+    private static IntPtr CoveringTopmostAbove(IntPtr hwnd)
     {
         const uint GW_HWNDPREV = 3;
         const int GWL_EXSTYLE = -20, WS_EX_TOPMOST = 0x8;
+        if (!GetWindowRect(hwnd, out var mine)) return IntPtr.Zero;
         for (var above = GetWindow(hwnd, GW_HWNDPREV); above != IntPtr.Zero; above = GetWindow(above, GW_HWNDPREV))
-            if (IsWindowVisible(above) && (GetWindowLongEx(above, GWL_EXSTYLE) & WS_EX_TOPMOST) != 0) return false;
-        return true;
+        {
+            if (!IsWindowVisible(above) || (GetWindowLongEx(above, GWL_EXSTYLE) & WS_EX_TOPMOST) == 0) continue;
+            if (!GetWindowRect(above, out var other)) continue;
+            if (other.Right - other.Left < 8 || other.Bottom - other.Top < 8) continue;                        // a helper window, not something that can hide the bar
+            var overlapW = Math.Min(mine.Right, other.Right) - Math.Max(mine.Left, other.Left);
+            var overlapH = Math.Min(mine.Bottom, other.Bottom) - Math.Max(mine.Top, other.Top);
+            if (overlapW > 8 && overlapH > 8) return above;
+        }
+        return IntPtr.Zero;
+    }
+
+    /// <summary>True when nothing that is always on top and really covers this window lies above it (so it does not need to be put on top again).</summary>
+    internal static bool IsAtTopOfTopmost(IntPtr hwnd) => CoveringTopmostAbove(hwnd) == IntPtr.Zero;
+
+    /// <summary>The class name of the window that covers this one from above (empty when none): for the log.</summary>
+    internal static string TopmostAbove(IntPtr hwnd)
+    {
+        var above = CoveringTopmostAbove(hwnd);
+        if (above == IntPtr.Zero) return "";
+        var name = new StringBuilder(128);
+        return GetClassName(above, name, name.Capacity) > 0 ? name.ToString() : "?";
     }
 
     internal static void KeepTopMost(IntPtr hwnd)

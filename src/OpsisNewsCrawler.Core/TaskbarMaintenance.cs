@@ -13,6 +13,9 @@ public static class TaskbarMaintenance
     /// <summary>Ticks between the checks (the timer ticks every 30-90 ms depending on the performance tier, so this is about 1-3 s).</summary>
     public const int CheckEvery = 30;
 
+    /// <summary>Ticks between two looks at the z-order (a few window calls, no change to the window): the bar is put back quickly when the taskbar covers it, and only then.</summary>
+    public const int TopCheckEvery = 10;
+
     /// <summary>Ticks between two unconditional re-applications of the look (a recovery after Explorer restarted; about 30-90 s).</summary>
     public const int LookRefreshEvery = 900;
 
@@ -30,7 +33,7 @@ public static class TaskbarMaintenance
         if (shellFlyoutHasFocus) return new Actions(false, false, false);   // the user is using the tray overflow or another flyout: touch nothing
         var check = tick % CheckEvery == 0;
         return new Actions(
-            KeepOnTop: check && !alreadyOnTop,
+            KeepOnTop: tick % TopCheckEvery == 0 && !alreadyOnTop,
             ApplyLook: taskbarStyleChanged || (tick > 0 && tick % LookRefreshEvery == 0),
             Reposition: check);
     }

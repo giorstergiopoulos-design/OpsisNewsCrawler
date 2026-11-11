@@ -19,6 +19,7 @@ public class TaskbarMaintenanceTests
     [Fact]
     public void TheBarGoesBackOnTopOnlyWhenSomethingCoveredItAndOnlyAtACheck()
     {
+        Assert.True(TaskbarMaintenance.Decide(10, false, false, alreadyOnTop: false).KeepOnTop);
         Assert.True(TaskbarMaintenance.Decide(30, false, false, alreadyOnTop: false).KeepOnTop);
         Assert.False(TaskbarMaintenance.Decide(31, false, false, alreadyOnTop: false).KeepOnTop);
     }
