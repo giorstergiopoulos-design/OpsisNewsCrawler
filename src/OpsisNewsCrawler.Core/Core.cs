@@ -4,7 +4,7 @@ public enum TickerMode { Economy, Market, International, Greece, Defence, Sports
 public enum TickerPosition { BottomTaskbar, Top, Center, Custom, TaskbarIntegrated }
 public readonly record struct TickerScrollState(double Offset);
 /// <summary>Continent = the heading that starts the events of one continent in the World list (its picture and its name).</summary>
-public enum NewsItemKind { News, Quote, Weather, Hazard, Continent }
+public enum NewsItemKind { News, Quote, Weather, Hazard, Continent, Calendar }
 
 /// <summary>What a bar shows: news, market quotes, or both side by side (the bar is split in the middle).</summary>
 public enum BarContent { News, Stocks, Both, Weather }

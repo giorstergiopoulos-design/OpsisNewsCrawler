@@ -299,6 +299,15 @@ public sealed class AppConfig
     public static int CleanBarHeight(int value) => value <= 0 ? 0 : Math.Clamp(value, 24, 200);
     public static string CleanFontFamily(string? value) { var name = (value ?? "").Trim(); return name.Length > 64 ? name[..64] : name; }
 
+    /// <summary>The most lines one plugin feed shows in a bar (5-200).</summary>
+    public int PluginFeedMaxLines { get; set; } = 50;
+
+    /// <summary>The order of the lines of rich plugin feeds: "priority" (importance), "yearAsc" (oldest first) or "yearDesc" (newest first).</summary>
+    public string PluginFeedOrder { get; set; } = "priority";
+
+    /// <summary>Two-letter code of the user's country: rich feed lines for another country are left out (empty = all countries).</summary>
+    public string PluginFeedCountry { get; set; } = "";
+
     /// <summary>Keys of the plugin feeds (history / calendar flows of plugins) that the user switched off; a switched-off feed shows nothing in the bars.</summary>
     public List<string> DisabledPluginFeeds { get; set; } = new();
 
@@ -583,6 +592,9 @@ public sealed class AppConfig
         MainFontFamily = CleanFontFamily(MainFontFamily); SecondFontFamily = CleanFontFamily(SecondFontFamily); MiniFontFamily = CleanFontFamily(MiniFontFamily); MonitorFontFamily = CleanFontFamily(MonitorFontFamily);
         MainFontPercent = CleanFontPercent(MainFontPercent); SecondFontPercent = CleanFontPercent(SecondFontPercent); MiniFontPercent = CleanFontPercent(MiniFontPercent); MonitorFontPercent = CleanFontPercent(MonitorFontPercent);
         MainBarHeight = CleanBarHeight(MainBarHeight); MonitorBarHeight = CleanBarHeight(MonitorBarHeight);
+        PluginFeedMaxLines = Math.Clamp(PluginFeedMaxLines, 5, 200);
+        PluginFeedOrder = PluginFeedOrder is "yearAsc" or "yearDesc" ? PluginFeedOrder : "priority";
+        PluginFeedCountry = (PluginFeedCountry ?? "").Trim().ToUpperInvariant() is { Length: 2 } cc && cc.All(char.IsLetter) ? cc : "";
         DisabledPluginFeeds = (DisabledPluginFeeds ?? new()).Where(k => !string.IsNullOrWhiteSpace(k)).Select(k => k.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).Take(100).ToList();
         BreakingSensitivity = BreakingEngine.SensitivityText(BreakingEngine.ParseSensitivity(BreakingSensitivity));
         BreakingMaxAgeMinutes = Math.Clamp(BreakingMaxAgeMinutes, 10, 1440);

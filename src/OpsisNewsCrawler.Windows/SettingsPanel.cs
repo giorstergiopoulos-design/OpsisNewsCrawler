@@ -188,6 +188,9 @@ public sealed class SettingsPanel : UserControl
     private FlatCard historyPreviewCard = null!;
     private FlatButton historyAddToBar = null!;
     private List<string> workDisabledFeeds = new();
+    private FlatNumber feedMaxLines = null!;
+    private FlatComboBox feedOrder = null!, feedCountry = null!;
+    private List<string> feedCountryCodes = new() { "" };
     private List<OpsisNewsCrawler.Plugin.Abstractions.PluginFeed> historyFeeds = new();
     private bool refreshingHistory;
     private readonly System.Windows.Forms.Timer historyRetry = new() { Interval = 3000 };
@@ -1871,6 +1874,24 @@ public sealed class SettingsPanel : UserControl
         preview.Controls.Add(previewFlow);
         flow.Controls.Add(preview);
 
+        var optionsCard = new FlatCard(L("history.options"));
+        var optionsFlow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false };
+        optionsFlow.Controls.Add(Note(L("history.options.note"), 700));
+        feedMaxLines = new FlatNumber();
+        feedMaxLines.Configure(5, 200, 5);
+        optionsFlow.Controls.Add(Row(L("history.maxLines"), feedMaxLines, 300));
+        feedOrder = new FlatComboBox { Width = 380 };
+        feedOrder.SetItems(new[] { L("history.order.priority"), L("history.order.yearAsc"), L("history.order.yearDesc") }, 0);
+        optionsFlow.Controls.Add(Row(L("history.order"), feedOrder, 300));
+        feedCountry = new FlatComboBox { Width = 380 };
+        feedCountryCodes = new List<string> { "" };
+        var countryNames = new List<string> { L("history.country.all") };
+        foreach (var c in WorldPlaces.Continents.SelectMany(k => k.Countries).OrderBy(c => c.DisplayName, StringComparer.CurrentCultureIgnoreCase)) { feedCountryCodes.Add(c.Code); countryNames.Add(c.DisplayName); }
+        feedCountry.SetItems(countryNames, 0);
+        optionsFlow.Controls.Add(Row(L("history.country"), feedCountry, 300));
+        optionsCard.Controls.Add(optionsFlow);
+        flow.Controls.Add(optionsCard);
+
         historyRetry.Tick += (_, _) =>
         {
             // a plugin fills its feed in the background a few seconds after it started: ask again (at most 10 times) until there is something to show
@@ -1894,7 +1915,7 @@ public sealed class SettingsPanel : UserControl
     {
         if (historyList is null) return;
         var selectedKey = historyList.SelectedIndex >= 0 && historyList.SelectedIndex < historyFeeds.Count ? historyFeeds[historyList.SelectedIndex].Key : null;
-        historyFeeds = OpsisNewsCrawler.Plugin.Abstractions.PluginFeeds.All().ToList();
+        historyFeeds = PluginFeedMapper.AllFeeds(() => PluginFeedOptions.From(host.Config, Loc.Language)).ToList();
         refreshingHistory = true;
         try
         {
@@ -2266,6 +2287,9 @@ public sealed class SettingsPanel : UserControl
             mainHeightAuto.Checked = c.MainBarHeight == 0; mainHeight.SetValueSilently(c.MainBarHeight == 0 ? 42 : c.MainBarHeight); mainHeight.Enabled = c.MainBarHeight != 0;
             monitorHeightAuto.Checked = c.MonitorBarHeight == 0; monitorHeight.SetValueSilently(c.MonitorBarHeight == 0 ? 42 : c.MonitorBarHeight); monitorHeight.Enabled = c.MonitorBarHeight != 0;
             workDisabledFeeds = c.DisabledPluginFeeds.ToList();
+            feedMaxLines.SetValueSilently(c.PluginFeedMaxLines);
+            feedOrder.SelectSilently(c.PluginFeedOrder switch { "yearAsc" => 1, "yearDesc" => 2, _ => 0 });
+            feedCountry.SelectSilently(Math.Max(0, feedCountryCodes.IndexOf(c.PluginFeedCountry)));
             RefreshHistoryFeeds();
             breakingSensitivity.SelectSilently((int)BreakingEngine.ParseSensitivity(c.BreakingSensitivity));
             forgetBreaking.Text = L("breaking.forget");
@@ -2691,6 +2715,9 @@ public sealed class SettingsPanel : UserControl
         c.WeatherMapOnClick = weatherMapOnClick.Checked;
         c.WeatherAlertsEnabled = weatherAlerts.Checked;
         c.AlertCityId = alertCity.SelectedIndex > 0 && alertCity.SelectedIndex <= GreekCities.All.Count ? GreekCities.All[alertCity.SelectedIndex - 1].Id : "";
+        c.PluginFeedMaxLines = feedMaxLines.Value;
+        c.PluginFeedOrder = feedOrder.SelectedIndex switch { 1 => "yearAsc", 2 => "yearDesc", _ => "priority" };
+        c.PluginFeedCountry = feedCountryCodes.ElementAtOrDefault(Math.Max(0, feedCountry.SelectedIndex)) ?? "";
         c.DisabledPluginFeeds = workDisabledFeeds.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         c.TextColorMode = textColorMode.SelectedIndex == 1 ? "fixed" : "auto";
         c.TextShadow = textShadow.Checked;
@@ -2883,7 +2910,7 @@ public sealed class SettingsPanel : UserControl
             labels.Add(Loc.T("content.weather"));
             choices.Add(new BarSlot(SlotKind.Hazards));
             labels.Add(Loc.T("hazard.slot"));
-            foreach (var f in OpsisNewsCrawler.Plugin.Abstractions.PluginFeeds.All()) { choices.Add(new BarSlot(SlotKind.Feed, f.Key)); labels.Add(Loc.Pick(f.TitleEl, f.TitleEn)); }
+            foreach (var f in PluginFeedMapper.AllFeeds()) { choices.Add(new BarSlot(SlotKind.Feed, f.Key)); labels.Add(Loc.Pick(f.TitleEl, f.TitleEn)); }
 
             suppress = true;
             try

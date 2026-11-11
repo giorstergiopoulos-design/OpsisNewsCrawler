@@ -86,6 +86,19 @@ public interface IPluginWidgetProvider
 /// <summary>One line of a plugin feed (text, with an optional link opened on click).</summary>
 public sealed record PluginFeedItem(string Text, string? Url = null);
 
+/// <summary>
+/// One line of a RICH feed: the text and optional details (a stable id, a kind such as "holiday" or "history", a summary for the preview card, an image id, the country and language the
+/// line is for, the year of a historical event, an id of the detail page, a priority). Only additions to the contract: <see cref="PluginFeedItem"/> and <see cref="PluginFeed"/> are unchanged, so
+/// plugins built before this type keep working. A plugin that wants to use it calls <see cref="PluginFeeds.RegisterRich"/> inside a try / catch (MissingMethodException, TypeLoadException) and falls
+/// back to a text feed when the host has an older contract.
+/// </summary>
+public sealed record PluginRichFeedItem(
+    string EntryId, string Text, string? Url = null, string? Kind = null, string? Summary = null, string? ImageId = null,
+    string? CountryCode = null, string? LanguageCode = null, int? HistoricalYear = null, string? DetailId = null, int Priority = 0);
+
+/// <summary>A rich feed a plugin registers; <see cref="GetItems"/> is called on the UI thread and must only return what the plugin already has in memory.</summary>
+public sealed record PluginRichFeed(string Key, string TitleEl, string TitleEn, Func<IReadOnlyList<PluginRichFeedItem>> GetItems);
+
 /// <summary>A text feed a plugin registers; the user can choose it as the content of a bar of the News Crawler. <see cref="GetItems"/> is called on the UI thread.</summary>
 public sealed record PluginFeed(string Key, string TitleEl, string TitleEn, Func<IReadOnlyList<PluginFeedItem>> GetItems);
 
@@ -96,8 +109,15 @@ public static class PluginFeeds
     /// <summary>Raised after a feed was added, replaced or removed.</summary>
     public static event Action? Changed;
     public static void Register(PluginFeed feed) { lock (Gate) { Feeds.RemoveAll(f => string.Equals(f.Key, feed.Key, StringComparison.OrdinalIgnoreCase)); Feeds.Add(feed); } Changed?.Invoke(); }
-    public static void Unregister(string key) { int removed; lock (Gate) removed = Feeds.RemoveAll(f => string.Equals(f.Key, key, StringComparison.OrdinalIgnoreCase)); if (removed > 0) Changed?.Invoke(); }
+    public static void Unregister(string key) { int removed; lock (Gate) removed = Feeds.RemoveAll(f => string.Equals(f.Key, key, StringComparison.OrdinalIgnoreCase)) + RichFeeds.RemoveAll(f => string.Equals(f.Key, key, StringComparison.OrdinalIgnoreCase)); if (removed > 0) Changed?.Invoke(); }
     public static IReadOnlyList<PluginFeed> All() { lock (Gate) return Feeds.ToList(); }
+
+    private static readonly List<PluginRichFeed> RichFeeds = new();
+
+    /// <summary>Registers a rich feed (a text feed with details). When a text feed of the same key exists, hosts that understand rich feeds prefer the rich one.</summary>
+    public static void RegisterRich(PluginRichFeed feed) { lock (Gate) { RichFeeds.RemoveAll(f => string.Equals(f.Key, feed.Key, StringComparison.OrdinalIgnoreCase)); RichFeeds.Add(feed); } Changed?.Invoke(); }
+    public static IReadOnlyList<PluginRichFeed> AllRich() { lock (Gate) return RichFeeds.ToList(); }
+    public static PluginRichFeed? FindRich(string? key) { if (string.IsNullOrWhiteSpace(key)) return null; lock (Gate) return RichFeeds.FirstOrDefault(f => string.Equals(f.Key, key, StringComparison.OrdinalIgnoreCase)); }
     public static PluginFeed? Find(string? key) { if (string.IsNullOrWhiteSpace(key)) return null; lock (Gate) return Feeds.FirstOrDefault(f => string.Equals(f.Key, key, StringComparison.OrdinalIgnoreCase)); }
 }
 
