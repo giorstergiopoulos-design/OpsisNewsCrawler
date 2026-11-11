@@ -17,7 +17,7 @@
 #define MyAppName "Opsis News Crawler"
 #define MyPublisher "giorstergiopoulos-design"
 #define MyAppUrl "https://github.com/giorstergiopoulos-design/OpsisNewsCrawler"
-#define MyAppVersion "0.22.1"
+#define MyAppVersion "0.22.2"
 #ifndef BinDir
 #define BinDir "bin"
 #endif
