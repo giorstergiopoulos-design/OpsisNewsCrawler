@@ -1836,7 +1836,7 @@ public sealed class TickerHost : IDisposable
 
     private void OnPluginFeedsChanged()
     {
-        if (disposed || !Window.IsHandleCreated) return;
+        if (disposed || Window is null || !Window.IsHandleCreated) return;   // a plugin can register a feed while the host is still being built
         try { Window.BeginInvoke(new Action(() => { if (!disposed) PushAll(); })); }
         catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException) { }
     }

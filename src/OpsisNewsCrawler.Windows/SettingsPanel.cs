@@ -1703,7 +1703,7 @@ public sealed class SettingsPanel : UserControl
         flow.Controls.Add(Row(L("lbl.taskbarBackdrop"), taskbarBackdrop, 240));
         flow.Controls.Add(Note(L("note.backdrop"), 640));
         barColor.SelectedIndexChanged += (_, _) => barSwatch.Enabled = barColor.SelectedIndex == 3;
-        taskbarColor.SelectedIndexChanged += (_, _) => taskbarSwatch.Enabled = taskbarColor.SelectedIndex == 3;
+        taskbarColor.SelectedIndexChanged += (_, _) => { taskbarSwatch.Enabled = taskbarColor.SelectedIndex == 3; taskbarBackdrop.Enabled = taskbarColor.SelectedIndex != 0; };
 
         windowOpacity = new FlatSlider { Width = 300 };
         windowOpacity.SetRange(60, 100);
@@ -2146,6 +2146,7 @@ public sealed class SettingsPanel : UserControl
             taskbarColor.SelectSilently(c.TaskbarBarColorMode switch { "lightblue" => 1, "accent" => 2, "custom" => 3, _ => 0 });
             taskbarSwatch.Rgb = c.TaskbarBarCustomColor;
             taskbarSwatch.Enabled = taskbarColor.SelectedIndex == 3;
+            taskbarBackdrop.Enabled = taskbarColor.SelectedIndex != 0;   // completely clear = no material at all
             barBackdrop.SelectSilently(c.BarBackdrop switch { "blur" => 1, "gradient" => 2, _ => 0 });
             taskbarBackdrop.SelectSilently(c.TaskbarBarBackdrop switch { "acrylic" => 0, "gradient" => 2, _ => 1 });
             breakingEnabled.Checked = c.BreakingEnabled;

@@ -9,6 +9,7 @@ namespace OpsisNewsCrawler.Plugin.Tests;
 /// The plugin contract is shared with plugins built elsewhere (the "San simera" plugin ships its own copy of this DLL). These tests load that reference copy in its own
 /// load context, like the host does for a plugin, and compare the public surface with the contract of this repository.
 /// </summary>
+[Collection("plugin-feeds")]   // the feed registry is shared by the whole process
 public class ContractTests
 {
     // The plugin's own copy of the contract (22 016 bytes, SHA-256 F3074836696EAD48ACC38F9E1E483BF0F3636EFE7A483C3E841AF47FF6374D63) carries its author's build paths, so it is

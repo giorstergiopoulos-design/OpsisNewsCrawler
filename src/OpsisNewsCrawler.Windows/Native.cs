@@ -184,6 +184,29 @@ internal static class Native
         SetWindowPos(hwnd, new IntPtr(1), 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
     }
 
+    [DllImport("user32.dll")] private static extern IntPtr GetWindow(IntPtr hWnd, uint cmd);
+    [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr hWnd);
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongW")] private static extern int GetWindowLongEx(IntPtr hWnd, int index);
+
+    /// <summary>The class of the window that has the keyboard focus (empty when there is none).</summary>
+    internal static string ForegroundClassName()
+    {
+        var fg = GetForegroundWindow();
+        if (fg == IntPtr.Zero) return "";
+        var name = new StringBuilder(128);
+        return GetClassName(fg, name, name.Capacity) > 0 ? name.ToString() : "";
+    }
+
+    /// <summary>True when no visible always-on-top window lies above this one (so it does not need to be put on top again).</summary>
+    internal static bool IsAtTopOfTopmost(IntPtr hwnd)
+    {
+        const uint GW_HWNDPREV = 3;
+        const int GWL_EXSTYLE = -20, WS_EX_TOPMOST = 0x8;
+        for (var above = GetWindow(hwnd, GW_HWNDPREV); above != IntPtr.Zero; above = GetWindow(above, GW_HWNDPREV))
+            if (IsWindowVisible(above) && (GetWindowLongEx(above, GWL_EXSTYLE) & WS_EX_TOPMOST) != 0) return false;
+        return true;
+    }
+
     internal static void KeepTopMost(IntPtr hwnd)
     {
         const uint SWP_NOSIZE = 1, SWP_NOMOVE = 2, SWP_NOACTIVATE = 0x10;

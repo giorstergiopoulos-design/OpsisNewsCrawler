@@ -7,6 +7,7 @@ using Xunit;
 namespace OpsisNewsCrawler.Plugin.Tests;
 
 /// <summary>The "History flow" page of the settings with a feed that a plugin registered: it lists the feed, previews its lines, switches it off and puts it in a bar.</summary>
+[Collection("plugin-feeds")]
 public class HistoryPageTests
 {
     private static T Field<T>(object o, string name) => (T)o.GetType().GetField(name, BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(o)!;

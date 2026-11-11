@@ -592,7 +592,11 @@ public sealed class TickerWindow : Form
             // On the taskbar: completely clear, only the text and the logos are drawn, in the taskbar's own text colour.
             var st = TaskbarStyle.Read();
             var darkSurface = !st.Light || st.AccentOnTaskbar;
-            if (backdropStyle == "gradient")
+            // "Like the taskbar": the bar is completely clear, so what is seen is exactly the colour of the taskbar itself. Blur and acrylic would still blur and shift
+            // the colour even with no tint, so this mode uses no material at all (state 2 with no tint); the material choices belong to the other colour modes.
+            var clear = colorMode is "taskbar" or "theme" or "";
+            var material = clear ? "gradient" : backdropStyle;
+            if (!clear && backdropStyle == "gradient")
             {
                 // The transparent-gradient material is the light blue: dark text reads on it.
                 SetDarkTextLook();
@@ -602,7 +606,7 @@ public sealed class TickerWindow : Form
                 canvas.SetLook(st.Text, st.SourceText, st.HoverOverlay, st.Text, darkSurface);
                 canvasB.SetLook(st.Text, st.SourceText, st.HoverOverlay, st.Text, darkSurface);
             }
-            if (IsHandleCreated) Native.SetBackdrop(Handle, backdropStyle, Color.Black, 0);
+            if (IsHandleCreated) Native.SetBackdrop(Handle, material, Color.Black, 0);
             return;
         }
 
@@ -1037,6 +1041,8 @@ public sealed class TickerWindow : Form
     /// <summary>Horizontal margin of a full-width bar that has a rounded or pill shape (0 for the plain rectangle).</summary>
     private int ShapeInset => shape == "rect" ? 0 : 28;
 
+    private string lastTaskbarStyle = "";
+
     private void FollowTaskbarTick()
     {
         if (!running || editMode || TargetScreen is not null) return;
@@ -1084,13 +1090,14 @@ public sealed class TickerWindow : Form
                 return;
             }
             if (!Visible) return;
-            // The taskbar steals the top of the z-order and its size/icons change: re-assert about once a second.
-            if (taskbarTick % 30 == 0)
-            {
-                Native.KeepTopMost(Handle);
-                ApplyLook();
-                Reposition();
-            }
+            // The taskbar can take the top of the z-order and its size / icons change: look again about every second, but touch the window only when something is really wrong
+            // (see TaskbarMaintenance: re-setting the z-order and the backdrop every second made the bar flicker, and it fought with the tray overflow window).
+            var style = taskbarTick % TaskbarMaintenance.CheckEvery == 0 ? TaskbarStyle.Read().ToString() : lastTaskbarStyle;
+            var todo = TaskbarMaintenance.Decide(taskbarTick, style != lastTaskbarStyle, TaskbarMaintenance.IsShellFlyout(Native.ForegroundClassName()), taskbarTick % TaskbarMaintenance.CheckEvery != 0 || Native.IsAtTopOfTopmost(Handle));
+            lastTaskbarStyle = style;
+            if (todo.KeepOnTop) Native.KeepTopMost(Handle);
+            if (todo.ApplyLook) ApplyLook();
+            if (todo.Reposition) Reposition();
             if (TaskbarAutoDetect && !measuring && (taskbarTick % 66 == 2 || measuredSpan is null && taskbarTick % 10 == 2))
                 MeasureTaskbarInBackground();
             return;
