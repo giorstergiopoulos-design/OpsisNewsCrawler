@@ -189,7 +189,11 @@ if ($Scenario -eq 'from-per-user') {
 $runValue = Reg-Value 'HKCU' $RunKey 'Opsis News Crawler'
 if ($runValue) { Check ($runValue -like "*Program Files*") 'the start-up value points into Program Files' }
 $log = Join-Path $env:APPDATA 'OpsisNewsCrawler\crawler.log'
-$tierLine = if (Test-Path $log) { (Select-String -Path $log -Pattern 'Performance tier:' | Select-Object -Last 1).Line } else { $null }
+$tierLine = $null
+for ($i = 0; $i -lt 30 -and -not $tierLine; $i++) {   # the line is written once the first evaluation has run; a slow runner needs longer than a fixed sleep
+    if (Test-Path $log) { $tierLine = (Select-String -Path $log -Pattern 'Performance tier:' | Select-Object -Last 1).Line }
+    if (-not $tierLine) { Start-Sleep -Seconds 2 }
+}
 Check ($tierLine -like '*Low*') "the runner (2 vCPU, no GPU) is detected as a Low PC: $tierLine"
 Stop-Process -Id $smoke.Id -Force -ErrorAction SilentlyContinue
 Get-Process OpsisNewsCrawler -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$MachineDir*" } | Stop-Process -Force -ErrorAction SilentlyContinue
@@ -240,3 +244,4 @@ $report.Add("**Result: $(if ($failures -eq 0) { 'all checks passed' } else { "$f
 $report | Set-Content (Join-Path $Out 'report.md')
 if ($env:GITHUB_STEP_SUMMARY) { $report | Add-Content $env:GITHUB_STEP_SUMMARY }
 if ($failures -gt 0) { exit 1 }
+exit 0   # without this the exit code of the last native command (taskkill, the uninstaller) leaks out as the result of the script
