@@ -17,7 +17,7 @@ dotnet publish src\OpsisNewsCrawler.App\OpsisNewsCrawler.App.csproj -c Release -
 if ($LASTEXITCODE -ne 0) { throw "publish failed" }
 
 # The plugin folder is MIRRORED (stale files removed) from the build output; robocopy needs backslash paths.
-$pluginSrc = "$r\src\OpsisNewsCrawler.OpsisPlugin\bin\Release\net10.0-windows"
+$pluginSrc = "$r\src\OpsisNewsCrawler.OpsisPlugin\bin\Release\net10.0-windows10.0.19041.0"
 $pluginDst = "$stage\plugins\Opsis - Desktop Customization"
 robocopy $pluginSrc $pluginDst /MIR /NFL /NDL /NJH /NJS | Out-Null
 if ($LASTEXITCODE -ge 8) { throw "copying the plugin failed (robocopy $LASTEXITCODE)" }

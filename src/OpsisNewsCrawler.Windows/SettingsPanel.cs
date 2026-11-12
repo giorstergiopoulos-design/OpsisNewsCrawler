@@ -69,7 +69,7 @@ public sealed class SettingsPanel : UserControl
     private List<string> workCities = new();
     private List<GreekCity> workCustom = new();
     private FlatText geoQuery = null!;
-    private FlatButton geoSearchButton = null!, geoAddButton = null!, geoCleanupButton = null!;
+    private FlatButton geoSearchButton = null!, geoAddButton = null!, geoCleanupButton = null!, geoMyLocationButton = null!;
     private FlatList geoList = null!;
     private Label geoStatus = null!;
     private List<GeoPlace> geoHits = new();
@@ -1001,9 +1001,11 @@ public sealed class SettingsPanel : UserControl
         geoFlow.Controls.Add(geoList);
         geoAddButton = new FlatButton { Text = L("geo.add") };
         geoCleanupButton = new FlatButton { Text = L("geo.cleanup") };
+        geoMyLocationButton = new FlatButton { Text = L("geo.myloc") };
         var geoButtons = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = true };
         geoButtons.Controls.Add(geoAddButton);
         geoButtons.Controls.Add(geoCleanupButton);
+        geoButtons.Controls.Add(geoMyLocationButton);
         geoFlow.Controls.Add(geoButtons);
         geoStatus = new Label { AutoSize = true, Tag = "muted", MaximumSize = new Size(700, 0), Margin = new Padding(0, 6, 0, 0), UseMnemonic = false };
         geoFlow.Controls.Add(geoStatus);
@@ -1013,6 +1015,7 @@ public sealed class SettingsPanel : UserControl
         geoSearchButton.Click += async (_, _) => await RunGeoSearchAsync();
         geoAddButton.Click += async (_, _) => await AddGeoPlacesAsync();
         geoCleanupButton.Click += (_, _) => CleanupGeoPlaces();
+        geoMyLocationButton.Click += async (_, _) => await AddMyLocationAsync();
 
         weatherMapOnClick = new FlatToggle { RowWidth = 600, Text = Loc.T("pk.click.a.city.on") };
         flow.Controls.Add(weatherMapOnClick);
@@ -1233,6 +1236,29 @@ public sealed class SettingsPanel : UserControl
     }
 
     /// <summary>Forgets the added places that are not ticked in the list.</summary>
+    /// <summary>Opt-in: asks the Windows Location service once (after a confirmation) and adds the rounded point as a place of the weather list.</summary>
+    private async Task AddMyLocationAsync()
+    {
+        if (MessageBox.Show(FindForm(), L("geo.myloc.consent"), L("geo.myloc"), MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+        geoMyLocationButton.Enabled = false;
+        try
+        {
+            var here = await DeviceLocation.GetApproximateAsync();
+            if (here is null) { geoStatus.Text = L("geo.myloc.denied"); return; }
+            if (workCustom.Count >= GreekCities.MaxCustom) return;
+            var name = L("geo.myloc.name");
+            var city = GeoSearch.ToCity(new GeoPlace(name, null, null, null, "", here.Value.Lat, here.Value.Lon), name, name);
+            if (workCustom.All(c => c.Id != city.Id)) workCustom.Add(city);
+            if (!workCities.Contains(city.Id)) workCities.Add(city.Id);
+            var keep = AlertCityIdSelected();
+            GreekCities.SetCustom(workCustom);
+            ShowCities();
+            FillAlertCities(keep);
+            geoStatus.Text = Loc.T("geo.added", 1);
+        }
+        finally { if (!IsDisposed) geoMyLocationButton.Enabled = true; }
+    }
+
     private void CleanupGeoPlaces()
     {
         var keep = AlertCityIdSelected();

@@ -713,5 +713,9 @@
   "history.order.yearAsc": "年順 (古い順)",
   "history.order.yearDesc": "年順 (新しい順)",
   "history.country": "自分の国",
-  "history.country.all": "すべての国"
+  "history.country.all": "すべての国",
+  "geo.myloc": "おおよその現在地を追加",
+  "geo.myloc.consent": "プログラムは Windows に一度だけおおよその現在地を問い合わせます。天気には約 1 km に丸めた座標だけを使い、HTTPS でプロバイダーに送信します。それ以上に正確な情報は保存されません。続行しますか？",
+  "geo.myloc.denied": "位置情報が利用できないか、Windows の設定 > プライバシー > 位置情報で許可されていません。",
+  "geo.myloc.name": "現在地（概算）"
 }

@@ -713,5 +713,9 @@
   "history.order.yearAsc": "حسب السنة، الأقدم أولًا",
   "history.order.yearDesc": "حسب السنة، الأحدث أولًا",
   "history.country": "بلدي",
-  "history.country.all": "كل الدول"
+  "history.country.all": "كل الدول",
+  "geo.myloc": "إضافة موقعي التقريبي",
+  "geo.myloc.consent": "سيطلب البرنامج من Windows موقعك التقريبي مرة واحدة. للطقس تُستخدم وتُرسل عبر HTTPS إلى المزوّد إحداثيات مقرّبة إلى نحو 1 كم فقط؛ ولا يُحفظ أي شيء أدق. هل تتابع؟",
+  "geo.myloc.denied": "الموقع غير متاح أو لم يُسمح به في إعدادات Windows > الخصوصية > الموقع.",
+  "geo.myloc.name": "موقعي (تقريبي)"
 }

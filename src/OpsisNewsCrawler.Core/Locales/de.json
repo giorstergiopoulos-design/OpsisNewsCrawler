@@ -713,5 +713,9 @@
   "history.order.yearAsc": "Nach Jahr, älteste zuerst",
   "history.order.yearDesc": "Nach Jahr, neueste zuerst",
   "history.country": "Mein Land",
-  "history.country.all": "Alle Länder"
+  "history.country.all": "Alle Länder",
+  "geo.myloc": "Meinen ungefähren Standort hinzufügen",
+  "geo.myloc.consent": "Das Programm fragt Windows einmal nach deinem ungefähren Standort. Für das Wetter werden nur auf etwa 1 km gerundete Koordinaten verwendet und per HTTPS an den Wetterdienst gesendet; nichts Genaueres wird gespeichert. Fortfahren?",
+  "geo.myloc.denied": "Der Standort ist nicht verfügbar oder wurde in Windows-Einstellungen > Datenschutz > Standort nicht erlaubt.",
+  "geo.myloc.name": "Mein Standort (ca.)"
 }

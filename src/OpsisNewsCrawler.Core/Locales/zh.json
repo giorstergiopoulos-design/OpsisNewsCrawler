@@ -713,5 +713,9 @@
   "history.order.yearAsc": "按年份，最早优先",
   "history.order.yearDesc": "按年份，最新优先",
   "history.country": "我的国家",
-  "history.country.all": "所有国家"
+  "history.country.all": "所有国家",
+  "geo.myloc": "添加我的大致位置",
+  "geo.myloc.consent": "程序将向 Windows 请求一次您的大致位置。天气仅使用约精确到 1 公里的坐标，并通过 HTTPS 发送给提供商；不会保存更精确的信息。继续吗？",
+  "geo.myloc.denied": "位置不可用，或未在 Windows 设置 > 隐私 > 位置 中允许。",
+  "geo.myloc.name": "我的位置（大致）"
 }

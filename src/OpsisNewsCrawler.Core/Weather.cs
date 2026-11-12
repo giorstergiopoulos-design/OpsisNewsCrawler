@@ -122,7 +122,7 @@ agios-nikolaos|Άγιος Νικόλαος|Agios Nikolaos|35.1900|25.7160
 
 /// <summary>What the weather is like right now in one city.</summary>
 public sealed record WeatherReading(string CityId, double TemperatureC, int HumidityPercent, double WindKmh, int WindFromDegrees, int Code, bool IsDay, DateTimeOffset At,
-    double? FeelsLikeC = null, double? PrecipitationMm = null, int? CloudPercent = null, double? PressureHpa = null, double? GustsKmh = null);
+    double? FeelsLikeC = null, double? PrecipitationMm = null, int? CloudPercent = null, double? PressureHpa = null, double? GustsKmh = null, string? Source = null);
 
 /// <summary>Simplified weather kind drawn as an icon (from the WMO weather code).</summary>
 public enum WeatherKind { Clear, PartlyCloudy, Cloudy, Fog, Drizzle, Rain, Snow, Thunder }
@@ -215,6 +215,7 @@ public static class WeatherInfo
 public sealed class WeatherService
 {
     private readonly HttpClient http = QuoteHttp.Create();
+    private readonly MetNoWeather metNo = new();
     private IReadOnlyList<WeatherReading> last = Array.Empty<WeatherReading>();
     private string lastKey = "";
     private DateTimeOffset lastFetch = DateTimeOffset.MinValue;
@@ -233,12 +234,12 @@ public sealed class WeatherService
         var lon = string.Join(",", cities.Select(c => c.Lon.ToString("0.####", CultureInfo.InvariantCulture)));
         var url = $"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}" +
                   "&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,is_day,apparent_temperature,precipitation,cloud_cover,pressure_msl,wind_gusts_10m&wind_speed_unit=kmh&timezone=auto";
+        var results = new List<WeatherReading>();
         try
         {
             using var limit = QuoteHttp.Limit(ct, 20);
             var json = await http.GetStringAsync(url, limit.Token).ConfigureAwait(false);
             using var doc = JsonDocument.Parse(json);
-            var results = new List<WeatherReading>();
             var root = doc.RootElement;
             // One place: an object; several places: an array of objects in the order asked.
             var nodes = root.ValueKind == JsonValueKind.Array ? root.EnumerateArray().ToList() : new List<JsonElement> { root };
@@ -251,26 +252,37 @@ public sealed class WeatherService
                     ? new DateTimeOffset(dt, TimeSpan.Zero) : DateTimeOffset.UtcNow;
                 results.Add(new WeatherReading(cities[i].Id, D("temperature_2m"), (int)Math.Round(D("relative_humidity_2m")), D("wind_speed_10m"),
                     (int)Math.Round(D("wind_direction_10m")), (int)D("weather_code"), cur.GetProperty("is_day").GetInt32() == 1, at,
-                    O("apparent_temperature"), O("precipitation"), O("cloud_cover") is { } cloud ? (int)Math.Round(cloud) : null, O("pressure_msl"), O("wind_gusts_10m")));
+                    O("apparent_temperature"), O("precipitation"), O("cloud_cover") is { } cloud ? (int)Math.Round(cloud) : null, O("pressure_msl"), O("wind_gusts_10m"), "Open-Meteo"));
             }
-            if (results.Count == 0)
-            {
-                LastFailed = true;
-                return last;
-            }
-            LastFailed = false;
-            last = results;
-            lastKey = key;
-            lastFetch = DateTimeOffset.UtcNow;
-            return results;
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or KeyNotFoundException or InvalidOperationException or FormatException)
         {
             if (!ct.IsCancellationRequested) Log.Write($"Weather: {ex.GetType().Name}: {ex.Message}");
+        }
+
+        // The second, independent source answers for the places the first one did not (at most a few per refresh: one request each).
+        var missing = cities.Where(c => results.All(r => r.CityId != c.Id)).Take(MaxFallbackPlaces).ToList();
+        foreach (var city in missing)
+        {
+            if (ct.IsCancellationRequested) break;
+            var reading = await metNo.GetAsync(city, ct).ConfigureAwait(false);
+            if (reading != null) results.Add(reading);
+        }
+
+        if (results.Count == 0)
+        {
             LastFailed = true;
             return last;
         }
+        LastFailed = false;
+        last = results;
+        lastKey = key;
+        lastFetch = DateTimeOffset.UtcNow;
+        return results;
     }
+
+    /// <summary>How many places the second source is asked for in one refresh (its terms ask for few requests, and it is only a fallback).</summary>
+    public const int MaxFallbackPlaces = 8;
 
     /// <summary>Bar items for the readings, in the order of the user's selection.</summary>
     public static IReadOnlyList<NewsItem> ToItems(IEnumerable<string> order, IReadOnlyList<WeatherReading> readings, bool greek, IReadOnlyCollection<string>? fields = null)

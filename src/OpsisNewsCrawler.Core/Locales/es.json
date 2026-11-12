@@ -713,5 +713,9 @@
   "history.order.yearAsc": "Por año, las más antiguas primero",
   "history.order.yearDesc": "Por año, las más recientes primero",
   "history.country": "Mi país",
-  "history.country.all": "Todos los países"
+  "history.country.all": "Todos los países",
+  "geo.myloc": "Añadir mi ubicación aproximada",
+  "geo.myloc.consent": "El programa pedirá a Windows una vez tu ubicación aproximada. Para el tiempo solo se usan, y se envían por HTTPS al proveedor, coordenadas redondeadas a unos 1 km; no se guarda nada más preciso. ¿Continuar?",
+  "geo.myloc.denied": "La ubicación no está disponible o no se permitió en Configuración de Windows > Privacidad > Ubicación.",
+  "geo.myloc.name": "Mi ubicación (aprox.)"
 }

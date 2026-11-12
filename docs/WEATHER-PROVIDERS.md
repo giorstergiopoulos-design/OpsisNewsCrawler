@@ -29,3 +29,6 @@ Not built yet. The rules that follow from the request: ask first (opt-in), use t
 1. Keep Open-Meteo as the only provider, or add MET Norway as a second source (and with which contact address in the User-Agent)?
 2. Is a "commercial use" of the program planned? (It decides whether Open-Meteo's free API may be used at all.)
 3. Should a comparison against observations for Greek cities be run before choosing?
+
+## Implemented (2026-11-12)
+Open-Meteo stays the first source; **MET Norway is the second source** for places the first one does not answer for (decisions 1 above, with the User-Agent `OpsisNewsCrawler/<version> (+project page)`, no personal contact). The opt-in location button exists (rounded to 2 decimals). NWS is not used here: no United States city is in the lists. Accuracy was not measured.

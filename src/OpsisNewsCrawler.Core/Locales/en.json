@@ -713,5 +713,9 @@
   "history.order.yearAsc": "By year, oldest first",
   "history.order.yearDesc": "By year, newest first",
   "history.country": "My country",
-  "history.country.all": "All countries"
+  "history.country.all": "All countries",
+  "geo.myloc": "Add my approximate location",
+  "geo.myloc.consent": "The program will ask Windows once for your approximate location. Only coordinates rounded to about 1 km are used for the weather and sent over HTTPS to the weather provider; nothing more precise is stored. Continue?",
+  "geo.myloc.denied": "The location is unavailable or was not allowed in Windows Settings > Privacy > Location.",
+  "geo.myloc.name": "My location (approx.)"
 }

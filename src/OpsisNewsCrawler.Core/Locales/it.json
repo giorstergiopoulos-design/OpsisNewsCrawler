@@ -713,5 +713,9 @@
   "history.order.yearAsc": "Per anno, prima le più antiche",
   "history.order.yearDesc": "Per anno, prima le più recenti",
   "history.country": "Il mio paese",
-  "history.country.all": "Tutti i paesi"
+  "history.country.all": "Tutti i paesi",
+  "geo.myloc": "Aggiungi la mia posizione approssimativa",
+  "geo.myloc.consent": "Il programma chiederà una volta a Windows la tua posizione approssimativa. Per il meteo si usano, e si inviano via HTTPS al fornitore, solo coordinate arrotondate a circa 1 km; nulla di più preciso viene salvato. Continuare?",
+  "geo.myloc.denied": "La posizione non è disponibile o non è stata consentita in Impostazioni di Windows > Privacy > Posizione.",
+  "geo.myloc.name": "La mia posizione (appross.)"
 }

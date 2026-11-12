@@ -713,5 +713,9 @@
   "history.order.yearAsc": "연도순, 오래된 것 먼저",
   "history.order.yearDesc": "연도순, 최신 먼저",
   "history.country": "내 나라",
-  "history.country.all": "모든 나라"
+  "history.country.all": "모든 나라",
+  "geo.myloc": "대략적인 내 위치 추가",
+  "geo.myloc.consent": "프로그램이 Windows에 대략적인 위치를 한 번 요청합니다. 날씨에는 약 1 km로 반올림한 좌표만 사용되어 HTTPS로 제공자에게 전송되며, 그보다 정확한 정보는 저장되지 않습니다. 계속할까요?",
+  "geo.myloc.denied": "위치를 사용할 수 없거나 Windows 설정 > 개인 정보 > 위치에서 허용되지 않았습니다.",
+  "geo.myloc.name": "내 위치(대략)"
 }

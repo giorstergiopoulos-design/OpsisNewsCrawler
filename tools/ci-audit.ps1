@@ -3,7 +3,7 @@
 # Each run uses a throw-away configuration file (the user's real settings are never read or written); one program instance at a time, closed afterwards.
 # Exit code 0 = no finding. Reports are written to <out>\audit-<language>.txt and layout-<language>.txt and echoed on failure.
 param(
-    [string]$Exe = "$PSScriptRoot\..\src\OpsisNewsCrawler.App\bin\Release\net10.0-windows\OpsisNewsCrawler.exe",
+    [string]$Exe = "$PSScriptRoot\..\src\OpsisNewsCrawler.App\bin\Release\net10.0-windows10.0.19041.0\OpsisNewsCrawler.exe",
     [string[]]$Languages = @('en', 'el', 'de', 'ar'),
     [string]$Out = (Join-Path ([IO.Path]::GetTempPath()) 'opsis-ci-audit')
 )

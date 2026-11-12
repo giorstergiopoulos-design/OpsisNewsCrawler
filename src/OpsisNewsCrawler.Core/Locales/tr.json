@@ -713,5 +713,9 @@
   "history.order.yearAsc": "Yıla göre, en eski önce",
   "history.order.yearDesc": "Yıla göre, en yeni önce",
   "history.country": "Ülkem",
-  "history.country.all": "Tüm ülkeler"
+  "history.country.all": "Tüm ülkeler",
+  "geo.myloc": "Yaklaşık konumumu ekle",
+  "geo.myloc.consent": "Program Windows’tan yaklaşık konumunuzu bir kez isteyecek. Hava durumu için yalnızca yaklaşık 1 km’ye yuvarlanmış koordinatlar kullanılır ve HTTPS ile sağlayıcıya gönderilir; daha hassas hiçbir şey saklanmaz. Devam edilsin mi?",
+  "geo.myloc.denied": "Konum kullanılamıyor veya Windows Ayarları > Gizlilik > Konum’da izin verilmedi.",
+  "geo.myloc.name": "Konumum (yaklaşık)"
 }
