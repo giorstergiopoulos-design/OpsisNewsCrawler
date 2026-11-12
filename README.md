@@ -219,11 +219,9 @@ Needs the .NET 10 SDK and Inno Setup 6/7. Layout: `src/OpsisNewsCrawler.Core` (m
 |---|---|
 | [Opsis](https://github.com/giorstergiopoulos-design/Opsis) | Desktop customisation for Windows 11 — wallpapers, widgets, DeskStrip, plugins / Εξατομίκευση επιφάνειας εργασίας |
 | [Opsis News Crawler](https://github.com/giorstergiopoulos-design/OpsisNewsCrawler) | News and markets ticker inside your taskbar (**this repository**) |
-| [Opsis Appearance](https://github.com/giorstergiopoulos-design/OpsisAppearance) | Change the look of Windows itself |
 | [GearWin](https://github.com/giorstergiopoulos-design/GearWin) | Complete PC care for Windows 11 |
-| [Opsis Media Player Pro](https://github.com/giorstergiopoulos-design/OpsisMediaPlayerPro) | Fast video and audio player on the VLC engine |
+| [Opsis Media Suite](https://github.com/giorstergiopoulos-design/OpsisMediaSuite) | Video and audio player, converter and photo tools |
 | [Kombos](https://github.com/giorstergiopoulos-design/Kombos) | A local hub for AI tools, with Claude as the agent |
-| [Waveframe](https://github.com/giorstergiopoulos-design/waveframe) | Real-time audio enhancer and player |
 
 ## Άδεια / License
 

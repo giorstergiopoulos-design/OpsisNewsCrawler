@@ -533,7 +533,16 @@ public sealed class TickerWindow : Form
     {
         if (IsDisposed || !IsHandleCreated || !Visible || !AutoTextActive) return;
         if (BackdropSampler.Sample(Bounds) is not { } luminance) return;
-        if (contrast.Update(luminance))
+        var changed = contrast.Update(luminance);
+        if (!changed && contrast.IsPending)
+        {
+            // the background looks different from what the text was chosen for: confirm after a second instead of waiting for the next slow look
+            sampleDebounce.Stop();
+            sampleDebounce.Interval = 1000;
+            sampleDebounce.Start();
+        }
+        else if (sampleDebounce.Interval != 500) sampleDebounce.Interval = 500;
+        if (changed)
         {
             Log.Write($"Auto text colour: background luminance {luminance:0.00} -> {(contrast.UseDarkText == true ? "dark" : "light")} text");
             ApplyAutoText(smooth: true);

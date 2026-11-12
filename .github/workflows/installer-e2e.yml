@@ -41,6 +41,26 @@ jobs:
             Output/OpsisNewsCrawler-Setup.exe.sha256
           retention-days: 7
 
+  wizard-shots:
+    needs: build-setup
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: setup
+          path: setup
+      - name: Wizard in the light and in the dark Windows theme
+        shell: pwsh
+        run: ./tools/installer-theme-shots.ps1 -Setup "$PWD/setup/OpsisNewsCrawler-Setup.exe" -Out "$PWD/wizard-shots"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wizard-shots
+          path: wizard-shots/*
+          retention-days: 14
+
   e2e:
     needs: build-setup
     runs-on: ${{ matrix.os }}

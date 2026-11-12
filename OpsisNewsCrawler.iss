@@ -40,9 +40,16 @@ VersionInfoProductName={#MyAppName}
 VersionInfoProductVersion={#MyAppVersion}
 VersionInfoCopyright=Copyright (c) 2026 {#MyPublisher}
 SetupIconFile=src\OpsisNewsCrawler.Windows\Assets\app.ico
+; The wizard follows the Windows light / dark setting (checked once, when Setup starts). A custom icon and custom pictures replace the built-in dark ones, so they are made to read on both:
+; the icon is a dark tile with its own colours; the tall picture has a light and a deeper dark version; the small picture is a PNG with a transparent background.
+WizardStyle=modern dynamic
 ; Wizard pictures drawn from the app artwork (BrandArt, --make-brand-art): 100 / 125 / 150 / 200 %
 WizardImageFile=installer\wizard\large-100.bmp,installer\wizard\large-125.bmp,installer\wizard\large-150.bmp,installer\wizard\large-200.bmp
-WizardSmallImageFile=installer\wizard\small-100.bmp,installer\wizard\small-125.bmp,installer\wizard\small-150.bmp,installer\wizard\small-200.bmp
+WizardImageFileDynamicDark=installer\wizard\dark-large-100.bmp,installer\wizard\dark-large-125.bmp,installer\wizard\dark-large-150.bmp,installer\wizard\dark-large-200.bmp
+WizardImageBackColor=#121E3E
+WizardImageBackColorDynamicDark=#0A1022
+WizardSmallImageFile=installer\wizard\small-100.png,installer\wizard\small-125.png,installer\wizard\small-150.png,installer\wizard\small-200.png
+WizardSmallImageFileDynamicDark=installer\wizard\small-100.png,installer\wizard\small-125.png,installer\wizard\small-150.png,installer\wizard\small-200.png
 DefaultDirName={code:GetDefaultDir}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes

@@ -19,6 +19,9 @@ public sealed class ContrastChooser
     private bool pendingDark;
     private int pendingCount;
 
+    /// <summary>True while a different choice has been seen once and is waiting for its second sample.</summary>
+    public bool IsPending => pendingCount > 0;
+
     /// <summary>true = dark text, false = light text, null = nothing sampled yet.</summary>
     public bool? UseDarkText => useDarkText;
 

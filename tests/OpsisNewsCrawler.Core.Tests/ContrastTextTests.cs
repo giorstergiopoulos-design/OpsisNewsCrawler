@@ -60,6 +60,7 @@ public class ContrastTextTests
         var c = new ContrastChooser();
         c.Update(0.05);
         Assert.False(c.Update(0.6));                      // one bright sample (a window passed behind the bar): nothing yet
+        Assert.True(c.IsPending);                         // ... so the bar looks again after a second, not at the next slow look
         Assert.False(c.Update(0.05));                     // and a dark one cancels it
         Assert.False(c.Update(0.6));
         Assert.True(c.Update(0.7));                       // two bright samples in a row: the text turns dark

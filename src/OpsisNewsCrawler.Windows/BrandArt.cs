@@ -11,6 +11,9 @@ public static class BrandArt
 {
     private static readonly Color Top = Color.FromArgb(18, 30, 62);
     private static readonly Color Bottom = Color.FromArgb(14, 110, 130);
+    // The same picture for a dark wizard (Windows in dark mode): deeper colours, so it does not glare on a dark page.
+    internal static readonly Color DarkTop = Color.FromArgb(10, 16, 34);
+    internal static readonly Color DarkBottom = Color.FromArgb(8, 62, 76);
 
     public static void SaveAll(string folder)
     {
@@ -23,11 +26,14 @@ public static class BrandArt
         {
             using var bmp = WizardLarge(w, h);
             bmp.Save(Path.Combine(folder, name + ".bmp"), ImageFormat.Bmp);
+            using var dark = WizardLarge(w, h, dark: true);
+            dark.Save(Path.Combine(folder, "dark-" + name + ".bmp"), ImageFormat.Bmp);
         }
+        // the small picture is a PNG with a transparent background: it sits on the white page of the light wizard and on the dark page of the dark one alike
         foreach (var (name, w, h) in small)
         {
-            using var bmp = WizardSmall(w, h);
-            bmp.Save(Path.Combine(folder, name + ".bmp"), ImageFormat.Bmp);
+            using var png = WizardSmall(w, h);
+            png.Save(Path.Combine(folder, name + ".png"), ImageFormat.Png);
         }
 
         using (var icon = AppIconArt.Render(512, 0, showAllFour: true)) icon.Save(Path.Combine(folder, "icon.png"), ImageFormat.Png);
@@ -35,22 +41,22 @@ public static class BrandArt
         using (var social = SocialPreview()) social.Save(Path.Combine(folder, "social-preview.png"), ImageFormat.Png);
     }
 
-    private static Bitmap NewCanvas(int w, int h, out Graphics g)
+    private static Bitmap NewCanvas(int w, int h, out Graphics g, bool dark = false)
     {
         var bmp = new Bitmap(w, h, PixelFormat.Format24bppRgb);
         g = Graphics.FromImage(bmp);
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.InterpolationMode = InterpolationMode.HighQualityBicubic;
         g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
-        using var back = new LinearGradientBrush(new Rectangle(0, 0, w, h), Top, Bottom, LinearGradientMode.Vertical);
+        using var back = new LinearGradientBrush(new Rectangle(0, 0, w, h), dark ? DarkTop : Top, dark ? DarkBottom : Bottom, LinearGradientMode.Vertical);
         g.FillRectangle(back, 0, 0, w, h);
         return bmp;
     }
 
     /// <summary>The tall picture on the left of the first and last wizard pages: the wide icon, a few "headline" bars, the name.</summary>
-    private static Bitmap WizardLarge(int w, int h)
+    private static Bitmap WizardLarge(int w, int h, bool dark = false)
     {
-        var bmp = NewCanvas(w, h, out var g);
+        var bmp = NewCanvas(w, h, out var g, dark);
         using (g)
         {
             var pad = w * 0.09f;
@@ -79,10 +85,13 @@ public static class BrandArt
     /// <summary>The small picture at the top right of the inner wizard pages: just the icon tile.</summary>
     private static Bitmap WizardSmall(int w, int h)
     {
-        var bmp = NewCanvas(w, h, out var g);
+        var bmp = new Bitmap(w, h, PixelFormat.Format32bppArgb);
+        var g = Graphics.FromImage(bmp);
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        g.InterpolationMode = InterpolationMode.HighQualityBicubic;
         using (g)
         {
-            g.Clear(Color.White);
+            g.Clear(Color.Transparent);
             var size = Math.Min(w, h) - 6;
             using var icon = AppIconArt.Render(size * 2, 0, showAllFour: true);
             g.DrawImage(icon, (w - size) / 2f, (h - size) / 2f, size, size);
