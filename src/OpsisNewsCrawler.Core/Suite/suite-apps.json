@@ -159,34 +159,5 @@
         ]
       }
     }
-  ],
-  "retired": [
-    {
-      "id": "mediaplayer",
-      "name": "Opsis Media Player Pro",
-      "replacedBy": "mediasuite",
-      "note": {
-        "en": "Moved to Opsis Media Suite",
-        "el": "Μεταφέρθηκε στο Opsis Media Suite"
-      }
-    },
-    {
-      "id": "appearance",
-      "name": "Opsis Appearance",
-      "replacedBy": "opsis",
-      "note": {
-        "en": "Merged into Opsis Personalization",
-        "el": "Ενσωματώθηκε στην Εξατομίκευση του Opsis"
-      }
-    },
-    {
-      "id": "waveframe",
-      "name": "Waveframe",
-      "replacedBy": "mediasuite",
-      "note": {
-        "en": "Renamed to Opsis Media Suite",
-        "el": "Μετονομάστηκε σε Opsis Media Suite"
-      }
-    }
   ]
 }

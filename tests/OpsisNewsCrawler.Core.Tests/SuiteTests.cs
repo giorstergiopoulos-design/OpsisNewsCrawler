@@ -398,80 +398,45 @@ public sealed class SuiteIconTests
     }
 }
 
-public class SuiteRetiredTests
+public class SuiteFamilyTests
 {
     private const string App = """{"id":"mediasuite","name":"Opsis Media Suite","repo":"OpsisMediaSuite","installerAsset":"^OpsisMediaSuite-Setup-.*exe$","paths":[],"tagline":{"en":"t"},"capabilities":{"en":["a"]}}""";
-    private const string Old = """{"id":"waveframe","name":"Waveframe","repo":"waveframe","installerAsset":null,"paths":[],"tagline":{"en":"t"},"capabilities":{"en":["a"]}}""";
 
-    private static SuiteCatalog Parse(string json)
+    [Fact]
+    public void ACatalogueShowsWhatIsInItsAppsListAndIgnoresUnknownFields()
     {
+        var json = """{"schema":1,"owner":"giorstergiopoulos-design","futureField":{"x":1},"apps":[""" + App.Replace("\"id\"", "\"unknown\":[1,2,3],\"id\"") + """],"alsoNew":true}""";
         Assert.True(SuiteCatalog.TryParse(json, out var c, out var error), error);
-        return c!;
+        Assert.Equal(new[] { "mediasuite" }, c!.Apps.Select(a => a.Id).ToArray());
     }
 
     [Fact]
-    public void RetiredAppsAreReadAndNeverOfferedEvenWhenStillListedAsApps()
-    {
-        var c = Parse("""{"schema":1,"updated":"2026-11-12","owner":"giorstergiopoulos-design","apps":[""" + App + "," + Old + """],"retired":[{"id":"waveframe","name":"Waveframe","replacedBy":"mediasuite","note":{"en":"Renamed to Opsis Media Suite","el":"Μετονομάστηκε"}},{"id":"appearance","name":"Opsis Appearance","replacedBy":"opsis"}]}""");
-        Assert.Equal(new[] { "mediasuite" }, c.Apps.Select(a => a.Id).ToArray());
-        Assert.Equal(new[] { "waveframe", "appearance" }, c.Retired.Select(r => r.Id).ToArray());
-        Assert.Equal("mediasuite", c.Retired[0].ReplacedBy);
-        Assert.Equal("Μετονομάστηκε", c.Retired[0].Note["el"]);
-        Assert.Null(c.Find("waveframe"));
-    }
-
-    [Fact]
-    public void ACatalogueWithoutRetiredAndWithUnknownFieldsStillWorks()
-    {
-        var c = Parse("""{"schema":1,"owner":"giorstergiopoulos-design","futureField":{"x":1},"apps":[""" + App.Replace("\"id\"", "\"unknown\":[1,2,3],\"id\"") + """],"alsoNew":true}""");
-        Assert.Single(c.Apps);
-        Assert.Empty(c.Retired);
-    }
-
-    [Fact]
-    public void ABadRetiredEntryIsIgnoredAndCannotAddAnApp()
-    {
-        var c = Parse("""{"schema":1,"apps":[""" + App + """],"retired":["x",5,{"id":"BAD ID!","name":"x"},{"name":"no id"},{"id":"gearwin","name":"G","replacedBy":"../evil"}]}""");
-        Assert.Single(c.Apps);
-        Assert.Equal(new[] { "gearwin" }, c.Retired.Select(r => r.Id).ToArray());
-        Assert.Null(c.Retired[0].ReplacedBy);                    // a replacement that is not an id is dropped
-    }
-
-    [Fact]
-    public void TheEmbeddedCatalogueIsTheNewFamilyAndNamesNoRetiredApp()
+    public void TheEmbeddedCatalogueIsTheCurrentFamily()
     {
         var c = SuiteCatalogStore.Embedded();
         Assert.Equal(new[] { "opsis", "newscrawler", "gearwin", "kombos", "mediasuite" }, c.Apps.Select(a => a.Id).ToArray());
-        Assert.Equal(new[] { "mediaplayer", "appearance", "waveframe" }, c.Retired.Select(r => r.Id).ToArray());
         Assert.Equal("Opsis Media Suite", c.Find("mediasuite")!.Name);
-        foreach (var a in c.Apps)
-            foreach (var lang in new[] { "en", "el" })
-            {
-                var text = a.TaglineFor(lang) + " " + string.Join(" ", a.CapabilitiesFor(lang));
-                Assert.DoesNotContain("Appearance", text);
-                Assert.DoesNotContain("Media Player Pro", text);
-                Assert.DoesNotContain("Waveframe", text, StringComparison.OrdinalIgnoreCase);
-            }
     }
 
     [Fact]
-    public void NoFileOfTheProgramOffersOrNamesTheRetiredApps()
+    public void NoTextForTheUserNamesApplicationsOfTheOldFamily()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null && !dir.GetFiles("*.sln").Any()) dir = dir.Parent;
         var root = dir!.FullName;
-        var files = new List<string> { Path.Combine(root, "README.md"), Path.Combine(root, "OpsisNewsCrawler.iss") };
+        // the words are assembled here so that this file does not contain them itself
+        var words = new[] { "Media " + "Player Pro", "Opsis " + "Appearance", "Opsis" + "Appearance", "Wave" + "frame" };
+        var files = new List<string> { Path.Combine(root, "README.md"), Path.Combine(root, "OpsisNewsCrawler.iss"), Path.Combine(root, "src", "OpsisNewsCrawler.Core", "Suite", "suite-apps.json") };
         files.AddRange(Directory.GetFiles(Path.Combine(root, "src", "OpsisNewsCrawler.Core", "Locales"), "*.json"));
         files.AddRange(Directory.GetFiles(Path.Combine(root, "src", "OpsisNewsCrawler.Windows"), "*.cs").Where(f => !f.EndsWith("Theme.cs")));
+        files.AddRange(Directory.GetFiles(Path.Combine(root, "docs"), "*.md"));
         foreach (var f in files)
         {
             var text = File.ReadAllText(f);
-            Assert.False(text.Contains("Media Player Pro", StringComparison.OrdinalIgnoreCase) || text.Contains("OpsisAppearance") || text.Contains("Opsis Appearance") || text.Contains("Waveframe", StringComparison.OrdinalIgnoreCase),
-                Path.GetFileName(f) + " still names a retired app");
+            foreach (var w in words) Assert.False(text.Contains(w, StringComparison.OrdinalIgnoreCase), Path.GetFileName(f) + " names " + w);
         }
-        // the icons: the three old pictures are gone, the new one is there
         var icons = Directory.GetFiles(Path.Combine(root, "src", "OpsisNewsCrawler.Core", "Suite", "icons")).Select(Path.GetFileName).ToList();
         Assert.Contains("mediasuite.png", icons);
-        Assert.DoesNotContain("waveframe.png", icons); Assert.DoesNotContain("appearance.png", icons); Assert.DoesNotContain("mediaplayer.png", icons);
+        Assert.Equal(5, icons.Count);
     }
 }

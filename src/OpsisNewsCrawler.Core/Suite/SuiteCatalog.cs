@@ -20,9 +20,6 @@ public sealed record SuiteApp(
         map.TryGetValue(lang, out var exact) ? exact : map.TryGetValue("en", out var en) ? en : map.Values.FirstOrDefault();
 }
 
-/// <summary>An app that left the family (renamed, merged into another one): never offered for installation. <see cref="ReplacedBy"/> is the id of the app that took its place.</summary>
-public sealed record SuiteRetired(string Id, string Name, string? ReplacedBy, IReadOnlyDictionary<string, string> Note);
-
 /// <summary>
 /// The catalogue file: one list of apps for every program of the family. Parsing is strict about what matters for safety (size, schema, ids,
 /// repository names, regular expressions) and ignores fields it does not know, so a newer catalogue never breaks an older program.
@@ -35,16 +32,12 @@ public sealed class SuiteCatalog
 
     private static readonly string[] AllowedHosts = { "github.com", "raw.githubusercontent.com", "api.github.com" };
 
-    public SuiteCatalog(string owner, string updated, IReadOnlyList<SuiteApp> apps, IReadOnlyList<SuiteRetired>? retired = null)
+    public SuiteCatalog(string owner, string updated, IReadOnlyList<SuiteApp> apps)
     {
         Owner = owner;
         Updated = updated;
         Apps = apps;
-        Retired = retired ?? Array.Empty<SuiteRetired>();
     }
-
-    /// <summary>The apps that no longer belong to the family (listed by the catalogue in "retired"); none of them is in <see cref="Apps"/>.</summary>
-    public IReadOnlyList<SuiteRetired> Retired { get; }
 
     public string Owner { get; }
     public string Updated { get; }
@@ -73,33 +66,16 @@ public sealed class SuiteCatalog
             if (!Regex.IsMatch(owner, "^[A-Za-z0-9-]{1,39}$")) { error = "bad owner"; return false; }
             if (!root.TryGetProperty("apps", out var apps) || apps.ValueKind != JsonValueKind.Array) { error = "no apps"; return false; }
 
-            // "retired" is optional (older catalogues have none) and anything odd in it is ignored: it can only take apps away, never add one
-            var retired = new List<SuiteRetired>();
-            if (root.TryGetProperty("retired", out var ret) && ret.ValueKind == JsonValueKind.Array)
-                foreach (var r in ret.EnumerateArray().Take(50))
-                {
-                    if (r.ValueKind != JsonValueKind.Object) continue;
-                    var rid = Str(r, "id");
-                    if (rid is null || !Regex.IsMatch(rid, "^[a-z0-9_-]{1,32}$") || retired.Any(x => string.Equals(x.Id, rid, StringComparison.OrdinalIgnoreCase))) continue;
-                    var note = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                    if (r.TryGetProperty("note", out var n) && n.ValueKind == JsonValueKind.Object)
-                        foreach (var kv in n.EnumerateObject())
-                            if (kv.Value.ValueKind == JsonValueKind.String && kv.Value.GetString() is { Length: > 0 and <= 300 } text) note[kv.Name] = text;
-                    var by = Str(r, "replacedBy");
-                    retired.Add(new SuiteRetired(rid, (Str(r, "name") ?? rid)[..Math.Min(80, (Str(r, "name") ?? rid).Length)], by is not null && Regex.IsMatch(by, "^[a-z0-9_-]{1,32}$") ? by : null, note));
-                }
-
             var list = new List<SuiteApp>();
             foreach (var a in apps.EnumerateArray())
             {
                 if (list.Count >= 50) break;
                 if (a.ValueKind != JsonValueKind.Object) continue;
                 var app = ParseApp(a);
-                if (app is null || retired.Any(x => string.Equals(x.Id, app.Id, StringComparison.OrdinalIgnoreCase))) continue;   // an app that left the family is never offered
-                if (list.All(x => !string.Equals(x.Id, app.Id, StringComparison.OrdinalIgnoreCase))) list.Add(app);
+                if (app is not null && list.All(x => !string.Equals(x.Id, app.Id, StringComparison.OrdinalIgnoreCase))) list.Add(app);
             }
             if (list.Count == 0) { error = "no valid apps"; return false; }
-            catalog = new SuiteCatalog(owner, Str(root, "updated") ?? "", list, retired);
+            catalog = new SuiteCatalog(owner, Str(root, "updated") ?? "", list);
             return true;
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException or FormatException or OverflowException)
